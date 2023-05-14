@@ -6,7 +6,6 @@
   "directories": {
     "lib": "lib"
   },
-
   "scripts": {
     "test": "echo \"lol\" && exit 1",
     "build": "webpack --mode production",
@@ -31,6 +30,7 @@
   "homepage": "https://github.com/hexagontruth/webgx#readme",
   "dependencies": {
     "cssloader": "^1.1.1",
+    "dat.gui": "^0.7.9",
     "express": "^4.18.2",
     "sass-loader": "^13.2.2",
     "style-loader": "^3.3.2",

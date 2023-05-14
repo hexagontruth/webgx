@@ -10,6 +10,5 @@ echo `pwd`
 if [[ $NODE_ENV == "production" ]]; then
   node server
 else
-  node server &
-  yarn webpack serve --mode development
+  npx webpack serve --mode development
 fi
