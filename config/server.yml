@@ -1,0 +1,17 @@
+default:
+  server:
+    port: 8080
+    host: localhost
+  media:
+    width: 1440
+    fps: 60
+    codec: libx264
+    crf: 15
+    inputDir: input
+    outputDir: output
+    imageFilename: frame-#####
+    videoFilename: video-###.mp4
+production:
+  server:
+    port: 80
+    host: curd.mil

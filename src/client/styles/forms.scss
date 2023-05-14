@@ -1,0 +1,24 @@
+form, label, input, button, textarea {
+  display: block;
+  line-height: 1.5;
+  padding: 0.25em 0;
+  font-size: 1em;
+}
+
+button {
+  cursor: pointer;
+  padding: 0.25em 0.5em;
+}
+
+label {
+  font-weight: bold;
+  padding: 0.25em 0;
+}
+
+input, textarea {
+  border: 1px solid #888;
+  padding: 0.25em;
+  &:focus {
+    outline: calc(1 / 6 * 1rem) solid #fc3;
+  }
+}

@@ -1,0 +1,37 @@
+$base-rem: 24px;
+
+$breakpoints: (sm: 0px, md: 480px, lg: 768px, xl: 1024px, xx: 1920px);
+
+$nav-bg: #000;
+$nav-fg: #fff;
+
+$body-bg-light: #fff;
+$body-fg-light: #2f2f2f;
+$body-bg-dark: #2f2f2f;
+$body-fg-dark: #fff;
+
+$link-fg: #369;
+$link-hover: #c30;
+
+
+$t-delay: 100ms;
+$t-short: 250ms;
+$t-medium: 500ms;
+$t-long: 1s;
+
+$c1: calc(1 / 12 * 100%);
+$c2: calc(2 / 12 * 100%);
+$c3: calc(3 / 12 * 100%);
+$c4: calc(4 / 12 * 100%);
+$c5: calc(5 / 12 * 100%);
+$c6: calc(6 / 12 * 100%);
+$c7: calc(7 / 12 * 100%);
+$c8: calc(8 / 12 * 100%);
+$c9: calc(9 / 12 * 100%);
+$c10: calc(10 / 12 * 100%);
+$c11: calc(11 / 12 * 100%);
+$c12: calc(12 / 12 * 100%);
+
+$sans: -apple-system, BlinkMacSystemFont,"Segoe UI", Montserrat, "Helvetica Neue", Helvetica, Cantarell, sans-serif;
+$nav-sans: -apple-system, BlinkMacSystemFont,"Segoe UI", Roboto, "Helvetica Neue", Helvetica, Cantarell, sans-serif;
+$mono: roboto-mono, 'Lucida Console', 'Lucida Sans Typewriter', Monaco, 'Noto Mono', monospace; //'DejaVu Sans Mono', 

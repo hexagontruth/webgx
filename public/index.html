@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="/dist/main.js" async></script>
+  <title>Webgx</title>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,maximum-scale=1,minimum-scale=1"/>
+  <meta name="description" content="WebGPU player"/>
+</head>
+<body class="home" style="opacity: 1;" draggable="false">
+  <nav class="toolbar toolbar-main hideable">
+    <button id="record-button" class="icon-record" title="Record"></button>
+    <button id="play-button" class="icon-stop" title="Stop"></button>
+    <button id="load-images-button" class="icon-image-multiple" title="Load images from input directory"></button>
+    <button id="webcam-button" class="icon-webcam" title="Activate webcam"></button>
+    <button id="screen-share-button" class="icon-screen-share" title="Share screen"></button>
+    <button id="record-images-button" class="icon-file-image" title="Record images"></button>
+    <button id="record-video-button" class="icon-file-video" title="Record video"></button>
+    <input id="counter-field" type="text" readonly/>
+  </nav>
+  <main class="main" id="main-container">
+      <div id="player-container">
+      </div>
+      <div id="horizontal-guide" class="guide horizontal hidden"></div>
+      <div id="vertical-guide" class="guide vertical hidden"></div>
+  </main>
+</body>
+</html>

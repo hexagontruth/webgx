@@ -1,0 +1,136 @@
+@import './vars.scss';
+
+:root {
+}
+
+html {
+  width: 100%;
+  height: 100%;
+  font-family: $sans;
+  background: $body-bg-light;
+  color: $body-fg-light;
+  @include dark {
+    background: $body-bg-dark;
+    color: $body-fg-dark;
+  }
+}
+
+body {
+  height: 100%;
+  transition: opacity $t-long;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: stretch;
+  background: #000;
+  // background: red;
+  color: #aaa;
+  font-size: 0.5rem;
+  overflow: hidden;
+  &.gray {
+    background: #3f3f3f;
+  }
+}
+
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  box-sizing: border-box;
+}
+
+canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+button.active {
+  background: #c30;
+}
+
+.main {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+}
+
+canvas {
+  display: block;
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  background: #fff;
+}
+
+.toolbar-main {
+  position: fixed;
+  left: 0;
+  top: 0;
+  margin: 0.125rem;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  justify-content: flex-start;
+  z-index: 5;
+  * {
+    margin: 0.125rem;
+    height: 1rem;
+  }
+  #counter-field {
+    width: 6em;
+  }
+}
+
+.hideable {
+  transition: opacity $t-medium;
+}
+
+body.hidden {
+  .hideable, .dg.main {
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+
+.dg.main {
+  position: absolute;
+  left: auto;
+  bottom: auto;
+  right: 0;
+  top: 0;
+  z-index: 10;
+  .cr, .close-button {
+    background: #000000bf !important;
+  }
+}
+
+.guide {
+  position: absolute;
+  pointer-events: none;
+  background-color: #f00;
+  width: 0;
+  height: 0;
+  z-index: 100;
+  &.hidden {
+    opacity: 0;
+  }
+  &.horizontal {
+    left: 0;
+    right: 0;
+    top: 50%;
+    width: 100%;
+    height: 1px;
+    transform: translateY(-50%);
+  }
+  &.vertical {
+    left: 50%;
+    top: 0%;
+    bottom: 0%;
+    width: 1px;
+    height: 100%;
+    transform: translateX(-50%);
+  }
+}
