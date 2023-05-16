@@ -13,3 +13,6 @@
 *.jpg
 *.mp4
 *.webm
+
+.env*
+!.env.sample

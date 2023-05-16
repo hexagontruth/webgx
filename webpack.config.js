@@ -1,7 +1,8 @@
 const pth = require('path');
 const process = require('process');
 
-const PORT = process.env.PORT || undefined;
+const PORT = process.env.PORT || 8080;
+const SERVER_PORT = process.env.SERVER_PORT || 8081;
 
 module.exports = {
   target: 'web',
@@ -20,6 +21,12 @@ module.exports = {
     compress: true,
     port: PORT,
     hot: true,
+    historyApiFallback: true,
+    proxy: {
+      '/api/**': {
+        target: `http://localhost:${SERVER_PORT}`,
+      },
+    },
   },
   module: {
     rules: [

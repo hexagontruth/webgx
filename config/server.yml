@@ -1,0 +1,17 @@
+default:
+  media:
+    width: 1440
+    height: 1440
+    fps: 60
+    codec: libx264
+    crf: 15
+    inputDir: input
+    outputDir: output
+    imageFilename: frame-#####.png
+    videoFilename: video-###.mp4
+development:
+  server:
+    port: 8081
+production:
+  server:
+    port: 80

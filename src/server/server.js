@@ -1,71 +1,85 @@
-const fs = require('fs');
-const http = require('http');
-const pth = require('path');
-const {spawn, execSync} = require('child_process');
+const fs = require('fs').promises;
+const { join } = require('path');
+const { spawn, execSync } = require('child_process');
 
 const express = require('express');
 
-const util = require('./util');
+const { baseJoin } = require('./util');
 
 // ---
 
 class Server {
   constructor(config) {
-    this.app = express();
-    this.config = util.merge({}, config);
+    this.config = config;
 
     this.imageIdxChars = this.config.imageFilename.match(/\#+/)[0].length;
     this.videoIdxChars = this.config.videoFilename.match(/\#+/)[0].length;
     this.videoIdx = 0;
-    this.enableImages = false;
+    this.imagesEnabled = false;
     this.recordingVideo = false;
 
     execSync(`mkdir -p ${this.config.output} ${this.config.input}`);
 
+    this.app = express();
+
+    this.app.use(express.json());
     this.app.use(express.static('./public'));
-    this.app.use('/data', express.static('./library'));
+    this.app.use('/data', express.static('./lib'));
     this.app.use('/data', express.static('./user'));
-    this.app.get('/input', async (req, res) => {
-      let inputFiles = await util.readdir(util.join(this.config.input));
+
+    this.app.route('/api')
+    .get('/input', async (req, res) => {
+      let inputFiles = await fs.readdir(baseJoin(this.config.input));
       res.end(JSON.stringify(inputFiles));
-    });
-    this.app.get('/input/:inputFile', async (req, res) => {
-      let file = await util.readFile(util.join(this.config.input, req.params.inputFile));
-      let mime = util.mimeFromBuffer(file);
-      console.log(mime);
+    })
+    .get('/input/:inputFile', async (req, res) => {
+      let file = await fs.readFile(baseJoin(this.config.input, req.params.inputFile));
       res.end(file);
-    });
-    this.app.post('/video/:status', (req, res) => {
-      if (req.params.status == 'start') {
-        this.startVideo(res);
-        res.end('probably okay idk');
+    })
+    .post('/video/:status', async (req, res) => {
+      const result = {};
+
+      if (typeof req.body.set == 'boolean') {
+        req.body.set ? this.startVideo() : this.endVideo();
+        result.set = req.body.set;
+        console.log(`Video recording ${this.recordingVideo ? 'started' : 'ended'}`);
       }
-      else if (req.params.status == 'end') {
-        this.endVideo(res);
+
+      result.status = this.recordingVideo;
+      res.end(result);
+    })
+    .app.post('/images/:status', (req, res) => {
+      const result = {};
+
+      if (typeof req.body.set == 'boolean') {
+        this.imagesEnabled = req.body.set;
+        result.set = req.body.set;
+        console.log(`Image saving ${this.imagesEnabled ? 'enabled' : 'disabled'}`);
       }
-    });
-    this.app.post('/images/:status', (req, res) => {
-      // This is highly problematic but I can't be fucked rn to include it in the frame POST body or URL params
-      if (req.params.status == 'start') {
-        console.log('Image recording enabled');
-        this.enableImages = true;
-      }
-      else if (req.params.status == 'end') {
-        console.log('Image recording disabled');
-        this.enableImages = false;
-      }
-      res.end('okay lol');
-    });
-    this.app.post('/frame/:frameIdx', (req, res) => {
+
+      result.status = this.imagesEnabled;
+      res.end(result);
+    })
+    .app.post('/frame/:frameIdx', (req, res) => {
       this.processData(req);
       res.end('lgtm');
     });
   }
 
-  startVideo(res) {
+  start() {
+    this.app.listen(this.config.port, () => {
+      console.log(`Listening on port ${this.config.port} lol...`);
+    });
+    process.on('SIGINT', () => {
+      this.endVideo();
+      process.exit();
+    });
+  }
+
+  startVideo() {
     if (this.recordingVideo) return;
     this.recordingVideo = true;
-    let filepath = pth.join(this.config.output, this.config.videoFilename);
+    let filepath = join(this.config.output, this.config.videoFilename);
     filepath = this.generateFilepath(filepath, this.videoIdxChars, this.videoIdx++);
     let args = [
       '-y',
@@ -82,6 +96,7 @@ class Server {
     ];
     this.child = spawn('ffmpeg', args, {stdio: ['pipe', 'pipe', 'pipe']});
     this.child.on('exit', () => {
+      this.child = null;
       console.log('Exiting encoder...');
     });
     this.child.stdout.on('data', (data) => {
@@ -92,25 +107,14 @@ class Server {
     });
   }
 
-  endVideo(res) {
-    if (this.recordingVideo) {
-      this.recordingVideo = false;
+  endVideo() {
+    if (!this.recordingVideo) return;
+    this.recordingVideo = false;
+    return new Promise((resolve) => {
       this.child.stdin.end();
       this.child.on('exit', () => {
-        this.child = null;
-        console.log('Done lol');
-        res?.end('okay');
+        resolve(true);
       });
-    }
-  }
-
-  start() {
-    this.app.listen(this.config.port, () => {
-      console.log(`Listening on port ${this.config.port} lol...`);
-    });
-    process.on('SIGINT', () => {
-      this.endVideo();
-      process.exit();
     });
   }
 
@@ -122,9 +126,9 @@ class Server {
       let ext = this.config.mimeTypes[match[1]];
       let base64 = data.slice(data.indexOf(',') + 1);
       let buf = Buffer.from(base64, 'base64');
-      if (this.enableImages) {
+      if (this.imagesEnabled) {
         let idx = parseInt(req.params.frameIdx);
-        let filepath = pth.join(this.config.output, this.config.imageFilename + ext);
+        let filepath = join(this.config.output, this.config.imageFilename + ext);
         filepath = this.generateFilepath(filepath, this.imageIdxChars, idx);
         console.log(`Writing "${filepath}"...`)
         fs.writeFileSync(filepath, buf);
