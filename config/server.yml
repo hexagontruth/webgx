@@ -1,4 +1,7 @@
 default:
+  server:
+    port: 8080
+    host: localhost
   media:
     width: 1440
     height: 1440
@@ -9,9 +12,7 @@ default:
     outputDir: output
     imageFilename: frame-#####.png
     videoFilename: video-###.mp4
-development:
-  server:
-    port: 8081
 production:
   server:
     port: 80
+    host: curd.mil

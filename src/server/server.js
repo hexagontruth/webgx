@@ -12,8 +12,8 @@ class Server {
   constructor(config) {
     this.config = config;
 
-    this.imageIdxChars = this.config.imageFilename.match(/\#+/)[0].length;
-    this.videoIdxChars = this.config.videoFilename.match(/\#+/)[0].length;
+    this.imageIdxChars = config.media.imageFilename.match(/\#+/)[0].length;
+    this.videoIdxChars = config.media.videoFilename.match(/\#+/)[0].length;
     this.videoIdx = 0;
     this.imagesEnabled = false;
     this.recordingVideo = false;
@@ -64,6 +64,10 @@ class Server {
       this.processData(req);
       res.end('lgtm');
     });
+  }
+
+  use(...args) {
+    this.app.use(...args);
   }
 
   start() {

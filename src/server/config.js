@@ -2,33 +2,38 @@ const fs = require('fs');
 const { join } = require('path');
 const process = require('process');
 
+const dotenv = require('dotenv');
 const yaml = require('yaml');
 
 const util = require('./util');
 
 const env = process.env.NODE_ENV || 'development';
-
 const envFile = `.env.${env}`;
+dotenv.config({ path: join(__dirname, '../..', envFile) });
 
-require('dotenv').config({ path: join(__dirname, '../..', envFile) });
-
-let serverCongigFilepath = env.CONFIG ||
-  (fs.existsSync('user/server.yml') ? 'user/server.yml' : 'config/server.yml');
-let mimeTypesFilepath = 'config/mime_types.yml';
+const configPaths = [
+  'config/server.yml',
+  'user/server.yml',
+  env.CONFIG,
+].filter((e) => !!e);
 
 class Config {
   constructor() {
-    let env = env.env || DEFAULT_ENV;
-    let rootConfig = getYamlFile(serverCongigFilepath);
-    util.merge(this, rootConfig.default, rootConfig[env], {env});
-    this.mimeTypes = getYamlFile(mimeTypesFilepath);
+    let env = process.env.NODE_ENV || DEFAULT_ENV;
+    configPaths.forEach((filename) => {
+      const path = util.baseJoin(filename);
+      const defaultConfig = {};
+      const envConfig = {};
+      if (fs.existsSync(path)) {
+        const configText = fs.readFileSync(path, 'utf8');
+        console.log(configText);
+        const configObj = yaml.parse(configText);
+        util.merge(defaultConfig, configObj.default);
+        util.merge(envConfig, configObj[env]);
+      }
+      util.merge(this, defaultConfig, envConfig);
+    });
   }
-}
-
-function getYamlFile(filename) {
-  let text = fs.readFileSync(util.baseJoin(filename), 'utf8');
-  let obj = yaml.parse(text);
-  return obj;
 }
 
 module.exports = new Config();

@@ -31,12 +31,16 @@
   "dependencies": {
     "cssloader": "^1.1.1",
     "dat.gui": "^0.7.9",
+    "dotenv": "^16.0.3",
     "express": "^4.18.2",
     "jsdoc": "^4.0.2",
     "sass": "^1.62.1",
     "sass-loader": "^13.2.2",
     "style-loader": "^3.3.2",
+    "webpack": "^5.82.1",
     "webpack-cli": "^5.1.1",
-    "webpack-dev-server": "^4.15.0"
+    "webpack-dev-middleware": "^6.1.1",
+    "webpack-dev-server": "^4.15.0",
+    "yaml": "^2.2.2"
   }
 }
