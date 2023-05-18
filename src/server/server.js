@@ -27,16 +27,15 @@ class Server {
     this.app.use('/data', express.static('./lib'));
     this.app.use('/data', express.static('./user'));
 
-    this.app.route('/api')
-    .get('/input', async (req, res) => {
+    this.app.get('/api/input', async (req, res) => {
       let inputFiles = await fs.readdir(baseJoin(this.config.input));
       res.end(JSON.stringify(inputFiles));
-    })
-    .get('/input/:inputFile', async (req, res) => {
+    });
+    this.app.get('/api/input/:inputFile', async (req, res) => {
       let file = await fs.readFile(baseJoin(this.config.input, req.params.inputFile));
       res.end(file);
-    })
-    .post('/video/:status', async (req, res) => {
+    });
+    this.app.post('/api/video/:status', async (req, res) => {
       const result = {};
 
       if (typeof req.body.set == 'boolean') {
@@ -47,8 +46,8 @@ class Server {
 
       result.status = this.recordingVideo;
       res.end(result);
-    })
-    .app.post('/images/:status', (req, res) => {
+    });
+    this.app.post('/api/images/:status', (req, res) => {
       const result = {};
 
       if (typeof req.body.set == 'boolean') {
@@ -59,8 +58,8 @@ class Server {
 
       result.status = this.imagesEnabled;
       res.end(result);
-    })
-    .app.post('/frame/:frameIdx', (req, res) => {
+    });
+    this.app.post('/api/frame/:frameIdx', (req, res) => {
       this.processData(req);
       res.end('lgtm');
     });
@@ -71,8 +70,8 @@ class Server {
   }
 
   start() {
-    this.app.listen(this.config.port, () => {
-      console.log(`Listening on port ${this.config.port} lol...`);
+    this.app.listen(this.config.server.port, () => {
+      console.log(`Listening on port ${this.config.server.port} lol...`);
     });
     process.on('SIGINT', () => {
       this.endVideo();

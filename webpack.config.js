@@ -5,17 +5,21 @@ const PORT = process.env.PORT || 8080;
 const SERVER_PORT = process.env.SERVER_PORT || 8081;
 
 module.exports = {
+  mode: process.env.NODE_ENV,
   target: 'web',
   entry: './src/client/index.js',
   output: {
     filename: 'main.js',
     path: pth.join(__dirname, 'public/dist'),
+    publicPath: '/dist/',
   },
   devServer: {
     static: {
       directory: pth.join(__dirname, 'public'),
     },
     devMiddleware: {
+      filename: 'main.js',
+      path: pth.join(__dirname, 'public/dist'),
       publicPath: '/dist/',
     },
     compress: true,

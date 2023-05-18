@@ -26,7 +26,6 @@ class Config {
       const envConfig = {};
       if (fs.existsSync(path)) {
         const configText = fs.readFileSync(path, 'utf8');
-        console.log(configText);
         const configObj = yaml.parse(configText);
         util.merge(defaultConfig, configObj.default);
         util.merge(envConfig, configObj[env]);
