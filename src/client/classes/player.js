@@ -1,6 +1,9 @@
-export default class Wgx {
+import { fetchPath } from '../util';
 
-  constructor() {
+export default class Player {
+
+  constructor(config) {
+    this.config = config;
     this.init();
   }
 

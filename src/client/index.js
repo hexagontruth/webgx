@@ -1,10 +1,12 @@
 import * as dat from 'dat.gui';
-import merge from '../common/util';
 
-import Wgx from './classes/wgx';
-
-const config =  navigator.gpu.requestAdapter();
+import { merge, importObject } from './util';
+import Config from './classes/config';
+import Player from './classes/player';
 
 window.addEventListener('load', async () => {
-  window.player = new Wgx();
+  const config = new Config();
+  window.player = new Player(config);
+  window.merge = merge;
+  window.curd = await importObject('/data/programs/default.js');
 });
