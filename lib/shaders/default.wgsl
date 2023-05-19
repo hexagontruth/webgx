@@ -2,8 +2,8 @@ struct Cursor {
   pos: vec2<f32>,
   vel: vec2<f32>,
   acc: vec2<f32>,
-  isDown: bool,
   downAt: f32,
+  upAt: f32,
   downPos: vec2<f32>,
 }
 

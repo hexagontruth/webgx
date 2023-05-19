@@ -4,28 +4,29 @@ merge.ARRAYS_UNIQUE = 8
 merge.IGNORE_NULL = 16
 function merge(...objs) {
   let arrayMerge, arrayUnique, ignoreNull;
-  if (typeof objs[0] == 'number') {
-    const flags = objs.shift();
+  if (typeof objs.slice(-1)[0] == 'number') {
+    const flags = objs.pop();
     if ((flags >> 1) % 2) arrayMerge = 'merge';
     if ((flags >> 2) % 2) arrayMerge = 'add';
     if ((flags >> 3) % 2) arrayUnique = true;
     if ((flags >> 4) % 2) ignoreNull = true;
   }
-  let base = objs.shift();
-  let next;
+
+  const base = objs.shift();
   while (objs.length) {
-    next = objs.shift();
-    if (next == null) {
+    let next = objs.shift();
+    if (next == null || typeof next != 'object') {
       continue;
     }
     for (let [key, value] of Object.entries(next)) {
       if (value === undefined || ignoreNull && value === null) {
         continue;
       }
-      if (typeof base[key] =='object' && typeof value == 'object' && !Array.isArray(base[key])) {
+      if (typeof base[key] == 'object' && typeof value == 'object' && !Array.isArray(base[key])) {
         base[key] = merge({}, base[key], value);
       }
       else {
+        // TODO: Handle array base case
         if (Array.isArray(base[key]) && Array.isArray(value)) {
           if (arrayMerge) {
             if (arrayMerge == 'merge') {

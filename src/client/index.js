@@ -6,7 +6,7 @@ import Player from './classes/player';
 
 window.addEventListener('load', async () => {
   const config = new Config();
-  window.player = new Player(config);
+  window.player = new Player(document.body, config);
   window.merge = merge;
   window.curd = await importObject('/data/programs/default.js');
 });

@@ -18,7 +18,7 @@ class Server {
     this.imagesEnabled = false;
     this.recordingVideo = false;
 
-    execSync(`mkdir -p ${this.config.output} ${this.config.input}`);
+    execSync(`mkdir -p ${this.config.media.outputDir} ${this.config.media.inputDir}`);
 
     this.app = express();
 
