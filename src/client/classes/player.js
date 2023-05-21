@@ -9,13 +9,12 @@ export default class Player {
   }
 
   async init() {
-    this.adapter = await navigator.gpu.requestAdapter();
-    this.device = await this.adapter.requestDevice();
-
     this.canvas = createElement('canvas', { class: 'player-canvas' });
     this.container.appendChild(this.canvas);
-
     this.ctx = this.canvas.getContext('webgpu');
+
+    this.adapter = await navigator.gpu.requestAdapter();
+    this.device = await this.adapter.requestDevice();
     this.ctx.configure({
       device: this.device,
       format: navigator.gpu.getPreferredCanvasFormat(),
@@ -39,6 +38,31 @@ export default class Player {
         pipeline.vertexData, 0,
         pipeline.vertexData.length
       );
+      const pipelineDescriptor = {
+        vertex: {
+          module: pipeline.shaderModule,
+          entryPoint: 'vertex_main',
+          buffers: pipeline.vertexBuffers,
+        },
+        fragment: {
+          module: pipeline.shaderModule,
+          entryPoint: 'fragment_main',
+          targets: [
+            {
+              format: navigator.gpu.getPreferredCanvasFormat(),
+            },
+          ],
+        },
+        primitive: {
+          topology: 'triangle-list',
+        },
+        layout: 'auto',
+      };
     }));
+  }
+
+  handleResize() {
+    this.canvas.width = this.canvas.offsetWidth;
+    this.canvas.height = this.canvas.offsetHeight;
   }
 }

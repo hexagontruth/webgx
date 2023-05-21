@@ -29,7 +29,10 @@
   },
   "homepage": "https://github.com/hexagontruth/webgx#readme",
   "dependencies": {
-    "cssloader": "^1.1.1",
+    "@fontsource/montserrat": "^4.5.14",
+    "@fontsource/roboto": "^4.5.8",
+    "@fontsource/roboto-mono": "^4.5.10",
+    "css-loader": "^6.7.4",
     "dat.gui": "^0.7.9",
     "dotenv": "^16.0.3",
     "express": "^4.18.2",

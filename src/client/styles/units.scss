@@ -1,0 +1,14 @@
+:root {
+  // color-scheme: only light;
+  --rem: 24px;
+  --tet: calc(var(--rem) / 4);
+  font-size: var(--rem);
+  @media screen {
+    @media (min-aspect-ratio: 3/4) {
+      --rem: max(min(calc(24 / 720 * 100vh), 24px), 16px);
+    }
+    @media (max-aspect-ratio: 3/4) {
+      --rem: max(min(calc(32 / 720 * 100vw), 24px), 12px);
+    }
+  }
+}
