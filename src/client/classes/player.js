@@ -29,12 +29,12 @@ export default class Player {
       pipeline.shaderModule = this.device.createShaderModule({
         code: shaderText,
       });
-      const vertexBuffer = this.device.createBuffer({
+      pipeline.vertexBuffer = this.device.createBuffer({
         size: pipeline.vertexData.byteLength,
         usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
       });
       this.device.queue.writeBuffer(
-        vertexBuffer, 0,
+        pipeline.vertexBuffer, 0,
         pipeline.vertexData, 0,
         pipeline.vertexData.length
       );
@@ -54,11 +54,40 @@ export default class Player {
           ],
         },
         primitive: {
-          topology: 'triangle-list',
+          topology: 'triangle-strip',
         },
         layout: 'auto',
       };
+      pipeline.renderPipeline = this.device.createRenderPipeline(pipelineDescriptor);
+
     }));
+  }
+
+  async render(...pipelines) {
+    pipelines = pipelines.length ? pipelines : Object.keys(this.program.pipelines);
+    Object.entries(this.program.pipelines).forEach(([pipelineName, pipeline]) => {
+      const commandEncoder = this.device.createCommandEncoder();
+      const clearColor = { r: 0.0, g: 0.5, b: 1.0, a: 1.0 };
+
+      const renderPassDescriptor = {
+        colorAttachments: [
+          {
+            clearValue: clearColor,
+            loadOp: 'clear',
+            storeOp: 'store',
+            view: this.ctx.getCurrentTexture().createView(),
+          },
+        ],
+      };
+
+      const passEncoder = commandEncoder.beginRenderPass(renderPassDescriptor);
+
+      passEncoder.setPipeline(pipeline.renderPipeline);
+      passEncoder.setVertexBuffer(0, pipeline.vertexBuffer);
+      passEncoder.draw(4);
+      passEncoder.end();
+      this.device.queue.submit([commandEncoder.finish()]);
+    });
   }
 
   handleResize() {
