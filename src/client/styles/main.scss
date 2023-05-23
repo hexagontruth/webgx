@@ -17,6 +17,7 @@ html {
 
 body {
   height: 100%;
+  transition: opacity $t-long;
 }
 
 *, *::before, *::after {

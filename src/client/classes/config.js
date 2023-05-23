@@ -4,12 +4,20 @@ export default class Config {
   static DEFAULTS = {
     program: 'default',
     play: true,
-    dim: null,
+    maxDim: null,
+    fit: 'cover',
+    streamFit: 'cover',
+    controlsHidden: false,
+    webcamEnabled: false,
+    screenshareEnabled: false,
+    recordVideo: false,
+    recordImages: false,
   };
 
   static ALIASES = {
     p: 'program',
-    d: 'dim',
+    d: 'maxDim',
+    h: 'controlsHidden',
   };
 
   constructor() {
@@ -40,6 +48,10 @@ export default class Config {
         delete queryObj[source];
       }
     });
+
+    if (queryObj.test) {
+      queryObj.play = false;
+    }
 
     return queryObj;
   }
