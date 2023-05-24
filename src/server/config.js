@@ -11,6 +11,7 @@ const env = process.env.NODE_ENV || 'development';
 const envFile = `.env.${env}`;
 dotenv.config({ path: join(__dirname, '../..', envFile) });
 
+const mimeTypesPath = 'config/mime-types.yml';
 const configPaths = [
   'config/server.yml',
   'user/server.yml',
@@ -25,13 +26,18 @@ class Config {
       const defaultConfig = {};
       const envConfig = {};
       if (fs.existsSync(path)) {
-        const configText = fs.readFileSync(path, 'utf8');
-        const configObj = yaml.parse(configText);
+        const configObj = this.getYamlFile(path);
         util.merge(defaultConfig, configObj.default);
         util.merge(envConfig, configObj[env]);
       }
       util.merge(this, defaultConfig, envConfig);
     });
+    this.mimeTypes = this.getYamlFile(util.baseJoin(mimeTypesPath));
+  }
+
+  getYamlFile(path) {
+    const text = fs.readFileSync(path, 'utf8');
+    return yaml.parse(text);
   }
 }
 

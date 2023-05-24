@@ -67,7 +67,17 @@ export function numberString(val, opts = {}) {
   return n;
 }
 
-export async function fetchText(path) {
+export async function getText(path) {
   const result = await fetch(path);
   return await result.text();
+}
+
+export async function postJson(path, obj) {
+  const result = await fetch(path, {
+    method: 'POST',
+    // mode: 'no-cors',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(obj),
+  });
+  return await result.json();
 }

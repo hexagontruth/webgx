@@ -35,7 +35,7 @@ class Server {
       let file = await fs.readFile(baseJoin(this.config.input, req.params.inputFile));
       res.end(file);
     });
-    this.app.post('/api/video/:status', async (req, res) => {
+    this.app.post('/api/video', async (req, res) => {
       const result = {};
 
       if (typeof req.body.set == 'boolean') {
@@ -45,9 +45,10 @@ class Server {
       }
 
       result.status = this.recordingVideo;
-      res.end(result);
+      res.json(result);
+      res.end();
     });
-    this.app.post('/api/images/:status', (req, res) => {
+    this.app.post('/api/images', (req, res) => {
       const result = {};
 
       if (typeof req.body.set == 'boolean') {
@@ -55,9 +56,10 @@ class Server {
         result.set = req.body.set;
         console.log(`Image saving ${this.imagesEnabled ? 'enabled' : 'disabled'}`);
       }
-
+      
       result.status = this.imagesEnabled;
-      res.end(result);
+      res.json(result);
+      res.end();
     });
     this.app.post('/api/frame/:frameIdx', (req, res) => {
       this.processData(req);
@@ -80,21 +82,22 @@ class Server {
   }
 
   startVideo() {
+    const { config } = this;
     if (this.recordingVideo) return;
     this.recordingVideo = true;
-    let filepath = join(this.config.output, this.config.videoFilename);
+    let filepath = join(config.media.outputDir, config.media.videoFilename);
     filepath = this.generateFilepath(filepath, this.videoIdxChars, this.videoIdx++);
     let args = [
       '-y',
       '-c:v', 'png',
-      '-r', `${this.config.fps}`,
+      '-r', `${config.media.fps}`,
       '-f', 'image2pipe',
       '-i', '-',
       '-pix_fmt', 'yuv420p',
 
-      '-vf', `scale=${this.config.width}x${this.config.height}`,
-      '-c:v', this.config.codec,
-      '-crf', `${this.config.crf}`,
+      '-vf', `scale=${config.media.width}x${config.media.height}`,
+      '-c:v', config.media.codec,
+      '-crf', `${config.media.crf}`,
       filepath,
     ];
     this.child = spawn('ffmpeg', args, {stdio: ['pipe', 'pipe', 'pipe']});
@@ -122,19 +125,20 @@ class Server {
   }
 
   async processData(req) {
+    const { config } = this;
     let data = '';
     req.on('data', (chunk) => data += chunk);
     req.on('end', () => {
       let match = data.match(/:([\w\/]+);/);
-      let ext = this.config.mimeTypes[match[1]];
+      let ext = config.mimeTypes[match[1]];
       let base64 = data.slice(data.indexOf(',') + 1);
       let buf = Buffer.from(base64, 'base64');
       if (this.imagesEnabled) {
         let idx = parseInt(req.params.frameIdx);
-        let filepath = join(this.config.output, this.config.imageFilename + ext);
+        let filepath = join(config.media.outputDir, config.media.imageFilename + ext);
         filepath = this.generateFilepath(filepath, this.imageIdxChars, idx);
         console.log(`Writing "${filepath}"...`)
-        fs.writeFileSync(filepath, buf);
+        fs.writeFile(filepath, buf);
       }
       if (this.recordingVideo) {
         this.child?.stdin.write(buf);

@@ -50,3 +50,46 @@
   padding-top: $val;
   padding-bottom: $val;
 }
+
+// Utility
+
+@mixin clearfix {
+  &:before,
+  &:after {
+    content: ' ';
+    display: table;
+    clear: both;
+  }
+}
+
+// Typography
+
+@mixin font-face($name, $src, $weight: 400, $style: 'normal') {
+  @font-face {
+    font-family: quote($name);
+    font-style: $style;
+    font-weight: $weight;
+    src: url(quote($src + '.woff2')) format('woff2'),
+      url(quote($src + '.woff')) format('woff');
+  }
+}
+
+@mixin activatable {
+  opacity: 0;
+  pointer-events: none;
+  &.active {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+@mixin selectable {
+  color: inherit;
+  &.selected {
+    color: #369;
+  }
+}
+
+@mixin pointable {
+  cursor: pointer;
+}

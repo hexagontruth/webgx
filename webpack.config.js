@@ -35,16 +35,6 @@ module.exports = {
   module: {
     rules: [
       {
-        test: /\.jsx$/,
-        exclude: /node_modules/,
-        use: {
-          loader: 'babel-loader',
-          options: {
-            presets: ['@babel/preset-react'],
-          },
-        },
-      },
-      {
         test: /\.(sass|scss|css)$/,
         use: ['style-loader', 'css-loader', 'sass-loader'],
       },
@@ -55,6 +45,10 @@ module.exports = {
       {
         test: /\.(txt|html|md)$/,
         type: 'asset/source',
+      },
+      {
+        test: /\.(woff2?)$/,
+        type: 'asset/resource',
       },
     ],
   },

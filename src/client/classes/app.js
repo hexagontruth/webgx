@@ -1,106 +1,117 @@
-import { merge, importObject } from '../util';
+import { merge, importObject, postJson } from '../util';
 import Config from './config';
 import Player from './player';
 
 export default class App {
+  static elementIds = {
+    playerContainer: 'player-container',
+    recordButton: 'record-button',
+    playButton: 'play-button',
+    loadImagesButton: 'load-images-button',
+    webcamButton: 'webcam-button',
+    screenShareButton: 'screen-share-button',
+    recordImagesButton: 'record-images-button',
+    recordVideoButton: 'record-video-button',
+    statusField: 'frame-field',
+    messageField: 'message-field',
+  };
+
   constructor() {
     this.shiftString = '';
-    
+
     window.addEventListener('load', () => this.init());
     window.addEventListener('resize', () => this.handleResize());
 
-    window.addEventListener('keydown', (ev) => this.handleKey());
-    window.addEventListener('keyup', (ev) => this.handleKey());
+    window.addEventListener('keydown', (ev) => this.handleKey(ev));
+    window.addEventListener('keyup', (ev) => this.handleKey(ev));
   }
 
   init() {
     document.body.style.opacity = '1';
-    this.config = new Config();
-    this.player = new Player(this, document.body);
+
+    this.elements = Object.fromEntries(Object.entries(App.elementIds).map(([k, v]) => {
+      const el = document.querySelector(`#${v}`);
+      if (el?.tagName == 'BUTTON') {
+        el.onclick = (ev) => this.handleButton(ev);
+      }
+      return [k, el];
+    }));
+
+    this.config = new Config(this);
+    this.player = new Player(this, this.elements.playerContainer);
+
     this.handleResize();
   }
 
   togglePlay(val) {
-    // val = val != null ? val : !this.player.play;
-    // this.player.togglePlay(val);
-    // this.playButton.classList.toggle('icon-play', !val);
-    // this.playButton.classList.toggle('icon-stop', val);
+    const playing = this.player.togglePlay(val);
+    this.elements.playButton.classList.toggle('icon-play', !playing);
+    this.elements.playButton.classList.toggle('icon-stop', playing);
   }
 
   toggleRecord(val) {
-    // val = val != null ? val : !this.player.recording;
-    // this.player.toggleRecord(val);
-    // this.recordButton.classList.toggle('active', val);
-    // this.recordButton.classList.toggle('icon-record', !val);
-    // this.recordButton.classList.toggle('icon-stop', val);
-    // this.recordVideoButton.disabled = val;
-  }
-
-  toggleHidden(val) {
-    val = val != null ? val : !this.config.controlsHidden;
-    this.config.setControlsHidden(val);
-  }
-
-  toggleFit(val) {
-    if (val == null) {
-      val = this.config.fit == 'contain' ? 'cover' : 'contain';
-    }
-    this.config.setFit(val);
-  }
-
-  toggleStreamFit(val) {
-    if (val == null) {
-      val = this.config.streamFit == 'contain' ? 'cover' : 'contain';
-    }
-    this.config.setStreamFit(val);
-  }
-
-  toggleWebcam(val) {
-    val = val != null ? val : !this.config.webcamEnabled;
-    this.config.setWebcamEnabled(val);
-  }
-
-  toggleScreenShare(val) {
-    val = val != null ? val : !this.config.screenShareEnabled;
-    this.config.setScreenShareEnabled(val);
-  }
-
-  toggleRecordImages(val) {
-    val = val != null ? val : !this.config.recordImages;
-    this.config.setRecordImages(val);
-  }
-
-  toggleRecordVideo(val) {
-    val = val != null ? val : !this.config.recordVideo;
-    this.config.setRecordVideo(val);
+    const recording = this.player.toggleRecord(val);
+    this.elements.recordButton.classList.toggle('active', recording);
+    this.elements.recordButton.classList.toggle('icon-record', !recording);
+    this.elements.recordButton.classList.toggle('icon-stop', recording);
+    this.elements.recordVideoButton.disabled = val;
   }
 
   set(key, val) {
     if (key == 'controlsHidden') {
-      document.querySelectorAll('.hideable').forEach((el) => {
-        el.classList.toggle('hidden', val);
-      });
+      document.body.classList.toggle('hidden', val);
     }
     else if (key == 'fit') {
       this.handleResize();
     }
     else if (key == 'streamFit') {
-      this.player?.setStreamFit(val); // This is horrendous
+      this.player?.setStreamFit(val);
     }
     else if (key == 'webcamEnabled') {
-      this.webcamButton.classList.toggle('active', val);
+      this.elements.webcamButton.classList.toggle('active', val);
       this.player?.setStream(val ? this.config.stream : null);
     }
     else if (key == 'screenShareEnabled') {
-      this.screenShareButton.classList.toggle('active', val);
+      this.elements.screenShareButton.classList.toggle('active', val);
       this.player?.setStream(val ? this.config.stream : null);
     }
     else if (key == 'recordImages') {
-      this.recordImagesButton.classList.toggle('active', val);
-      this.player?.setRecordImages();
+      this.elements.recordImagesButton.classList.toggle('active', val);
+      postJson('/api/images', { set: val });
     }
     else if (key == 'recordVideo') {
-      this.recordVideoButton.classList.toggle('active', val);
+      this.elements.recordVideoButton.classList.toggle('active', val);
+      postJson('/api/video', { set: val });
+    }
+    else {
+      // TODO: Something
+      console.error(`No setting configured: ${key}`);
+    }
+  }
+
+  handleButton(ev) {
+    const button = ev.target;
+    const { elements } = this;
+    if (button == elements.playButton) {
+      this.togglePlay();
+    }
+    else if (button == elements.recordButton) {
+      this.toggleRecord();
+    }
+    else if (button == elements.loadImagesButton) {
+      /*todo*/
+    }
+    else if (button == elements.webcamButton) {
+      this.config.toggle('webcamEnabled');
+    }
+    else if (button == elements.screenShareButton) {
+      this.config.toggle('screenShareEnabled');
+    }
+    else if (button == elements.recordImagesButton) {
+      this.config.toggle('recordImages');
+    }
+    else if (button == elements.recordVideoButton) {
+      this.config.toggle('recordVideo');
     }
   }
 
@@ -120,7 +131,7 @@ export default class App {
         ev.preventDefault();
       }
       else if (ev.shiftKey && ev.key == 'Escape') {
-        this.toggleHidden();
+        this.config.toggle('controlsHidden');
       }
       else if (ev.key == 'Tab') {
         if (ev.shiftKey)
@@ -130,19 +141,19 @@ export default class App {
       }
       else if (key == 'f') {
         if (ev.shiftKey)
-          this.toggleStreamFit();
+          this.config.toggle('streamFit');
         else
-          this.toggleFit();
+          this.config.toggle('fit');
       }
       else if (key == 'r') {
         this.player.resetCounter();
         return;
       }
       else if (key == 's') {
-        this.toggleScreenShare();
+        this.config.toggle('screenShareEnabled');
       }
       else if (key == 'w') {
-        this.toggleWebcam();
+        this.config.toggle('webcamEnabled');
       }
       else if (key == 'b') {
         document.body.classList.toggle('gray');
