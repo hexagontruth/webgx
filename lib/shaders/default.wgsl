@@ -21,11 +21,18 @@ fn vertex_main(@location(0) position: vec4f,
 
 @group(0) @binding(0) var<uniform> fancyStruct: FancyStruct;
 
+@group(0) @binding(1) var stream : texture_2d<f32>;
+
+@group(0) @binding(2) var samp : sampler;
+
 @fragment
 fn fragment_main(fragData: VertexOut) -> @location(0) vec4f
 {
   // return vec4f(1, 0, 0, 1);
-  var color = vec4f(fragData.position.xyz/100, 1);
+  var color = vec4f(fragData.position.xyz/1024, 1);
   color.r = sin(fancyStruct.color.r) * 0.5 + 0.5;
+  var s = textureSample(stream, samp, fragData.position.xy/512) + 0.;
+  color.g = s.g;
+  color.b = (color.b + s.b) / 2;
   return color;
 }

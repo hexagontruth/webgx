@@ -1,5 +1,4 @@
 import { createElement, getText, importObject, merge, postJson } from '../util';
-import CanvasFrame from './canvas-frame';
 
 export default class Player {
   static programDefaults = {
@@ -21,6 +20,7 @@ export default class Player {
 
     this.play = this.config.autoplay;
     this.recording = false;
+    this.videoCapturing = false;
     this.counter = -1;
 
     this.canvas = createElement('canvas', { class: 'player-canvas' });
@@ -29,13 +29,21 @@ export default class Player {
     this.exportCanvas = createElement('canvas');
     this.exportCtx = this.exportCanvas.getContext('2d');
 
+    this.videoCapture = createElement(
+      'video',
+      {
+        loop: true,
+        autoplay: true,
+        muted: true,
+      },
+    )
+
     this.canvas.addEventListener('pointerdown', (ev) => app.handlePointer(ev));
     this.canvas.addEventListener('pointerup', (ev) => app.handlePointer(ev));
     this.canvas.addEventListener('pointerout', (ev) => app.handlePointer(ev));
     this.canvas.addEventListener('pointercancel', (ev) => app.handlePointer(ev));
     this.canvas.addEventListener('pointermove', (ev) => app.handlePointer(ev));
 
-    this.handleResize();
     this.init().then(() => this.render());
   }
 
@@ -59,12 +67,26 @@ export default class Player {
       settings.stop = settings.start + settings.period;
     }
 
+    settings.exportDim = settings.exportDim ?? settings.dim;
+
     this.frameCond = () => {
       const skipCond = this.counter % settings.skip == 0;
       const startCond = this.counter >= settings.start;
       const stopCond = settings.stop == null || this.counter < settings.stop;
       return skipCond && startCond && stopCond;
     }
+
+    this.canvas.width = this.canvas.height = settings.dim;
+    this.exportCanvas.width = this.exportCanvas.height = settings.exportDim;
+
+    this.defaultTexture = this.device.createTexture({
+      size: [this.program.settings.dim, this.program.settings.dim],
+      format: 'rgba8unorm',
+      usage:
+        GPUTextureUsage.TEXTURE_BINDING |
+        GPUTextureUsage.COPY_DST |
+        GPUTextureUsage.RENDER_ATTACHMENT,
+    });
 
     await Promise.all(Object.entries(this.program.pipelines).map(async ([name, pipeline]) => {
       const shaderText = await getText(pipeline.shader);
@@ -95,9 +117,17 @@ export default class Player {
           {
             binding: 0,
             visibility: GPUShaderStage.FRAGMENT,
-            buffer: {
-              type: 'uniform',
-            },
+            buffer: {},
+          },
+          {
+            binding: 1,
+            visibility: GPUShaderStage.FRAGMENT,
+            texture: {},
+          },
+          {
+            binding: 2,
+            visibility: GPUShaderStage.FRAGMENT,
+            sampler: {},
           },
         ],
       });
@@ -121,16 +151,30 @@ export default class Player {
         },
         layout: this.device.createPipelineLayout({
             bindGroupLayouts: [
-              bindGroupLayout, // @group(0)
+              bindGroupLayout,
             ],
         }),
       };
       pipeline.renderPipeline = this.device.createRenderPipeline(pipelineDescriptor);
-      
+      pipeline.sampler = this.device.createSampler({
+        magFilter: 'linear',
+        minFilter: 'linear',
+      });
       pipeline.bindGroup = this.device.createBindGroup({
         layout: pipeline.renderPipeline.getBindGroupLayout(0),
         entries: [
-          { binding: 0, resource: { buffer: pipeline.uniformBuffer }},
+          {
+            binding: 0,
+            resource: { buffer: pipeline.uniformBuffer }
+          },
+          {
+            binding: 1,
+            resource: this.defaultTexture.createView(),
+          },
+          {
+            binding: 2,
+            resource: pipeline.sampler,
+          },
         ],
       });
     }));
@@ -147,10 +191,11 @@ export default class Player {
     });
   }
 
-  render(...pipelines) {
+  async render(...pipelines) {
     this.counter ++;
     pipelines = pipelines.length ? pipelines : Object.keys(this.program.pipelines);
-    Object.entries(this.program.pipelines).forEach(([pipelineName, pipeline]) => {
+    await Promise.all(pipelines.map(async (pipelineName) => {
+      const pipeline = this.program.pipelines[pipelineName];
       const commandEncoder = this.device.createCommandEncoder();
       const clearColor = { r: 0.2, g: 0.5, b: 1.0, a: 1.0 };
       const renderPassDescriptor = {
@@ -166,6 +211,19 @@ export default class Player {
 
       pipeline.uniformData[0] = this.counter / 12;
       this.device.queue.writeBuffer(pipeline.uniformBuffer, 0, pipeline.uniformData);
+      if (this.videoCapturing) {
+        const t1 = Date.now();
+        const bitmap = await createImageBitmap(this.videoCapture);
+        this.device.queue.copyExternalImageToTexture(
+          {
+            source: bitmap,
+          },
+          {
+            texture: this.defaultTexture,
+          },
+          [Math.min(bitmap.width, 1024), Math.min(bitmap.height, 1024)],
+        );
+      }
       const passEncoder = commandEncoder.beginRenderPass(renderPassDescriptor);
       passEncoder.setPipeline(pipeline.renderPipeline);
       passEncoder.setVertexBuffer(0, pipeline.vertexBuffer);
@@ -173,20 +231,19 @@ export default class Player {
       passEncoder.draw(4);
       passEncoder.end();
       this.device.queue.submit([commandEncoder.finish()]);
-    });
+    }));
 
-    // this.device.queue.onSubmittedWorkDone(() => this.endFrame());
-    setTimeout(() => this.endFrame(), 20);
+    requestAnimationFrame(() => this.endFrame(), 0);
   }
 
   endFrame() {
-    console.log('testle');
-    let frameIdx = this.counter;
-    let cond = this.frameCond();
+    const frameIdx = this.counter;
+    const cond = this.frameCond();
     if (this.recording && cond) {
       this.getDataUrl()
       .then((data) => this.postFrame(data, frameIdx));
     }
+    this.app.set('counter', this.counter);
     this.play && this.setTimer(cond);
   }
 
@@ -213,13 +270,9 @@ export default class Player {
     this.counter = -1;
   }
 
-  animate() {
-
-  }
-
   togglePlay(val=!this.play) {
     this.play = val;
-    val && this.animate();
+    val && this.render();
     return val;
   }
 
@@ -232,8 +285,9 @@ export default class Player {
     const oldStream = this.stream;
     this.stream = stream;
     if (stream) {
-      this.videoCapture = document.createElement('video');
-      this.videoCapture.autoplay = true;
+      this.videoCapture.onloadeddata = () => {
+        this.videoCapturing = true;
+      }
       this.videoCapture.srcObject = this.stream;
 
       let args = {
@@ -241,19 +295,11 @@ export default class Player {
         img: this.videoCapture,
         fit: this.app.config.streamFit
       };
-      this.videoFrame = new CanvasFrame(this.app, 'videoFrame', args);
-      this.videoFrame.loadSrc(this.stream);
+
     }
     // Remove stream
     else {
-      this.videoCapture = null;
-      this.videoFrame = null;
-      // this.resetTexture(this.uniforms.streamImage, true);
+      this.videoCapturing = false;
     }
-  }
-
-  handleResize() {
-    this.canvas.width = this.canvas.offsetWidth;
-    this.canvas.height = this.canvas.offsetHeight;
   }
 }

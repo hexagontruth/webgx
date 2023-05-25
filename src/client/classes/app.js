@@ -1,9 +1,11 @@
 import { merge, importObject, postJson } from '../util';
 import Config from './config';
 import Player from './player';
+import Program from './program';
 
 export default class App {
   static elementIds = {
+    mainContainer: 'main-container',
     playerContainer: 'player-container',
     recordButton: 'record-button',
     playButton: 'play-button',
@@ -12,21 +14,18 @@ export default class App {
     screenShareButton: 'screen-share-button',
     recordImagesButton: 'record-images-button',
     recordVideoButton: 'record-video-button',
-    statusField: 'frame-field',
+    counterField: 'counter-field',
     messageField: 'message-field',
   };
 
   constructor() {
     this.shiftString = '';
-
+    this.styleDim = null;
+    
     window.addEventListener('load', () => this.init());
-    window.addEventListener('resize', () => this.handleResize());
-
-    window.addEventListener('keydown', (ev) => this.handleKey(ev));
-    window.addEventListener('keyup', (ev) => this.handleKey(ev));
   }
 
-  init() {
+  async init() {
     document.body.style.opacity = '1';
 
     this.elements = Object.fromEntries(Object.entries(App.elementIds).map(([k, v]) => {
@@ -40,6 +39,11 @@ export default class App {
     this.config = new Config(this);
     this.player = new Player(this, this.elements.playerContainer);
 
+    window.addEventListener('resize', () => this.handleResize());
+
+    window.addEventListener('keydown', (ev) => this.handleKey(ev));
+    window.addEventListener('keyup', (ev) => this.handleKey(ev));
+    
     this.handleResize();
   }
 
@@ -58,7 +62,10 @@ export default class App {
   }
 
   set(key, val) {
-    if (key == 'controlsHidden') {
+    if (key == 'counter') {
+      this.elements.counterField.value = val;
+    }
+    else if (key == 'controlsHidden') {
       document.body.classList.toggle('hidden', val);
     }
     else if (key == 'fit') {
@@ -162,7 +169,7 @@ export default class App {
         if (this.player.play)
           this.togglePlay(false);
         else
-          this.player.animate();
+          this.player.render();
       }
       else if (ev.key == 'ArrowUp' || ev.key == 'ArrowDown') {
         const dir = ev.key == 'ArrowUp' ? -1 : 1;
@@ -213,6 +220,20 @@ export default class App {
   }
 
   handleResize() {
-    this.player?.handleResize();
+    if (!this.config) return;
+    const { mainContainer } = this.elements;
+
+    let [w, h] = [window.innerWidth, window.innerHeight];
+    let cond = this.config.fit == 'contain' ? w > h : w < h;
+    if (cond) {
+      mainContainer.style.top = mainContainer.style.bottom = '0';
+      mainContainer.style.left = mainContainer.style.right = ((w / h - 1) / 2 * h) + 'px';
+      this.styleDim = h;
+    }
+    else {
+      mainContainer.style.left = mainContainer.style.right = '0';
+      mainContainer.style.top = mainContainer.style.bottom = ((h / w - 1) / 2 * w) + 'px';
+      this.styleDim = w;
+    }
   }
 }
