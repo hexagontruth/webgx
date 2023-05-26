@@ -11,6 +11,10 @@ export default class Player {
       period: 360,
       skip: 1,
     },
+    features: [
+      'depth-clip-control',
+      'shader-f16',
+    ],
   };
 
   constructor(app, container) {
@@ -48,20 +52,24 @@ export default class Player {
   }
 
   async init() {
-    this.adapter = await navigator.gpu.requestAdapter();
-    this.device = await this.adapter.requestDevice();
-    this.ctx.configure({
-      device: this.device,
-      format: navigator.gpu.getPreferredCanvasFormat(),
-      alphaMode: 'premultiplied',
-    });
-
     this.program = merge(
       {},
       Player.programDefaults,
       await importObject(`/data/programs/${this.config.program}.js`),
     );
     const { settings } = this.program;
+
+    this.adapter = await navigator.gpu.requestAdapter();
+    this.features = this.program.features.filter((e) => this.adapter.features.has(e));
+    this.device = await this.adapter.requestDevice({
+      requiredFeatures: this.features,
+    });
+
+    this.ctx.configure({
+      device: this.device,
+      format: navigator.gpu.getPreferredCanvasFormat(),
+      alphaMode: 'premultiplied',
+    });
 
     if (settings.stop == true) {
       settings.stop = settings.start + settings.period;
@@ -148,6 +156,8 @@ export default class Player {
         },
         primitive: {
           topology: 'triangle-strip',
+          unclippedDepth: true,
+
         },
         layout: this.device.createPipelineLayout({
             bindGroupLayouts: [
@@ -209,7 +219,7 @@ export default class Player {
         ],
       };
 
-      pipeline.uniformData[0] = this.counter / 12;
+      pipeline.uniformData[0] = this.counter / this.program.settings.period;
       this.device.queue.writeBuffer(pipeline.uniformBuffer, 0, pipeline.uniformData);
       if (this.videoCapturing) {
         const t1 = Date.now();
@@ -217,6 +227,7 @@ export default class Player {
         this.device.queue.copyExternalImageToTexture(
           {
             source: bitmap,
+            flipY: true,
           },
           {
             texture: this.defaultTexture,
@@ -224,6 +235,12 @@ export default class Player {
           [Math.min(bitmap.width, 1024), Math.min(bitmap.height, 1024)],
         );
       }
+      // pipeline.vertexData[1] = (this.counter/60) % 1 * 2 -1;
+      this.device.queue.writeBuffer(
+        pipeline.vertexBuffer, 0,
+        pipeline.vertexData, 0,
+        pipeline.vertexData.length
+      );
       const passEncoder = commandEncoder.beginRenderPass(renderPassDescriptor);
       passEncoder.setPipeline(pipeline.renderPipeline);
       passEncoder.setVertexBuffer(0, pipeline.vertexBuffer);
