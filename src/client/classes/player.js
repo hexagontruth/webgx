@@ -1,4 +1,5 @@
 import { createElement, getText, importObject, merge, postJson } from '../util';
+import Box from './box';
 
 export default class Player {
   static programDefaults = {
@@ -24,8 +25,9 @@ export default class Player {
 
     this.play = this.config.autoplay;
     this.recording = false;
-    this.videoCapturing = false;
     this.counter = -1;
+    this.streamActive = false;
+    this.stream = null;
 
     this.canvas = createElement('canvas', { class: 'player-canvas' });
     this.container.appendChild(this.canvas);
@@ -40,7 +42,8 @@ export default class Player {
         autoplay: true,
         muted: true,
       },
-    )
+    );
+    this.setStreamFit();
 
     this.canvas.addEventListener('pointerdown', (ev) => app.handlePointer(ev));
     this.canvas.addEventListener('pointerup', (ev) => app.handlePointer(ev));
@@ -221,9 +224,16 @@ export default class Player {
 
       pipeline.uniformData[0] = this.counter / this.program.settings.period;
       this.device.queue.writeBuffer(pipeline.uniformBuffer, 0, pipeline.uniformData);
-      if (this.videoCapturing) {
-        const t1 = Date.now();
-        const bitmap = await createImageBitmap(this.videoCapture);
+      // console.log(this.streamFitBox);
+      if (this.streamActive) {
+        const bitmap = await createImageBitmap(
+          this.videoCapture,
+          {
+            resizeWidth: this.streamFitBox.w,
+            resizeHeight: this.streamFitBox.h,
+          },
+        );
+        window.b = bitmap;
         this.device.queue.copyExternalImageToTexture(
           {
             source: bitmap,
@@ -232,7 +242,12 @@ export default class Player {
           {
             texture: this.defaultTexture,
           },
-          [Math.min(bitmap.width, 1024), Math.min(bitmap.height, 1024)],
+          // [1024, bitmap.height],
+          {
+            width: Math.min(bitmap.width, 1024),
+            height: Math.min(bitmap.height, 1024),
+          },
+          // [Math.min(bitmap.width, 1024), Math.min(bitmap.height, 1024)],
         );
       }
       // pipeline.vertexData[1] = (this.counter/60) % 1 * 2 -1;
@@ -303,7 +318,8 @@ export default class Player {
     this.stream = stream;
     if (stream) {
       this.videoCapture.onloadeddata = () => {
-        this.videoCapturing = true;
+        this.streamActive = true;
+        this.setStreamFit();
       }
       this.videoCapture.srcObject = this.stream;
 
@@ -316,7 +332,20 @@ export default class Player {
     }
     // Remove stream
     else {
-      this.videoCapturing = false;
+      this.stream = null;
+      this.streamActive = false;
+      this.videoCapture.srcObject = null;
+      this.setStreamFit();
     }
+  }
+
+  setStreamFit() {
+    return this.streamFitBox = Box.fitOffset(
+      this.program?.settings.dim,
+      this.program?.settings.dim,
+      this.videoCapture?.videoWidth,
+      this.videoCapture?.videoHeight,
+      this.config.streamFit,
+    );
   }
 }

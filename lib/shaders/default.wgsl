@@ -162,8 +162,8 @@ fn fragment_main(data: VertexData) -> @location(0) vec4f
   // // c.g = clamp(c.g, 0, .75);
   // // c.z = clamp(c.b, 0, 5./6.);
 
-  c.g = floor(uv.y * 10.)/10.;
-  c.g = 0.5;
+  // c.g += floor(uv.y * 10.)/10.;
+  // c.g = 0.5;
   // c.g = fract(c.g);
   // c.b = 1;
   c = hsv2rgb(c);
