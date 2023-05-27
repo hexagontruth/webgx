@@ -1,25 +1,10 @@
 import { createElement, getText, importObject, merge, postJson } from '../util';
 import Box from './box';
+import Program from './program';
 
 const { max, min } = Math;
 
 export default class Player {
-  static programDefaults = {
-    settings: {
-      dim: 1024,
-      exportDim: null,
-      interval: 30,
-      start: 0,
-      stop: null,
-      period: 360,
-      skip: 1,
-    },
-    features: [
-      'depth-clip-control',
-      'shader-f16',
-    ],
-  };
-
   constructor(app, container) {
     this.app = app;
     this.config = app.config;
@@ -57,18 +42,10 @@ export default class Player {
   }
 
   async init() {
-    this.program = merge(
-      {},
-      Player.programDefaults,
-      await importObject(`/data/programs/${this.config.program}.js`),
-    );
+    this.program = await Program.build(this.config.program);
+    this.device = this.program.device;
+    this.settings = this.program.settings;
     const { settings } = this.program;
-
-    this.adapter = await navigator.gpu.requestAdapter();
-    this.features = this.program.features.filter((e) => this.adapter.features.has(e));
-    this.device = await this.adapter.requestDevice({
-      requiredFeatures: this.features,
-    });
 
     this.ctx.configure({
       device: this.device,
@@ -76,123 +53,8 @@ export default class Player {
       alphaMode: 'premultiplied',
     });
 
-    if (settings.stop == true) {
-      settings.stop = settings.start + settings.period;
-    }
-
-    settings.exportDim = settings.exportDim ?? settings.dim;
-
-    this.frameCond = () => {
-      const skipCond = this.counter % settings.skip == 0;
-      const startCond = this.counter >= settings.start;
-      const stopCond = settings.stop == null || this.counter < settings.stop;
-      return skipCond && startCond && stopCond;
-    }
-
     this.canvas.width = this.canvas.height = settings.dim;
     this.exportCanvas.width = this.exportCanvas.height = settings.exportDim;
-
-    this.defaultTexture = this.device.createTexture({
-      size: [this.program.settings.dim, this.program.settings.dim],
-      format: 'rgba8unorm',
-      usage:
-        GPUTextureUsage.TEXTURE_BINDING |
-        GPUTextureUsage.COPY_DST |
-        GPUTextureUsage.RENDER_ATTACHMENT,
-    });
-
-    await Promise.all(Object.entries(this.program.pipelines).map(async ([name, pipeline]) => {
-      const shaderText = await getText(pipeline.shader);
-      pipeline.shaderText = shaderText;
-      pipeline.shaderModule = this.device.createShaderModule({
-        code: shaderText,
-      });
-      pipeline.vertexBuffer = this.device.createBuffer({
-        size: pipeline.vertexData.byteLength,
-        usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
-      });
-      pipeline.uniformBuffer = this.device.createBuffer({
-        size: 32,
-        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-      });
-      pipeline.uniformData = new Float32Array([
-        0, 1, 1, 1,
-        1, 0.5,
-        0, 0,
-      ]);
-      this.device.queue.writeBuffer(
-        pipeline.vertexBuffer, 0,
-        pipeline.vertexData, 0,
-        pipeline.vertexData.length
-      );
-      const bindGroupLayout = this.device.createBindGroupLayout({
-        entries: [
-          {
-            binding: 0,
-            visibility: GPUShaderStage.FRAGMENT,
-            buffer: {},
-          },
-          {
-            binding: 1,
-            visibility: GPUShaderStage.FRAGMENT,
-            texture: {},
-          },
-          {
-            binding: 2,
-            visibility: GPUShaderStage.FRAGMENT,
-            sampler: {},
-          },
-        ],
-      });
-      const pipelineDescriptor = {
-        vertex: {
-          module: pipeline.shaderModule,
-          entryPoint: 'vertex_main',
-          buffers: pipeline.vertexBuffers,
-        },
-        fragment: {
-          module: pipeline.shaderModule,
-          entryPoint: 'fragment_main',
-          targets: [
-            {
-              format: navigator.gpu.getPreferredCanvasFormat(),
-            },
-          ],
-        },
-        primitive: {
-          topology: 'triangle-strip',
-          unclippedDepth: true,
-
-        },
-        layout: this.device.createPipelineLayout({
-            bindGroupLayouts: [
-              bindGroupLayout,
-            ],
-        }),
-      };
-      pipeline.renderPipeline = this.device.createRenderPipeline(pipelineDescriptor);
-      pipeline.sampler = this.device.createSampler({
-        magFilter: 'linear',
-        minFilter: 'linear',
-      });
-      pipeline.bindGroup = this.device.createBindGroup({
-        layout: pipeline.renderPipeline.getBindGroupLayout(0),
-        entries: [
-          {
-            binding: 0,
-            resource: { buffer: pipeline.uniformBuffer }
-          },
-          {
-            binding: 1,
-            resource: this.defaultTexture.createView(),
-          },
-          {
-            binding: 2,
-            resource: pipeline.sampler,
-          },
-        ],
-      });
-    }));
   }
 
   setTimer(cond) {
@@ -226,23 +88,12 @@ export default class Player {
 
       pipeline.uniformData[0] = this.counter / this.program.settings.period;
       this.device.queue.writeBuffer(pipeline.uniformBuffer, 0, pipeline.uniformData);
-      // console.log(this.streamFitBox);
       if (this.streamActive) {
         const { streamFitBox } = this;
-        console.log(
-          max(-streamFitBox.x, 0) * this.videoCapture.videoWidth / streamFitBox.w,
-          max(-streamFitBox.y, 0) * this.videoCapture.videoHeight / streamFitBox.h,
-          // this.videoCapture.videoWidth,
-          // this.videoCapture.videoHeight,
-          (streamFitBox.w + min(streamFitBox.x*2, 0)) * this.videoCapture.videoWidth / streamFitBox.w,
-          (streamFitBox.h + min(streamFitBox.y*2, 0)) * this.videoCapture.videoHeight / streamFitBox.h,
-        );
         const bitmap = await createImageBitmap(
           this.videoCapture,
           max(-streamFitBox.x, 0) * this.videoCapture.videoWidth / streamFitBox.w,
           max(-streamFitBox.y, 0) * this.videoCapture.videoHeight / streamFitBox.h,
-          // this.videoCapture.videoWidth,
-          // this.videoCapture.videoHeight,
           (streamFitBox.w + min(streamFitBox.x*2, 0)) * this.videoCapture.videoWidth / streamFitBox.w,
           (streamFitBox.h + min(streamFitBox.y*2, 0)) * this.videoCapture.videoHeight / streamFitBox.h,
           {
@@ -250,19 +101,17 @@ export default class Player {
             resizeHeight: streamFitBox.h + min(streamFitBox.y*2, 0),
           },
         );
-        // console.log(bitmap.width, bitmap.height);
         const textureOrigin = [
           max(streamFitBox.x, 0),
           max(streamFitBox.y, 0),
         ];
-        window.b = bitmap;
         this.device.queue.copyExternalImageToTexture(
           {
             source: bitmap,
             flipY: true,
           },
           {
-            texture: this.defaultTexture,
+            texture: this.program.streamTexture,
             origin: textureOrigin,
           },
           [bitmap.width, bitmap.height],
@@ -293,7 +142,7 @@ export default class Player {
 
   endFrame() {
     const frameIdx = this.counter;
-    const cond = this.frameCond();
+    const cond = this.program.frameCond(this.counter);
     if (this.recording && cond) {
       this.getDataUrl()
       .then((data) => this.postFrame(data, frameIdx));
@@ -360,19 +209,6 @@ export default class Player {
       this.videoCapture.srcObject = null;
       this.setStreamFit();
       const dim = this.program.settings.dim;
-      this.device?.queue.writeTexture(
-        {
-          texture: this.defaultTexture,
-        },
-        new Float32Array(dim * dim * 4),
-        {
-          bytesPerRow: 4 * 4 * 1024,
-        },
-        {
-          width: dim,
-          height: dim,
-        },
-      );
     }
   }
 
@@ -380,7 +216,7 @@ export default class Player {
     const dim = this.program?.settings.dim;
     this.device?.queue.writeTexture(
       {
-        texture: this.defaultTexture,
+        texture: this.program.streamTexture,
       },
       new Float32Array(dim * dim * 4),
       {

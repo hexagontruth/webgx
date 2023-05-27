@@ -8,6 +8,13 @@ export function createElement(...args) {
   return el;
 }
 
+export function copyEntries(dest, src, keys) {
+  for  (let key of keys) {
+    dest[key] = src[key];
+  }
+  return dest;
+}
+
 export async function importObject(path, name='default') {
   const result = await import(/*webpackIgnore: true*/path);
   return result[name];

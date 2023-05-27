@@ -1,5 +1,6 @@
 export default class Box extends Array {
   // TODO: Make this work with boxes and offsets
+  // Written by ChatGPT lol
   static fitOffset(pw, ph, cw, ch, mode='contain') {
     const pr = pw / ph;
     const cr = cw / ch;
