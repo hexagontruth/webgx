@@ -1,6 +1,8 @@
 import { createElement, getText, importObject, merge, postJson } from '../util';
 import Box from './box';
 
+const { max, min } = Math;
+
 export default class Player {
   static programDefaults = {
     settings: {
@@ -198,7 +200,7 @@ export default class Player {
     requestAnimationFrame(() => {
       let interval = settings.interval;
       if (this.recording && cond) {
-        interval = Math.max(settings.interval, settings.recordingInterval || 0);
+        interval = max(settings.interval, settings.recordingInterval || 0);
       }
       this.intervalTimer = setTimeout(() => this.render(), interval);
     });
@@ -226,13 +228,33 @@ export default class Player {
       this.device.queue.writeBuffer(pipeline.uniformBuffer, 0, pipeline.uniformData);
       // console.log(this.streamFitBox);
       if (this.streamActive) {
+        const { streamFitBox } = this;
+        console.log(
+          max(-streamFitBox.x, 0) * this.videoCapture.videoWidth / streamFitBox.w,
+          max(-streamFitBox.y, 0) * this.videoCapture.videoHeight / streamFitBox.h,
+          // this.videoCapture.videoWidth,
+          // this.videoCapture.videoHeight,
+          (streamFitBox.w + min(streamFitBox.x*2, 0)) * this.videoCapture.videoWidth / streamFitBox.w,
+          (streamFitBox.h + min(streamFitBox.y*2, 0)) * this.videoCapture.videoHeight / streamFitBox.h,
+        );
         const bitmap = await createImageBitmap(
           this.videoCapture,
+          max(-streamFitBox.x, 0) * this.videoCapture.videoWidth / streamFitBox.w,
+          max(-streamFitBox.y, 0) * this.videoCapture.videoHeight / streamFitBox.h,
+          // this.videoCapture.videoWidth,
+          // this.videoCapture.videoHeight,
+          (streamFitBox.w + min(streamFitBox.x*2, 0)) * this.videoCapture.videoWidth / streamFitBox.w,
+          (streamFitBox.h + min(streamFitBox.y*2, 0)) * this.videoCapture.videoHeight / streamFitBox.h,
           {
-            resizeWidth: this.streamFitBox.w,
-            resizeHeight: this.streamFitBox.h,
+            resizeWidth: streamFitBox.w + min(streamFitBox.x*2, 0),
+            resizeHeight: streamFitBox.h + min(streamFitBox.y*2, 0),
           },
         );
+        // console.log(bitmap.width, bitmap.height);
+        const textureOrigin = [
+          max(streamFitBox.x, 0),
+          max(streamFitBox.y, 0),
+        ];
         window.b = bitmap;
         this.device.queue.copyExternalImageToTexture(
           {
@@ -241,12 +263,13 @@ export default class Player {
           },
           {
             texture: this.defaultTexture,
+            origin: textureOrigin,
           },
-          // [1024, bitmap.height],
-          {
-            width: Math.min(bitmap.width, 1024),
-            height: Math.min(bitmap.height, 1024),
-          },
+          [bitmap.width, bitmap.height],
+          // {
+          //   width: min(bitmap.width, 1024),
+          //   height: min(bitmap.height, 1024),
+          // },
           // [Math.min(bitmap.width, 1024), Math.min(bitmap.height, 1024)],
         );
       }
@@ -336,10 +359,38 @@ export default class Player {
       this.streamActive = false;
       this.videoCapture.srcObject = null;
       this.setStreamFit();
+      const dim = this.program.settings.dim;
+      this.device?.queue.writeTexture(
+        {
+          texture: this.defaultTexture,
+        },
+        new Float32Array(dim * dim * 4),
+        {
+          bytesPerRow: 4 * 4 * 1024,
+        },
+        {
+          width: dim,
+          height: dim,
+        },
+      );
     }
   }
 
   setStreamFit() {
+    const dim = this.program?.settings.dim;
+    this.device?.queue.writeTexture(
+      {
+        texture: this.defaultTexture,
+      },
+      new Float32Array(dim * dim * 4),
+      {
+        bytesPerRow: 4 * 4 * 1024,
+      },
+      {
+        width: dim,
+        height: dim,
+      },
+    );
     return this.streamFitBox = Box.fitOffset(
       this.program?.settings.dim,
       this.program?.settings.dim,

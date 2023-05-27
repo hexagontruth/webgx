@@ -51,5 +51,6 @@ export default class Box extends Array {
     [this.x, this.y, this.w, this.h] = this;
     this.x2 = this.x + this.w;
     this.y2 = this.y + this.h;
+    this.aspectRatio = this.w / this.h;
   }
 }

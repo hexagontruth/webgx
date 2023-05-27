@@ -149,7 +149,8 @@ export default class Config {
     val = val != null ? val : this.webcamEnabled;
     if (val) {
       let constraints = {
-        video: { width: 1920},
+        video: { width: { ideal: 4096 } },
+        // video: {width: 1080, height: 1920},
         audio: false
       };
       navigator.mediaDevices.getUserMedia(constraints)

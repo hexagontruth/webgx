@@ -170,6 +170,8 @@ fn fragment_main(data: VertexData) -> @location(0) vec4f
   c = clamp(c, vec4f(0), vec4f(1));
   // c.x = cv.x;
   // c.y = cv.y;
+  c.b += 1. - smoothstep(1, 2, abs(data.position.x - 511.5));
+  c.g += 1. - smoothstep(1, 2, abs(data.position.y - 511.5));
 
   // color = vec4f(hex/10, 1)/10;
   return vec4f(c.rgb, 1);
