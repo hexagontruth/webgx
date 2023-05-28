@@ -87,6 +87,8 @@ export default class Player {
       };
 
       pipeline.uniformData[0] = this.counter / this.program.settings.period;
+      pipeline.uniformData[1] = Date.now();
+      pipeline.uniformData[2] = this.counter;
       this.device.queue.writeBuffer(pipeline.uniformBuffer, 0, pipeline.uniformData);
       if (this.streamActive) {
         const { streamFitBox } = this;

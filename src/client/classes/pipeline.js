@@ -1,6 +1,12 @@
 import { getText, merge } from '../util';
 
 export default class Pipeline {
+  static async buildAll(program, defs) {
+    return Promise.all(
+      Object.entries(defs).map(([k, v]) => Pipeline.build(program, k, v))
+    );
+  }
+
   static async build(program, name, data) {
     const pipeline = new Pipeline(program, name, data);
     await pipeline.init();
@@ -19,7 +25,7 @@ export default class Pipeline {
   async init() {
     const { settings } = this;
 
-    this.shaderText = await getText(this.shader);
+    this.shaderText = await this.program.loadShader(this.shader);
     this.shaderModule = this.device.createShaderModule({
       code: this.shaderText,
     });
@@ -28,13 +34,15 @@ export default class Pipeline {
       usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
     });
     this.uniformBuffer = this.device.createBuffer({
-      size: 32,
+      size: 24,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
     });
     this.uniformData = new Float32Array([
-      0, 1, 1, 1,
-      1, 0.5,
-      0, 0,
+      0, // time
+      0, // clock
+      0, // counter
+      this.settings.period,
+      [this.settings.dim, this.settings.dim],
     ]);
     this.device.queue.writeBuffer(
       this.vertexBuffer, 0,

@@ -1,4 +1,5 @@
 import { merge, importObject, postJson } from '../util';
+import Box from './box';
 import Config from './config';
 import Player from './player';
 import Program from './program';
@@ -221,19 +222,7 @@ export default class App {
 
   handleResize() {
     if (!this.config) return;
-    const { mainContainer } = this.elements;
-
-    let [w, h] = [window.innerWidth, window.innerHeight];
-    let cond = this.config.fit == 'contain' ? w > h : w < h;
-    if (cond) {
-      mainContainer.style.top = mainContainer.style.bottom = '0';
-      mainContainer.style.left = mainContainer.style.right = ((w / h - 1) / 2 * h) + 'px';
-      this.styleDim = h;
-    }
-    else {
-      mainContainer.style.left = mainContainer.style.right = '0';
-      mainContainer.style.top = mainContainer.style.bottom = ((h / w - 1) / 2 * w) + 'px';
-      this.styleDim = w;
-    }
+    const box = Box.fitOffset(window.innerWidth, window.innerHeight, 1, 1, this.config.fit);
+    this.elements.mainContainer.style.inset = `${box.y}px ${box.x}px`;
   }
 }

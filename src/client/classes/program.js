@@ -1,6 +1,7 @@
-import { importObject, merge } from '../util';
+import { getText, importObject, merge } from '../util';
 
 import Pipeline from './pipeline';
+import VertexData from './vertex-data';
 
 const PROGRAM_PATH = '/data/programs/';
 
@@ -19,6 +20,7 @@ export default class Program {
       'depth-clip-control',
       'shader-f16',
     ],
+    generatePipelineDefs: () => {},
   };
 
   static async build(name) {
@@ -29,6 +31,8 @@ export default class Program {
 
   constructor(name) {
     this.name = name;
+    this.shaderTextRequests = {};
+    this.shaderTexts = {};
   }
 
   async init() {
@@ -47,14 +51,6 @@ export default class Program {
 
     settings.exportDim = settings.exportDim ?? settings.dim;
 
-    this.frameCond = (counter) => {
-      const { settings } = this;
-      const skipCond = counter % settings.skip == 0;
-      const startCond = counter >= settings.start;
-      const stopCond = settings.stop == null || this.counter < settings.stop;
-      return skipCond && startCond && stopCond;
-    }
-
     this.adapter = await navigator.gpu.requestAdapter();
     this.features = this.features.filter((e) => this.adapter.features.has(e));
     this.device = await this.adapter.requestDevice({
@@ -70,8 +66,41 @@ export default class Program {
         GPUTextureUsage.RENDER_ATTACHMENT,
     });
 
-    this.pipelines = await Promise.all(Object.entries(this.pipelines).map(([name, data]) => {
-      return Pipeline.build(this, name, data);
-    }));
+    const pipelineDefs = this.generatePipelineDefs(this);
+    this.pipelines = await Pipeline.buildAll(this, pipelineDefs);
   }
+
+  frameCond(counter) {
+    const { settings } = this;
+    const skipCond = counter % settings.skip == 0;
+    const startCond = counter >= settings.start;
+    const stopCond = settings.stop == null || counter < settings.stop;
+    return skipCond && startCond && stopCond;
+  }
+
+  async loadShader(path) {
+    let text = await getText('data/shaders/' + path);
+    let rows = text.split('\n');
+    let chunks = [];
+    let chunkStart = 0;
+    for (let i = 0; i < rows.length; i++) {
+      let row = rows[i];
+      let match = row.match(/^\#include ([\w-\/\.]+)(\.wgsl)?$/);
+      if (match) {
+        if (i > chunkStart)
+          chunks.push(rows.slice(chunkStart, i));
+        let path = match[1] + '.wgsl';
+        let includeText = await this.loadShader(path);
+        chunks.push(includeText.split('\n'));
+        chunkStart = i + 1;
+      }
+    }
+    chunks.push(rows.slice(chunkStart));
+    return chunks.map((e) => e.join('\n')).join('\n');
+  }
+
+  buildVertexData(data) {
+    return new VertexData(this, data);
+  }
+
 }
