@@ -29,36 +29,86 @@ fn hex2cart(c: vec3f) -> vec2f {
   return cart;
 }
 
-fn modf(n : vec2f, m : vec2f) -> vec2f {
-  return n % m;
-}
-
-fn hexbin(bv: vec2f, s: f32) -> vec4f {
+fn hexbin(base : vec2f, s : f32) -> vec4f {
   var res = s / 3.;
   var cv : vec2f;
   var dv : vec2f;
-  cv = bv;
+  cv = base;
   cv *= res;
 
   var r = vec2f(1., 1. / sr3);
   r = vec2f(r.y, r.x);
   var h = r * 0.5;
   
-  var a = cv % r - h;
-  var b = (cv - h) % r - h;
+  var a = m2(cv, r) - h;
+  var b = m2(cv - h, r) - h;
 
-  var delta = length  (a) - length  (b);
-  dv = select(b, a, delta < 0);
+  var delta = length(a) - length(b);
+  // dv = delta < 0. ? a : b;
+  dv = select(b, a, delta < 0.);
 
-  a = modf(bv, r) - h;
-  b = modf(bv - h, r) - h;
-  var coord = select(b, a, length(a) < length(b));
+  a = m2(base, r) - h;
+  b = m2(base - h, r) - h;
+  var coord : vec2f;
+  // coord = length(a) < length(b) ? a : b;
+  coord = select(b, a, length(a) < length(b));
   coord = (cv - dv) / res;
   dv *= 3.;
   return vec4f(dv, coord);
 }
 
-fn amax(v: vec3f) -> f32 {
+// fn hexbin(bv: vec2f, s: f32) -> vec4f {
+//   var res = s / 3.;
+//   var cv : vec2f;
+//   var dv : vec2f;
+//   cv = bv;
+//   cv *= res;
+
+//   var r = vec2f(1., 1. / sr3);
+//   r = vec2f(r.y, r.x);
+//   var h = r * 0.5;
+  
+//   var a = (cv % r) - h;
+//   var b = ((cv - h) % r) - h;
+
+//   var delta = length(a) - length(b);
+//   dv = select(b, a, delta < 0);
+
+//   a = modf(bv, r) - h;
+//   b = modf(bv - h, r) - h;
+//   var coord = select(b, a, length(a) < length(b));
+//   coord = (cv - dv) / res;
+//   dv *= 3.;
+//   return vec4f(dv, coord);
+// }
+
+fn amax2(v: vec2f) -> f32 {
+  var a = abs(v);
+  return max(a.x, a.y);
+}
+
+fn amax3(v: vec3f) -> f32 {
   var a = abs(v);
   return max(max(a.x, a.y), a.z);
+}
+
+fn amax4(v: vec4f) -> f32 {
+  var a = abs(v);
+  return max(max(max(a.x, a.y), a.z), a.w);
+}
+
+fn m1(n : f32, m : f32) -> f32 {
+  return fract(n / m) * m;
+}
+
+fn m2(n : vec2f, m : vec2f) -> vec2f {
+  return fract(n / m) * m;
+}
+
+fn m3(n : vec3f, m : vec3f) -> vec3f {
+  return fract(n / m) * m;
+}
+
+fn m4(n : vec4f, m : vec4f) -> vec4f {
+  return fract(n / m) * m;
 }

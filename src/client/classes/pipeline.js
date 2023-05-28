@@ -59,12 +59,21 @@ export default class Pipeline {
         {
           binding: 1,
           visibility: GPUShaderStage.FRAGMENT,
-          texture: {},
+          sampler: {},
         },
         {
           binding: 2,
           visibility: GPUShaderStage.FRAGMENT,
-          sampler: {},
+          texture: {},
+        },
+      ],
+    });
+    const alternatingGroupLayout = this.device.createBindGroupLayout({
+      entries: [
+        {
+          binding: 0,
+          visibility: GPUShaderStage.FRAGMENT,
+          texture: {},
         },
       ],
     });
@@ -90,6 +99,7 @@ export default class Pipeline {
       layout: this.device.createPipelineLayout({
           bindGroupLayouts: [
             bindGroupLayout,
+            alternatingGroupLayout,
           ],
       }),
     };
@@ -107,13 +117,25 @@ export default class Pipeline {
         },
         {
           binding: 1,
-          resource: this.program.streamTexture.createView(),
+          resource: this.sampler,
         },
         {
           binding: 2,
-          resource: this.sampler,
-        },
+          resource: this.program.streamTexture.createView(),
+        }
       ],
+    });
+
+    this.alternatingGroup = Array(2).fill().map((_, idx) => {
+      return this.device.createBindGroup({
+        layout: this.renderPipeline.getBindGroupLayout(1),
+        entries: [
+          {
+            binding: 0,
+            resource: this.program.outputTextures[idx].createView(),
+          },
+        ],
+      });
     });
   }
 }

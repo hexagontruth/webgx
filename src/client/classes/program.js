@@ -66,6 +66,18 @@ export default class Program {
         GPUTextureUsage.RENDER_ATTACHMENT,
     });
 
+    this.outputTextures = Array(2).fill().map(() => {
+      return this.device.createTexture({
+        size: [settings.dim, settings.dim],
+        format: 'bgra8unorm',
+        usage:
+          GPUTextureUsage.COPY_DST |
+          GPUTextureUsage.COPY_SRC |
+          GPUTextureUsage.TEXTURE_BINDING |
+          GPUTextureUsage.RENDER_ATTACHMENT,
+      });
+    });
+
     const pipelineDefs = this.generatePipelineDefs(this);
     this.pipelines = await Pipeline.buildAll(this, pipelineDefs);
   }

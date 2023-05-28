@@ -70,6 +70,9 @@ export default class Player {
 
   async render(...pipelines) {
     this.counter ++;
+    const cur = this.counter % 2;
+    const next = (cur + 1) % 2;
+
     pipelines = pipelines.length ? pipelines : Object.keys(this.program.pipelines);
     await Promise.all(pipelines.map(async (pipelineName) => {
       const pipeline = this.program.pipelines[pipelineName];
@@ -81,7 +84,7 @@ export default class Player {
             clearValue: clearColor,
             loadOp: 'clear',
             storeOp: 'store',
-            view: this.ctx.getCurrentTexture().createView(),
+            view: this.counter % 2 == 0 ? this.program.outputTextures[next].createView() : this.ctx.getCurrentTexture().createView(),
           },
         ],
       };
@@ -134,6 +137,7 @@ export default class Player {
       passEncoder.setPipeline(pipeline.renderPipeline);
       passEncoder.setVertexBuffer(0, pipeline.vertexBuffer);
       passEncoder.setBindGroup(0, pipeline.bindGroup);
+      passEncoder.setBindGroup(1, pipeline.alternatingGroup[cur]);
       passEncoder.draw(4);
       passEncoder.end();
       this.device.queue.submit([commandEncoder.finish()]);
