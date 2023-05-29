@@ -1,6 +1,31 @@
 import { getText, join, merge } from '../util';
 
 export default class Pipeline {
+  static generateDefaults() {
+    return {
+      shader: 'default.wgsl',
+      vertexData: new Float32Array([
+        -1, -1, 0, 1,
+        1, -1, 0, 1,
+        -1, 1, 0, 1,
+        1, 1, 0, 1,
+      ]),
+      vertexBuffers: [
+        {
+          attributes: [
+            {
+              shaderLocation: 0,
+              offset: 0,
+              format: 'float32x4',
+            },
+          ],
+          arrayStride: 16,
+          stepMode: 'vertex',
+        },
+      ],
+    };
+  }
+
   static async buildAll(program, defs) {
     return Promise.all(
       Object.entries(defs).map(([k, v]) => Pipeline.build(program, k, v))
@@ -14,8 +39,9 @@ export default class Pipeline {
   }
 
   constructor(program, name, data) {
-    this.data = data;
-    merge(this, data);
+    this.data = merge({}, Pipeline.generateDefaults(), data);
+    this.vertexData = this.data.vertexData.slice();
+    
     this.program = program;
     this.name = name;
     this.device = program.device;
@@ -24,9 +50,9 @@ export default class Pipeline {
 
   async init() {
     const { settings } = this;
-    const shaderPath = join('/data/shaders', this.shader);
+    const shaderPath = join('/data/shaders', this.data.shader);
     this.shaderText = await this.program.loadShader(shaderPath);
-    
+
     this.shaderModule = this.device.createShaderModule({
       code: this.shaderText,
     });
@@ -46,8 +72,8 @@ export default class Pipeline {
       0, // time
       0, // clock
       0, // counter
-      this.settings.period,
-      [this.settings.dim, this.settings.dim],
+      settings.period,
+      [settings.dim, settings.dim],
     ]);
     this.device.queue.writeBuffer(
       this.vertexBuffer, 0,
@@ -96,7 +122,7 @@ export default class Pipeline {
       vertex: {
         module: this.shaderModule,
         entryPoint: 'vertex_main',
-        buffers: this.vertexBuffers,
+        buffers: this.data.vertexBuffers,
       },
       fragment: {
         module: this.shaderModule,
