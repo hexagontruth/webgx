@@ -1,3 +1,7 @@
+fn scaleUv(uv : vec2f, s : f32) -> vec2f {
+  return (uv * 2 - 1) * s * 0.5 + 0.5;
+}
+  
 fn roundCubic(p: vec3f) -> vec3f {
   var r = round(p);
   var d = abs(r - p);

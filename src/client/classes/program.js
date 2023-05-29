@@ -1,4 +1,4 @@
-import { getText, importObject, merge } from '../util';
+import { getText, importObject, join, merge } from '../util';
 
 import Pipeline from './pipeline';
 import VertexData from './vertex-data';
@@ -56,6 +56,27 @@ export default class Program {
       requiredFeatures: this.features,
     });
 
+    this.samplers ={
+      linear: this.device.createSampler({
+        magFilter: 'linear',
+        minFilter: 'linear',
+      }),
+      mirror: this.device.createSampler({
+        magFilter: 'linear',
+        minFilter: 'linear',
+        addressModeU: 'mirror-repeat',
+        addressModeV: 'mirror-repeat',
+        addressModeW: 'mirror-repeat',
+      }),
+      repeat: this.device.createSampler({
+        magFilter: 'linear',
+        minFilter: 'linear',
+        addressModeU: 'repeat',
+        addressModeV: 'repeat',
+        addressModeW: 'repeat',
+      }),
+    };
+
     this.streamTexture = this.device.createTexture({
       size: [settings.dim, settings.dim],
       format: 'rgba8unorm',
@@ -90,18 +111,19 @@ export default class Program {
   }
 
   async loadShader(path) {
-    let text = await getText('data/shaders/' + path);
-    let rows = text.split('\n');
-    let chunks = [];
+    const dir = path.substring(0, path.lastIndexOf('/'));
+    const text = await getText(path);
+    const rows = text.split('\n');
+    const chunks = [];
     let chunkStart = 0;
     for (let i = 0; i < rows.length; i++) {
-      let row = rows[i];
-      let match = row.match(/^\#include ([\w-\/\.]+)(\.wgsl)?$/);
+      const row = rows[i];
+      const match = row.match(/^\#include ([\w-\/\.]+)(\.wgsl)?$/);
       if (match) {
         if (i > chunkStart)
           chunks.push(rows.slice(chunkStart, i));
-        let path = match[1] + '.wgsl';
-        let includeText = await this.loadShader(path);
+        const includePath = join(dir, match[1] + '.wgsl');
+        let includeText = await this.loadShader(includePath);
         chunks.push(includeText.split('\n'));
         chunkStart = i + 1;
       }

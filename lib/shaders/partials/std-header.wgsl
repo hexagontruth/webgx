@@ -1,0 +1,9 @@
+#include constants
+#include math
+#include color
+#include texture
+#include ../structs/global-uniforms
+#include ../structs/cursor-uniforms
+#include ../structs/vertex-data
+#include bindings
+#include vertex-default

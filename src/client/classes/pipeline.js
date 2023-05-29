@@ -1,4 +1,4 @@
-import { getText, merge } from '../util';
+import { getText, join, merge } from '../util';
 
 export default class Pipeline {
   static async buildAll(program, defs) {
@@ -24,8 +24,9 @@ export default class Pipeline {
 
   async init() {
     const { settings } = this;
-
-    this.shaderText = await this.program.loadShader(this.shader);
+    const shaderPath = join('/data/shaders', this.shader);
+    this.shaderText = await this.program.loadShader(shaderPath);
+    
     this.shaderModule = this.device.createShaderModule({
       code: this.shaderText,
     });
@@ -33,7 +34,11 @@ export default class Pipeline {
       size: this.vertexData.byteLength,
       usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
     });
-    this.uniformBuffer = this.device.createBuffer({
+    this.globalUniformBuffer = this.device.createBuffer({
+      size: 24,
+      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+    });
+    this.customUniformBuffer = this.device.createBuffer({
       size: 24,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
     });
@@ -63,6 +68,16 @@ export default class Pipeline {
         },
         {
           binding: 2,
+          visibility: GPUShaderStage.FRAGMENT,
+          sampler: {},
+        },
+        {
+          binding: 3,
+          visibility: GPUShaderStage.FRAGMENT,
+          sampler: {},
+        },
+        {
+          binding: 4,
           visibility: GPUShaderStage.FRAGMENT,
           texture: {},
         },
@@ -104,25 +119,27 @@ export default class Pipeline {
       }),
     };
     this.renderPipeline = this.device.createRenderPipeline(pipelineDescriptor);
-    this.sampler = this.device.createSampler({
-      magFilter: 'linear',
-      minFilter: 'linear',
-      addressModeV: 'mirror-repeat',
-
-    });
     this.bindGroup = this.device.createBindGroup({
       layout: this.renderPipeline.getBindGroupLayout(0),
       entries: [
         {
           binding: 0,
-          resource: { buffer: this.uniformBuffer }
+          resource: { buffer: this.globalUniformBuffer }
         },
         {
           binding: 1,
-          resource: this.sampler,
+          resource: this.program.samplers.linear,
         },
         {
           binding: 2,
+          resource: this.program.samplers.mirror,
+        },
+        {
+          binding: 3,
+          resource: this.program.samplers.repeat,
+        },
+        {
+          binding: 4,
           resource: this.program.streamTexture.createView(),
         }
       ],

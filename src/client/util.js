@@ -74,6 +74,34 @@ export function numberString(val, opts = {}) {
   return n;
 }
 
+export function join(...args) {
+  let path = [];
+  let initialSeg = true;
+  while(args.length) {
+    const arg = args.shift();
+    const match = arg.match(/^(\/)?(.*?)(\/)?$/);
+    if (!match || arg == '') continue;
+    const [, lSlash, seg] = match;
+    if (initialSeg && lSlash) {
+      path.push('');
+    }
+    const subsegs = seg.split('/');
+    if (subsegs.length > 1) {
+      args.unshift(...subsegs);
+    }
+    else {
+      if (seg == '..') {
+        path.pop(); // potentially problematic
+      }
+      else if (seg != '.') {
+        path.push(seg);
+      }
+      initialSeg = false;
+    }
+  }
+  return path.join('/');
+}
+
 export async function getText(path) {
   const result = await fetch(path);
   return await result.text();

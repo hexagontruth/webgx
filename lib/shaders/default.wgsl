@@ -1,34 +1,4 @@
-#include constants
-#include math
-#include color
-#include texture
-#include structs/global-uniforms
-#include structs/cursor-uniforms
-
-
-struct VertexData {
-  @builtin(position) position : vec4f,
-  @location(0) uv : vec2f,
-  @location(1) cv : vec2f,
-};
-
-@vertex
-fn vertex_main(@location(0) position: vec4f) -> VertexData
-{
-  var output : VertexData;
-  output.position = position;
-  output.uv = position.xy * 0.5 + 0.5;
-  output.cv = position.xy;
-  return output;
-}
-
-@group(0) @binding(0) var<uniform> gu: GlobalUniforms;
-
-@group(0) @binding(1) var samp : sampler;
-
-@group(0) @binding(2) var stream : texture_2d<f32>;
-
-@group(1) @binding(0) var last : texture_2d<f32>;
+#include partials/std-header
 
 @fragment
 fn fragment_main(data: VertexData) -> @location(0) vec4f
@@ -42,13 +12,23 @@ fn fragment_main(data: VertexData) -> @location(0) vec4f
   // hex = sin(abs(hex) - gu.time);
   // hex = floor(hex* 10)/10.;
   var bin = hexbin(hex2cart(hex), 2.);
-  bin = bin + textureSample(last, samp, (cv.xy * 2) * 0.5 + 0.5);
-  bin /= 2.;
   c = bin;
   // return vec4f(bin.xyz, 1);
   var r = step(0.75, amax3(hex));
 
-  var s = texture(stream, uv);
+  var tv = uv;
+  if (uv.x > gu.time) {
+    tv.x = abs(fract(tv.x + 0.25));
+  }
+  var s = texture(stream, scaleUv(uv, 1.5));
+  var t = textureRepeat(stream, scaleUv(tv, 1.5));
+  var u = textureMirror(stream, scaleUv(tv, 1.5));
+  if (uv.y > 2./3) {
+    s = t;
+  }
+  if (uv.y < 1./3) {
+    s = u;
+  }
 
   s += texture(last, uv);
   s = s / 2.;
