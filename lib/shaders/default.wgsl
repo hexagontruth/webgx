@@ -1,8 +1,10 @@
 #include constants
 #include math
 #include color
+#include texture
 #include structs/global-uniforms
 #include structs/cursor-uniforms
+
 
 struct VertexData {
   @builtin(position) position : vec4f,
@@ -40,13 +42,17 @@ fn fragment_main(data: VertexData) -> @location(0) vec4f
   // hex = sin(abs(hex) - gu.time);
   // hex = floor(hex* 10)/10.;
   var bin = hexbin(hex2cart(hex), 2.);
-  bin = bin + textureSample(last, samp, (cv.yx * 2) * 0.5 + 0.5);
+  bin = bin + textureSample(last, samp, (cv.xy * 2) * 0.5 + 0.5);
   bin /= 2.;
   c = bin;
   // return vec4f(bin.xyz, 1);
   var r = step(0.75, amax3(hex));
 
-  var s = textureSample(stream, samp, uv);
+  var s = texture(stream, uv);
+
+  s += texture(last, uv);
+  s = s / 2.;
+  return s;
 
   c = rgb2hsv(c);
   c.r += floor((uv.y + gu.time) * 9.)/9. + r/2.;

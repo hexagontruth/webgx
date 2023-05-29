@@ -43,7 +43,6 @@ export default class Program {
     );
     
     const { settings } = this;
-    console.log(Program.programDefaults);
 
     if (settings.stop == true) {
       settings.stop = settings.start + settings.period;

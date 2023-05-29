@@ -107,6 +107,8 @@ export default class Pipeline {
     this.sampler = this.device.createSampler({
       magFilter: 'linear',
       minFilter: 'linear',
+      addressModeV: 'mirror-repeat',
+
     });
     this.bindGroup = this.device.createBindGroup({
       layout: this.renderPipeline.getBindGroupLayout(0),

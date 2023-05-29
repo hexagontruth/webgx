@@ -51,6 +51,10 @@ export default class Player {
       device: this.device,
       format: navigator.gpu.getPreferredCanvasFormat(),
       alphaMode: 'premultiplied',
+      usage:
+        GPUTextureUsage.COPY_SRC |
+        GPUTextureUsage.COPY_DST |
+        GPUTextureUsage.RENDER_ATTACHMENT,
     });
 
     this.canvas.width = this.canvas.height = settings.dim;
@@ -82,9 +86,9 @@ export default class Player {
         colorAttachments: [
           {
             clearValue: clearColor,
-            loadOp: 'clear',
+            loadOp: 'load',
             storeOp: 'store',
-            view: this.counter % 2 == 0 ? this.program.outputTextures[next].createView() : this.ctx.getCurrentTexture().createView(),
+            view: this.program.outputTextures[next].createView(),
           },
         ],
       };
@@ -113,7 +117,7 @@ export default class Player {
         this.device.queue.copyExternalImageToTexture(
           {
             source: bitmap,
-            flipY: true,
+            // flipY: true,
           },
           {
             texture: this.program.streamTexture,
@@ -140,6 +144,18 @@ export default class Player {
       passEncoder.setBindGroup(1, pipeline.alternatingGroup[cur]);
       passEncoder.draw(4);
       passEncoder.end();
+      commandEncoder.copyTextureToTexture(
+        {
+          texture: this.program.outputTextures[next],
+        },
+        {
+          texture: this.ctx.getCurrentTexture(),
+        },
+        {
+          width: this.settings.dim,
+          height: this.settings.dim,
+        },
+      );
       this.device.queue.submit([commandEncoder.finish()]);
     }));
 
