@@ -74,7 +74,7 @@ export default class Pipeline {
       0, // clock
       0, // counter
       settings.period,
-      [settings.dim, settings.dim],
+      settings.dim, settings.dim,
     ]);
     this.device.queue.writeBuffer(
       this.vertexBuffer, 0,

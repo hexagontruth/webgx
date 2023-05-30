@@ -2,7 +2,6 @@ import { merge, importObject, postJson } from '../util';
 import Box from './box';
 import Config from './config';
 import Player from './player';
-import Program from './program';
 
 export default class App {
   static elementIds = {
@@ -128,7 +127,7 @@ export default class App {
     if (ev.type == 'keydown') {
       if (ev.ctrlKey && !ev.shiftKey) {
         if (ev.key == 's') {
-          // this.player.promptDownload();
+          this.player.promptDownload();
         }
         else if (ev.key.match(/^[0-9a-fA-F]$/)) {
           this.shiftString += ev.key

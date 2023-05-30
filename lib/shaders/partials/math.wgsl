@@ -101,18 +101,46 @@ fn amax4(v: vec4f) -> f32 {
   return max(max(max(a.x, a.y), a.z), a.w);
 }
 
-fn m1(n : f32, m : f32) -> f32 {
+fn m1(n: f32, m: f32) -> f32 {
   return fract(n / m) * m;
 }
 
-fn m2(n : vec2f, m : vec2f) -> vec2f {
+fn m2(n: vec2f, m: vec2f) -> vec2f {
   return fract(n / m) * m;
 }
 
-fn m3(n : vec3f, m : vec3f) -> vec3f {
+fn m3(n: vec3f, m: vec3f) -> vec3f {
   return fract(n / m) * m;
 }
 
-fn m4(n : vec4f, m : vec4f) -> vec4f {
+fn m4(n: vec4f, m: vec4f) -> vec4f {
   return fract(n / m) * m;
+}
+
+fn gaussian2(v: vec2f, sd: f32) -> f32 {
+  return 1./(tau * sd * sd) * exp(-(v.x * v.x + v.y * v.y) / (2. * sd * sd));
+}
+
+fn gaussianBlur(range: i32, sd: f32, uv: vec2f) -> vec4f {
+  var s : vec4f;
+  var n : vec4f;
+  var d : f32;
+  var ds : f32;
+  var i : i32;
+  var j : i32;
+  i = -range;
+  j = -range;
+  while (i <= range) {
+    while (j <= range) {
+      var v = vec2f(f32(i), f32(j));
+      d = gaussian2(v, sd);
+      ds += d;
+      n = texture(inputTexture, uv + v / gu.size / 2.);
+      s += n * d;
+      j ++;
+    }
+    i ++;
+  }
+  s /= ds;
+  return s;
 }

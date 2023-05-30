@@ -98,6 +98,14 @@ export default class Player {
     }
   }
 
+  async promptDownload() {
+    let uri = await this.getDataUrl();
+    let a = document.createElement('a');
+    a.href = uri;
+    a.download = `frame-${('0000' + this.program.counter).slice(-4)}.png`;
+    a.click();
+  }
+
   togglePlay(val=!this.play) {
     this.play = val;
     val && this.render();
@@ -107,6 +115,11 @@ export default class Player {
   toggleRecord(val=!this.recording) {
     this.recording = val;
     val && this.program.resetCounter();
+  }
+
+  resetCounter() {
+    this.program.resetCounter();
+    this.play || this.render();
   }
 
   setStream(stream) {
