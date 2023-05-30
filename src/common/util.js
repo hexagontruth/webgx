@@ -1,3 +1,7 @@
+function indexMap(n) {
+  return Array(n).fill().map((_, idx) => idx);
+}
+
 merge.MERGE_ARRAYS = 2
 merge.ADD_ARRAYS = 4
 merge.ARRAYS_UNIQUE = 8
@@ -48,4 +52,7 @@ function merge(...objs) {
   return base;
 }
 
-module.exports = { merge };
+module.exports = {
+  indexMap,
+  merge
+};

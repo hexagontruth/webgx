@@ -41,20 +41,10 @@ export default class Player {
   }
 
   async init() {
-    this.program = await Program.build(this.config.program);
+    this.program = await Program.build(this.config.program, this.ctx);
     this.device = this.program.device;
     this.settings = this.program.settings;
     const { settings } = this.program;
-
-    this.ctx.configure({
-      device: this.device,
-      format: navigator.gpu.getPreferredCanvasFormat(),
-      alphaMode: 'premultiplied',
-      usage:
-        GPUTextureUsage.COPY_SRC |
-        GPUTextureUsage.COPY_DST |
-        GPUTextureUsage.RENDER_ATTACHMENT,
-    });
 
     this.canvas.width = this.canvas.height = settings.dim;
     this.exportCanvas.width = this.exportCanvas.height = settings.exportDim;

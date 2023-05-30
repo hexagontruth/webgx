@@ -81,17 +81,6 @@ export default class Pipeline {
       this.vertexData, 0,
       this.vertexData.length
     );
-    this.drawTextures = Array(2).fill().map(() => {
-      return this.device.createTexture({
-        size: [settings.dim, settings.dim],
-        format: 'bgra8unorm',
-        usage:
-          GPUTextureUsage.COPY_DST |
-          GPUTextureUsage.COPY_SRC |
-          GPUTextureUsage.TEXTURE_BINDING |
-          GPUTextureUsage.RENDER_ATTACHMENT,
-      });
-    });
     const bindGroupLayout = this.device.createBindGroupLayout({
       entries: [
         {
@@ -121,15 +110,6 @@ export default class Pipeline {
         },
       ],
     });
-    const alternatingGroupLayout = this.device.createBindGroupLayout({
-      entries: [
-        {
-          binding: 0,
-          visibility: GPUShaderStage.FRAGMENT,
-          texture: {},
-        },
-      ],
-    });
     const pipelineDescriptor = {
       vertex: {
         module: this.shaderModule,
@@ -152,7 +132,7 @@ export default class Pipeline {
       layout: this.device.createPipelineLayout({
           bindGroupLayouts: [
             bindGroupLayout,
-            alternatingGroupLayout,
+            this.program.alternatingGroupLayout,
           ],
       }),
     };
@@ -182,26 +162,13 @@ export default class Pipeline {
         }
       ],
     });
-
-    this.alternatingGroup = Array(2).fill().map((_, idx) => {
-      return this.device.createBindGroup({
-        layout: this.renderPipeline.getBindGroupLayout(1),
-        entries: [
-          {
-            binding: 0,
-            resource: this.drawTextures[idx].createView(),
-          },
-        ],
-      });
-    });
   }
 
-  render(counter=0) {
-    const cur = (counter + 2) % 2;
-    const next = (counter + 1) % 2;
-    const { device, program } = this;
-    
-    this.uniformData[0] = counter / program.settings.period;
+  render() {
+    const { device, program, settings } = this;
+    const { counter, cur, next } = program;
+
+    this.uniformData[0] = counter / settings.period;
     this.uniformData[1] = Date.now();
     this.uniformData[2] = counter;
     device.queue.writeBuffer(this.globalUniformBuffer, 0, this.uniformData);
@@ -214,7 +181,7 @@ export default class Pipeline {
           clearValue: clearColor,
           loadOp: 'load',
           storeOp: 'store',
-          view: this.drawTextures[next].createView(),
+          view: program.alternatingTextures[next][0].createView(),
         },
       ],
     };
@@ -228,21 +195,9 @@ export default class Pipeline {
     passEncoder.setPipeline(this.renderPipeline);
     passEncoder.setVertexBuffer(0, this.vertexBuffer);
     passEncoder.setBindGroup(0, this.bindGroup);
-    passEncoder.setBindGroup(1, this.alternatingGroup[cur]);
+    passEncoder.setBindGroup(1, program.alternatingGroup[cur]);
     passEncoder.draw(4);
     passEncoder.end();
-    commandEncoder.copyTextureToTexture(
-      {
-        texture: this.drawTextures[next],
-      },
-      {
-        texture: app.player.ctx.getCurrentTexture(),
-      },
-      {
-        width: program.settings.dim,
-        height: program.settings.dim,
-      },
-    );
     device.queue.submit([commandEncoder.finish()]);
   }
 }

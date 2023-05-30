@@ -1,4 +1,4 @@
-import { getText, importObject, join, merge } from '../util';
+import { getText, importObject, indexMap, join, merge } from '../util';
 
 import Pipeline from './pipeline';
 import VertexData from './vertex-data';
@@ -15,6 +15,7 @@ export default class Program {
       stop: null,
       period: 360,
       skip: 1,
+      texturePairs: 1,
     },
     features: [
       'depth-clip-control',
@@ -26,14 +27,15 @@ export default class Program {
     generatePipelineDefs: () => ({}),
   };
 
-  static async build(name) {
-    const program = new Program(name);
+  static async build(name, ctx) {
+    const program = new Program(name, ctx);
     await program.init();
     return program;
   }
 
-  constructor(name) {
+  constructor(name, ctx) {
     this.name = name;
+    this.ctx = ctx;
     this.shaderTextRequests = {};
     this.shaderTexts = {};
     this.resetCounter();
@@ -58,6 +60,15 @@ export default class Program {
     this.features = this.features.filter((e) => this.adapter.features.has(e));
     this.device = await this.adapter.requestDevice({
       requiredFeatures: this.features,
+    });
+    this.ctx.configure({
+      device: this.device,
+      format: navigator.gpu.getPreferredCanvasFormat(),
+      alphaMode: 'premultiplied',
+      usage:
+        GPUTextureUsage.COPY_SRC |
+        GPUTextureUsage.COPY_DST |
+        GPUTextureUsage.RENDER_ATTACHMENT,
     });
 
     this.samplers ={
@@ -90,15 +101,40 @@ export default class Program {
         GPUTextureUsage.RENDER_ATTACHMENT,
     });
 
-    this.outputTextures = Array(2).fill().map(() => {
-      return this.device.createTexture({
-        size: [settings.dim, settings.dim],
-        format: 'bgra8unorm',
-        usage:
-          GPUTextureUsage.COPY_DST |
-          GPUTextureUsage.COPY_SRC |
-          GPUTextureUsage.TEXTURE_BINDING |
-          GPUTextureUsage.RENDER_ATTACHMENT,
+    this.alternatingTextures = indexMap(2).map(() => {
+      return indexMap(settings.texturePairs).map(() => {
+        return this.device.createTexture({
+          size: [settings.dim, settings.dim],
+          format: 'bgra8unorm',
+          usage:
+            GPUTextureUsage.COPY_DST |
+            GPUTextureUsage.COPY_SRC |
+            GPUTextureUsage.TEXTURE_BINDING |
+            GPUTextureUsage.RENDER_ATTACHMENT,
+        });
+      });
+    });
+
+    this.alternatingGroupLayout = this.device.createBindGroupLayout({
+      entries: indexMap(settings.texturePairs).map((idx) => {
+        return {
+          binding: idx,
+          visibility: GPUShaderStage.FRAGMENT,
+          texture: {
+            // viewDimension: '2d-array',
+          },
+        };
+      }),
+    });
+    this.alternatingGroup = indexMap(2).map((altIdx) => {
+      return this.device.createBindGroup({
+        layout: this.alternatingGroupLayout,
+        entries: indexMap(settings.texturePairs).map((idx) => {
+          return {
+            binding: idx,
+            resource: this.alternatingTextures[altIdx][idx].createView(),
+          };
+        }),
       });
     });
 
@@ -141,11 +177,14 @@ export default class Program {
   }
 
   resetCounter() {
-    this.counter = -1;
+    this.stepCounter(-1);
   }
 
-  stepCounter() {
-    this.counter += 1;
+  stepCounter(n) {
+    n = n ?? this.counter + 1;
+    this.counter = n;
+    this.cur = (this.counter + 2) % 2;
+    this.next = (this.counter + 1) % 2;
   }
 
   async run(action='main') {
@@ -156,4 +195,20 @@ export default class Program {
     this.pipelines[pipelineName].render(counter);
   }
 
+  draw() {
+    const commandEncoder = this.device.createCommandEncoder();
+    commandEncoder.copyTextureToTexture(
+      {
+        texture: this.alternatingTextures[this.next][0],
+      },
+      {
+        texture: this.ctx.getCurrentTexture(),
+      },
+      {
+        width: this.settings.dim,
+        height: this.settings.dim,
+      },
+    );
+    this.device.queue.submit([commandEncoder.finish()]);
+  }
 }
