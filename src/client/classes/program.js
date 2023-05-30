@@ -15,7 +15,7 @@ export default class Program {
       stop: null,
       period: 360,
       skip: 1,
-      texturePairs: 1,
+      texturePairs: 3,
     },
     features: [
       'depth-clip-control',
@@ -96,47 +96,92 @@ export default class Program {
       size: [settings.dim, settings.dim],
       format: 'rgba8unorm',
       usage:
-        GPUTextureUsage.TEXTURE_BINDING |
         GPUTextureUsage.COPY_DST |
-        GPUTextureUsage.RENDER_ATTACHMENT,
+        GPUTextureUsage.RENDER_ATTACHMENT |
+        GPUTextureUsage.TEXTURE_BINDING,
     });
 
-    this.alternatingTextures = indexMap(2).map(() => {
-      return indexMap(settings.texturePairs).map(() => {
-        return this.device.createTexture({
-          size: [settings.dim, settings.dim],
-          format: 'bgra8unorm',
-          usage:
-            GPUTextureUsage.COPY_DST |
-            GPUTextureUsage.COPY_SRC |
-            GPUTextureUsage.TEXTURE_BINDING |
-            GPUTextureUsage.RENDER_ATTACHMENT,
-        });
+    this.drawTexture = this.device.createTexture({
+      size: [settings.dim, settings.dim],
+      format: 'bgra8unorm',
+      usage:
+        GPUTextureUsage.COPY_SRC |
+        GPUTextureUsage.RENDER_ATTACHMENT |
+        GPUTextureUsage.TEXTURE_BINDING,
+    });
+
+    this.lastTexture = this.device.createTexture({
+      size: [settings.dim, settings.dim],
+      format: 'bgra8unorm',
+      usage:
+        GPUTextureUsage.COPY_DST |
+        GPUTextureUsage.RENDER_ATTACHMENT |
+        GPUTextureUsage.TEXTURE_BINDING,
+    });
+
+    this.inputTexture = this.device.createTexture({
+      size: [settings.dim, settings.dim],
+      format: 'bgra8unorm',
+      usage:
+        GPUTextureUsage.COPY_DST |
+        GPUTextureUsage.RENDER_ATTACHMENT |
+        GPUTextureUsage.TEXTURE_BINDING,
+    });
+
+    this.arrayTextures = indexMap(2).map((idx) => {
+      return this.device.createTexture({
+        size: [settings.dim, settings.dim, settings.texturePairs],
+        format: 'bgra8unorm',
+        usage:
+          GPUTextureUsage.COPY_DST |
+          GPUTextureUsage.COPY_SRC |
+          GPUTextureUsage.TEXTURE_BINDING |
+          GPUTextureUsage.RENDER_ATTACHMENT,
       });
     });
 
-    this.alternatingGroupLayout = this.device.createBindGroupLayout({
-      entries: indexMap(settings.texturePairs).map((idx) => {
-        return {
-          binding: idx,
+    this.arrayGroupLayout = this.device.createBindGroupLayout({
+      entries: [
+        {
+          binding: 0,
           visibility: GPUShaderStage.FRAGMENT,
           texture: {
-            // viewDimension: '2d-array',
+            viewDimension: '2d-array',
           },
-        };
-      }),
+        },
+        {
+          binding: 1,
+          visibility: GPUShaderStage.FRAGMENT,
+          texture: {},
+        },
+        {
+          binding: 2,
+          visibility: GPUShaderStage.FRAGMENT,
+          texture: {},
+        },
+      ],
     });
-    this.alternatingGroup = indexMap(2).map((altIdx) => {
+
+    this.arrayGroup = indexMap(2).map((idx) => {
       return this.device.createBindGroup({
-        layout: this.alternatingGroupLayout,
-        entries: indexMap(settings.texturePairs).map((idx) => {
-          return {
-            binding: idx,
-            resource: this.alternatingTextures[altIdx][idx].createView(),
-          };
-        }),
+        layout: this.arrayGroupLayout,
+        entries: [
+          {
+            binding: 0,
+            resource: this.arrayTextures[idx].createView(),
+          },
+          {
+             binding: 1,
+             resource: this.lastTexture.createView(),
+          },
+          {
+            binding: 2,
+            resource: this.inputTexture.createView(),
+          }
+        ],
       });
     });
+
 
     const pipelineDefs = this.generatePipelineDefs(this);
     this.pipelines = await Pipeline.buildAll(this, pipelineDefs);
@@ -191,15 +236,19 @@ export default class Program {
     await this.actions[action](this);
   }
 
-  render(pipelineName, counter=this.counter) {
-    this.pipelines[pipelineName].render(counter);
+  render(pipelineName, txIdx) {
+    this.pipelines[pipelineName].render(txIdx);
   }
 
-  draw() {
+  draw(txIdx) {
     const commandEncoder = this.device.createCommandEncoder();
     commandEncoder.copyTextureToTexture(
-      {
-        texture: this.alternatingTextures[this.next][0],
+      txIdx ? {
+        // texture: this.alternatingTextures[this.next][0],
+        texture: this.arrayTextures[this.next],
+        origin: { x: 0, y: 0, z: txIdx },
+      } : {
+        texture: this.drawTexture,
       },
       {
         texture: this.ctx.getCurrentTexture(),
@@ -207,6 +256,7 @@ export default class Program {
       {
         width: this.settings.dim,
         height: this.settings.dim,
+        depthOrArrayLayers: 1,
       },
     );
     this.device.queue.submit([commandEncoder.finish()]);

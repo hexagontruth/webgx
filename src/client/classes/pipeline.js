@@ -132,7 +132,7 @@ export default class Pipeline {
       layout: this.device.createPipelineLayout({
           bindGroupLayouts: [
             bindGroupLayout,
-            this.program.alternatingGroupLayout,
+            this.program.arrayGroupLayout,
           ],
       }),
     };
@@ -164,7 +164,7 @@ export default class Pipeline {
     });
   }
 
-  render() {
+  render(txIdx) {
     const { device, program, settings } = this;
     const { counter, cur, next } = program;
 
@@ -181,7 +181,7 @@ export default class Pipeline {
           clearValue: clearColor,
           loadOp: 'load',
           storeOp: 'store',
-          view: program.alternatingTextures[next][0].createView(),
+          view: program.drawTexture.createView(),
         },
       ],
     };
@@ -191,13 +191,56 @@ export default class Pipeline {
       this.vertexData, 0,
       this.vertexData.length
     );
+
+    commandEncoder.copyTextureToTexture(
+      {
+        texture: program.drawTexture,
+      },
+      {
+        texture: program.inputTexture,
+      },
+      {
+        width: this.settings.dim,
+        height: this.settings.dim,
+      },
+    );
+    commandEncoder.copyTextureToTexture(
+      {
+        texture: program.arrayTextures[cur],
+        origin: { x: 0, y: 0, z: txIdx },
+      },
+      {
+        texture: program.lastTexture,
+      },
+      {
+        width: this.settings.dim,
+        height: this.settings.dim,
+        depthOrArrayLayers: 1,
+      },
+    );
+
     const passEncoder = commandEncoder.beginRenderPass(renderPassDescriptor);
     passEncoder.setPipeline(this.renderPipeline);
     passEncoder.setVertexBuffer(0, this.vertexBuffer);
     passEncoder.setBindGroup(0, this.bindGroup);
-    passEncoder.setBindGroup(1, program.alternatingGroup[cur]);
+    passEncoder.setBindGroup(1, program.arrayGroup[cur]);
     passEncoder.draw(4);
     passEncoder.end();
+
+    commandEncoder.copyTextureToTexture(
+      {
+        texture: program.drawTexture,
+      },
+      {
+        texture: program.arrayTextures[next],
+        origin: { x: 0, y: 0, z: txIdx },
+      },
+      {
+        width: this.settings.dim,
+        height: this.settings.dim,
+        depthOrArrayLayers: 1,
+      },
+    );
     device.queue.submit([commandEncoder.finish()]);
   }
 }
