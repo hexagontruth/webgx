@@ -27,9 +27,10 @@ export default class Pipeline {
   }
 
   static async buildAll(program, defs) {
-    return Promise.all(
+    const pipelineArray = Promise.all(
       Object.entries(defs).map(([k, v]) => Pipeline.build(program, k, v))
     );
+    return Object.fromEntries((await pipelineArray).map((e) => [e.name, e]));
   }
 
   static async build(program, name, data) {
@@ -80,6 +81,17 @@ export default class Pipeline {
       this.vertexData, 0,
       this.vertexData.length
     );
+    this.drawTextures = Array(2).fill().map(() => {
+      return this.device.createTexture({
+        size: [settings.dim, settings.dim],
+        format: 'bgra8unorm',
+        usage:
+          GPUTextureUsage.COPY_DST |
+          GPUTextureUsage.COPY_SRC |
+          GPUTextureUsage.TEXTURE_BINDING |
+          GPUTextureUsage.RENDER_ATTACHMENT,
+      });
+    });
     const bindGroupLayout = this.device.createBindGroupLayout({
       entries: [
         {
@@ -177,10 +189,60 @@ export default class Pipeline {
         entries: [
           {
             binding: 0,
-            resource: this.program.outputTextures[idx].createView(),
+            resource: this.drawTextures[idx].createView(),
           },
         ],
       });
     });
+  }
+
+  render(counter=0) {
+    const cur = (counter + 2) % 2;
+    const next = (counter + 1) % 2;
+    const { device, program } = this;
+    
+    this.uniformData[0] = counter / program.settings.period;
+    this.uniformData[1] = Date.now();
+    this.uniformData[2] = counter;
+    device.queue.writeBuffer(this.globalUniformBuffer, 0, this.uniformData);
+
+    const commandEncoder = device.createCommandEncoder();
+    const clearColor = { r: 0.2, g: 0.5, b: 1.0, a: 1.0 };
+    const renderPassDescriptor = {
+      colorAttachments: [
+        {
+          clearValue: clearColor,
+          loadOp: 'load',
+          storeOp: 'store',
+          view: this.drawTextures[next].createView(),
+        },
+      ],
+    };
+    
+    device.queue.writeBuffer(
+      this.vertexBuffer, 0,
+      this.vertexData, 0,
+      this.vertexData.length
+    );
+    const passEncoder = commandEncoder.beginRenderPass(renderPassDescriptor);
+    passEncoder.setPipeline(this.renderPipeline);
+    passEncoder.setVertexBuffer(0, this.vertexBuffer);
+    passEncoder.setBindGroup(0, this.bindGroup);
+    passEncoder.setBindGroup(1, this.alternatingGroup[cur]);
+    passEncoder.draw(4);
+    passEncoder.end();
+    commandEncoder.copyTextureToTexture(
+      {
+        texture: this.drawTextures[next],
+      },
+      {
+        texture: app.player.ctx.getCurrentTexture(),
+      },
+      {
+        width: program.settings.dim,
+        height: program.settings.dim,
+      },
+    );
+    device.queue.submit([commandEncoder.finish()]);
   }
 }

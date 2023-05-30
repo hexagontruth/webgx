@@ -20,7 +20,10 @@ export default class Program {
       'depth-clip-control',
       'shader-f16',
     ],
-    generatePipelineDefs: () => {},
+    actions: {
+      main: () => null,
+    },
+    generatePipelineDefs: () => ({}),
   };
 
   static async build(name) {
@@ -33,6 +36,7 @@ export default class Program {
     this.name = name;
     this.shaderTextRequests = {};
     this.shaderTexts = {};
+    this.resetCounter();
   }
 
   async init() {
@@ -134,6 +138,22 @@ export default class Program {
 
   buildVertexData(data) {
     return new VertexData(this, data);
+  }
+
+  resetCounter() {
+    this.counter = -1;
+  }
+
+  stepCounter() {
+    this.counter += 1;
+  }
+
+  async run(action='main') {
+    await this.actions[action](this);
+  }
+
+  render(pipelineName, counter=this.counter) {
+    this.pipelines[pipelineName].render(counter);
   }
 
 }

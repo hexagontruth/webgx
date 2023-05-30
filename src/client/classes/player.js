@@ -12,7 +12,6 @@ export default class Player {
 
     this.play = this.config.autoplay;
     this.recording = false;
-    this.counter = -1;
     this.streamActive = false;
     this.stream = null;
 
@@ -72,104 +71,21 @@ export default class Player {
     });
   }
 
-  async render(...pipelines) {
-    this.counter ++;
-    const cur = this.counter % 2;
-    const next = (cur + 1) % 2;
-
-    pipelines = pipelines.length ? pipelines : Object.keys(this.program.pipelines);
-    await Promise.all(pipelines.map(async (pipelineName) => {
-      const pipeline = this.program.pipelines[pipelineName];
-      const commandEncoder = this.device.createCommandEncoder();
-      const clearColor = { r: 0.2, g: 0.5, b: 1.0, a: 1.0 };
-      const renderPassDescriptor = {
-        colorAttachments: [
-          {
-            clearValue: clearColor,
-            loadOp: 'load',
-            storeOp: 'store',
-            view: this.program.outputTextures[next].createView(),
-          },
-        ],
-      };
-
-      pipeline.uniformData[0] = this.counter / this.program.settings.period;
-      pipeline.uniformData[1] = Date.now();
-      pipeline.uniformData[2] = this.counter;
-      this.device.queue.writeBuffer(pipeline.globalUniformBuffer, 0, pipeline.uniformData);
-      if (this.streamActive) {
-        const { streamFitBox } = this;
-        const bitmap = await createImageBitmap(
-          this.videoCapture,
-          max(-streamFitBox.x, 0) * this.videoCapture.videoWidth / streamFitBox.w,
-          max(-streamFitBox.y, 0) * this.videoCapture.videoHeight / streamFitBox.h,
-          (streamFitBox.w + min(streamFitBox.x*2, 0)) * this.videoCapture.videoWidth / streamFitBox.w,
-          (streamFitBox.h + min(streamFitBox.y*2, 0)) * this.videoCapture.videoHeight / streamFitBox.h,
-          {
-            resizeWidth: streamFitBox.w + min(streamFitBox.x*2, 0),
-            resizeHeight: streamFitBox.h + min(streamFitBox.y*2, 0),
-          },
-        );
-        const textureOrigin = [
-          max(streamFitBox.x, 0),
-          max(streamFitBox.y, 0),
-        ];
-        this.device.queue.copyExternalImageToTexture(
-          {
-            source: bitmap,
-            // flipY: true,
-          },
-          {
-            texture: this.program.streamTexture,
-            origin: textureOrigin,
-          },
-          [bitmap.width, bitmap.height],
-          // {
-          //   width: min(bitmap.width, 1024),
-          //   height: min(bitmap.height, 1024),
-          // },
-          // [Math.min(bitmap.width, 1024), Math.min(bitmap.height, 1024)],
-        );
-      }
-      // pipeline.vertexData[1] = (this.counter/60) % 1 * 2 -1;
-      this.device.queue.writeBuffer(
-        pipeline.vertexBuffer, 0,
-        pipeline.vertexData, 0,
-        pipeline.vertexData.length
-      );
-      const passEncoder = commandEncoder.beginRenderPass(renderPassDescriptor);
-      passEncoder.setPipeline(pipeline.renderPipeline);
-      passEncoder.setVertexBuffer(0, pipeline.vertexBuffer);
-      passEncoder.setBindGroup(0, pipeline.bindGroup);
-      passEncoder.setBindGroup(1, pipeline.alternatingGroup[cur]);
-      passEncoder.draw(4);
-      passEncoder.end();
-      commandEncoder.copyTextureToTexture(
-        {
-          texture: this.program.outputTextures[next],
-        },
-        {
-          texture: this.ctx.getCurrentTexture(),
-        },
-        {
-          width: this.settings.dim,
-          height: this.settings.dim,
-        },
-      );
-      this.device.queue.submit([commandEncoder.finish()]);
-    }));
-
+  async render() {
+    await this.updateStream();
+    this.program.stepCounter();
+    await this.program.run();
     requestAnimationFrame(() => this.endFrame(), 0);
   }
 
   endFrame() {
-    const frameIdx = this.counter;
-    const cond = this.program.frameCond(this.counter);
+    const counter = this.program.counter;
+    const cond = this.program.frameCond(counter);
     if (this.recording && cond) {
       this.getDataUrl()
-      .then((data) => this.postFrame(data, frameIdx));
+      .then((data) => this.postFrame(data, counter));
     }
-    this.app.set('counter', this.counter);
+    this.app.set('counter', counter);
     this.play && this.setTimer(cond);
   }
 
@@ -192,10 +108,6 @@ export default class Player {
     }
   }
 
-  resetCounter() {
-    this.counter = -1;
-  }
-
   togglePlay(val=!this.play) {
     this.play = val;
     val && this.render();
@@ -204,7 +116,7 @@ export default class Player {
 
   toggleRecord(val=!this.recording) {
     this.recording = val;
-    val && this.resetCounter();
+    val && this.program.resetCounter();
   }
 
   setStream(stream) {
@@ -256,5 +168,37 @@ export default class Player {
       this.videoCapture?.videoHeight,
       this.config.streamFit,
     );
+  }
+
+  async updateStream() {
+    if (this.streamActive) {
+      const { streamFitBox } = this;
+      const bitmap = await createImageBitmap(
+        this.videoCapture,
+        max(-streamFitBox.x, 0) * this.videoCapture.videoWidth / streamFitBox.w,
+        max(-streamFitBox.y, 0) * this.videoCapture.videoHeight / streamFitBox.h,
+        (streamFitBox.w + min(streamFitBox.x*2, 0)) * this.videoCapture.videoWidth / streamFitBox.w,
+        (streamFitBox.h + min(streamFitBox.y*2, 0)) * this.videoCapture.videoHeight / streamFitBox.h,
+        {
+          resizeWidth: streamFitBox.w + min(streamFitBox.x*2, 0),
+          resizeHeight: streamFitBox.h + min(streamFitBox.y*2, 0),
+        },
+      );
+      const textureOrigin = [
+        max(streamFitBox.x, 0),
+        max(streamFitBox.y, 0),
+      ];
+      this.device.queue.copyExternalImageToTexture(
+        {
+          source: bitmap,
+          // flipY: true,
+        },
+        {
+          texture: this.program.streamTexture,
+          origin: textureOrigin,
+        },
+        [bitmap.width, bitmap.height],
+      );
+    }
   }
 }
