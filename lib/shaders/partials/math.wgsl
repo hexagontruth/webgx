@@ -1,3 +1,15 @@
+fn clamp2(v : vec2f, a : f32, b : f32) -> vec2f {
+  return clamp(v, vec2f(a), vec2f(b));
+}
+
+fn clamp3(v : vec3f, a : f32, b : f32) -> vec3f {
+  return clamp(v, vec3f(a), vec3f(b));
+}
+
+fn clamp4(v : vec4f, a : f32, b : f32) -> vec4f {
+  return clamp(v, vec4f(a), vec4f(b));
+}
+  
 fn scaleUv(uv : vec2f, s : f32) -> vec2f {
   return (uv * 2 - 1) * s * 0.5 + 0.5;
 }
@@ -115,6 +127,99 @@ fn m3(n: vec3f, m: vec3f) -> vec3f {
 
 fn m4(n: vec4f, m: vec4f) -> vec4f {
   return fract(n / m) * m;
+}
+
+
+fn sum2(p: vec2f) -> f32 {
+  return p.x + p.y;
+}
+
+fn sum3(p: vec3f) -> f32 {
+  return p.x + p.y + p.z;
+}
+
+fn sum4(p: vec4f) -> f32 {
+  return p.x + p.y + p.z + p.w;
+}
+
+fn prod2(p: vec2f) -> f32 {
+  return p.x * p.y;
+}
+
+fn prod3(p: vec3f) -> f32 {
+  return p.x * p.y * p.z;
+}
+
+fn prod4(p: vec4f) -> f32 {
+  return p.x * p.y * p.z * p.w;
+}
+
+fn project2(a: vec2f, b: vec2f) -> vec2f {
+  return dot(a, b) / dot(b, b) * b;
+}
+
+fn project3(a: vec3f, b: vec3f) -> vec3f {
+  return dot(a, b) / dot(b, b) * b;
+}
+
+fn project4(a: vec4f, b: vec4f) -> vec4f {
+  return dot(a, b) / dot(b, b) * b;
+}
+
+fn hexProject(p: vec3f) -> vec3f {
+  var n = project3(p, unit.xxx);
+  return p - n;
+}
+
+fn angle2vec(a: f32) -> vec2f {
+  return vec2f(cos(a), sin(a));
+}
+
+fn dreflect2(cv: vec2f, n: vec2f) -> vec2f {
+  return cv - n * min(0., dot(cv, n)) * 2.;
+}
+
+fn dreflect3(cv: vec3f, n: vec3f) -> vec3f {
+  return cv - n * min(0., dot(cv, n)) * 2.;
+}
+
+fn dreflect4(cv: vec4f, n: vec4f) -> vec4f {
+  return cv - n * min(0., dot(cv, n)) * 2.;
+}
+
+fn areflect2(cv: vec2f, a: f32) -> vec2f {
+  var n = angle2vec(a);
+  return cv - n * min(0., dot(cv, n)) * 2.;
+}
+
+fn treflect2(cv: vec2f, a: f32) -> vec2f {
+  return areflect2(cv, a * tau);
+}
+
+fn slength(u: vec2f, v: vec2f, p: vec2f) -> f32 {
+  var w : vec2f;
+  var x : vec2f;
+  var z : vec2f;
+  w = u - v;
+  x = p - v;
+  z = project2(x, w);
+  z = clamp(z, min(w, unit.yy), max(w, unit.yy));
+  return length(z - x);
+}
+
+fn slengthp(u: vec3f, v: vec3f, p: vec3f) -> f32 {
+  return slength(hex2cart(hexProject(u)), hex2cart(hexProject(v)), hex2cart(p));
+}
+
+fn clength(u: vec2f, v: vec2f, p: vec2f) -> f32 {
+  var w : vec2f;
+  var x : vec2f;
+  var z : vec2f;
+  w = u - v;
+  x = p - v;
+  z = project2(x, w);
+  z = clamp(z, min(w, unit.yy), max(w, unit.yy));
+  return amax3(cart2hex(z) - cart2hex(x));
 }
 
 fn gaussian2(v: vec2f, sd: f32) -> f32 {

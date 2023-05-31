@@ -11,8 +11,12 @@ fn fragment_main(data: VertexData) -> @location(0) vec4f
   var v : vec2f;
   c = unit.yyyy;
 
-  samp = texture(inputTexture, data.uv);
-  var g = gaussianBlur(2, 1., data.uv);
+  v = data.cv;
+  v = treflect2(v, gu.time);
+  v = v * 0.5 + 0.5;
+
+  samp = texture(inputTexture, v);
+  var g = gaussianBlur(2, 1., v);
   d = abs(samp - g);
 
   c = samp - d * 8.;

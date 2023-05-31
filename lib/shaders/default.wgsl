@@ -50,6 +50,7 @@ fn fragment_main(data: VertexData) -> @location(0) vec4f
   c.r += rgb2hsv(s).x;
   c.b += 1.- s.b;
   c = hsv2rgb(c);
+
   // c.b += 1. - smoothstep(1, 2, abs(data.position.x - 511.5));
   // c.g += 1. - smoothstep(1, 2, abs(data.position.y - 511.5));
 
