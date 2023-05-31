@@ -1,4 +1,5 @@
 #include partials/std-header
+#include partials/complex
 
 @fragment
 fn fragment_main(data: VertexData) -> @location(0) vec4f
@@ -7,6 +8,9 @@ fn fragment_main(data: VertexData) -> @location(0) vec4f
   var c : vec4f;
   var cv = data.cv;
   var uv = data.uv;
+
+  uv += csin(uv - gu.time);
+  uv = csin(uv);
 
   var hex = cart2hex(cv);
   // hex = sin(abs(hex) - gu.time);
