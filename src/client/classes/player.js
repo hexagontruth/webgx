@@ -145,7 +145,7 @@ export default class Player {
       this.streamActive = false;
       this.videoCapture.srcObject = null;
       this.setStreamFit();
-      const dim = this.program.settings.dim;
+      const dim = this.program?.settings.dim;
     }
   }
 

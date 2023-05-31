@@ -108,6 +108,13 @@ export default class Pipeline {
           visibility: GPUShaderStage.FRAGMENT,
           texture: {},
         },
+        {
+          binding: 5,
+          visibility: GPUShaderStage.FRAGMENT,
+          texture: {
+            viewDimension: '2d-array',
+          },
+        },
       ],
     });
     const pipelineDescriptor = {
@@ -159,6 +166,10 @@ export default class Pipeline {
         {
           binding: 4,
           resource: this.program.streamTexture.createView(),
+        },
+        {
+          binding: 5,
+          resource: this.program.resourceTextures.createView(),
         }
       ],
     });

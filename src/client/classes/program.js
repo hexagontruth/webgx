@@ -16,6 +16,8 @@ export default class Program {
       period: 360,
       skip: 1,
       texturePairs: 3,
+      output: {},
+      resources: [],
     },
     features: [
       'depth-clip-control',
@@ -55,6 +57,8 @@ export default class Program {
     }
 
     settings.exportDim = settings.exportDim ?? settings.dim;
+
+    this.resourceCount = this.settings.resources.length;
 
     this.adapter = await navigator.gpu.requestAdapter();
     this.features = this.features.filter((e) => this.adapter.features.has(e));
@@ -128,7 +132,7 @@ export default class Program {
         GPUTextureUsage.TEXTURE_BINDING,
     });
 
-    this.arrayTextures = indexMap(2).map((idx) => {
+    this.arrayTextures = indexMap(2).map(() => {
       return this.device.createTexture({
         size: [settings.dim, settings.dim, settings.texturePairs],
         format: 'bgra8unorm',
@@ -182,6 +186,26 @@ export default class Program {
       });
     });
 
+    this.resources = settings.resources.map((filename) => {
+      const img = new Image();
+      img.src = join('/data/resources', filename);
+      return img;
+    });
+
+    const resourceTextureDim =
+      
+    this.resourceTextures = this.device.createTexture({
+      size:
+        this.resourceCount > 2 ? [settings.dim, settings.dim, this.resourceCount] :
+        this.resourceCount > 1 ? [settings.dim, settings.dim, 2] :
+        [1, 1, 2],
+      format: 'rgba8unorm',
+      usage:
+        GPUTextureUsage.COPY_DST |
+        GPUTextureUsage.COPY_SRC |
+        GPUTextureUsage.TEXTURE_BINDING |
+        GPUTextureUsage.RENDER_ATTACHMENT,
+    });
 
     const pipelineDefs = this.generatePipelineDefs(this);
     this.pipelines = await Pipeline.buildAll(this, pipelineDefs);
