@@ -227,14 +227,18 @@ export default class Program {
     let chunkStart = 0;
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
-      const match = row.match(/^\#include ([\w-\/\.]+)(\.wgsl)?$/);
+      const match = row.match(/^\#(\w+)\s+(.*?)\s*$/);
       if (match) {
-        if (i > chunkStart)
-          chunks.push(rows.slice(chunkStart, i));
-        const includePath = join(dir, match[1] + '.wgsl');
-        let includeText = await this.loadShader(includePath);
-        chunks.push(includeText.split('\n'));
-        chunkStart = i + 1;
+        const directive = match[1];
+        const args = match[2].split(/\s+/);
+        if (directive == 'include') {
+          if (i > chunkStart)
+            chunks.push(rows.slice(chunkStart, i));
+          const includePath = join(dir, args[0] + '.wgsl');
+          let includeText = await this.loadShader(includePath);
+          chunks.push(includeText.split('\n'));
+          chunkStart = i + 1;
+        }
       }
     }
     chunks.push(rows.slice(chunkStart));

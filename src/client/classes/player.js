@@ -1,5 +1,6 @@
 import { createElement, getText, importObject, merge, postJson } from '../util';
 import Box from './box';
+import Dim from './dim';
 import Program from './program';
 
 const { max, min } = Math;

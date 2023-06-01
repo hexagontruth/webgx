@@ -179,7 +179,7 @@ export default class Pipeline {
     const { device, program, settings } = this;
     const { counter, cur, next } = program;
 
-    this.uniformData[0] = counter / settings.period;
+    this.uniformData[0] = (counter / settings.period) % 1;
     this.uniformData[1] = Date.now();
     this.uniformData[2] = counter;
     device.queue.writeBuffer(this.globalUniformBuffer, 0, this.uniformData);
