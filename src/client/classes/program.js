@@ -18,6 +18,7 @@ export default class Program {
       texturePairs: 3,
       output: {},
       resources: [],
+      params: {},
     },
     features: [
       'depth-clip-control',
@@ -219,30 +220,43 @@ export default class Program {
     return skipCond && startCond && stopCond;
   }
 
-  async loadShader(path) {
+  async loadShader(path, params) {
+    params = merge({}, params, this.settings.params);
+    const rows = await this.loadShaderRows(path, params);
+    return rows.join('\n');
+  }
+
+  async loadShaderRows(path, paramValues) {
+    // TODO: Make this actually async maybe idk
     const dir = path.substring(0, path.lastIndexOf('/'));
     const text = await getText(path);
-    const rows = text.split('\n');
-    const chunks = [];
-    let chunkStart = 0;
-    for (let i = 0; i < rows.length; i++) {
-      const row = rows[i];
+    const sourceRows = text.split('\n');
+    const params = {};
+    let rows = [];
+    while (sourceRows.length) {
+      let row = sourceRows.shift();
       const match = row.match(/^\#(\w+)\s+(.*?)\s*$/);
       if (match) {
         const directive = match[1];
         const args = match[2].split(/\s+/);
         if (directive == 'include') {
-          if (i > chunkStart)
-            chunks.push(rows.slice(chunkStart, i));
           const includePath = join(dir, args[0] + '.wgsl');
-          let includeText = await this.loadShader(includePath);
-          chunks.push(includeText.split('\n'));
-          chunkStart = i + 1;
+          let includeRows = await this.loadShaderRows(includePath);
+          rows = rows.concat(includeRows);
+        }
+        else if (directive == 'param') {
+          const [key, value] = match[2].split(/\s+/);
+          params[key] = paramValues[key] ?? value;
         }
       }
+      else {
+        Object.entries(params).forEach(([key, value]) => {
+          row = row.replaceAll(`$${key}`, value);
+        });
+        rows.push(row);
+      }
     }
-    chunks.push(rows.slice(chunkStart));
-    return chunks.map((e) => e.join('\n')).join('\n');
+    return rows;
   }
 
   buildVertexData(data) {

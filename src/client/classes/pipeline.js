@@ -4,6 +4,7 @@ export default class Pipeline {
   static generateDefaults() {
     return {
       shader: 'default.wgsl',
+      params: {},
       vertexData: new Float32Array([
         -1, -1, 0, 1,
         1, -1, 0, 1,
@@ -52,7 +53,7 @@ export default class Pipeline {
   async init() {
     const { settings } = this;
     const shaderPath = join('/data/shaders', this.data.shader);
-    this.shaderText = await this.program.loadShader(shaderPath);
+    this.shaderText = await this.program.loadShader(shaderPath, this.data.params);
 
     this.shaderModule = this.device.createShaderModule({
       code: this.shaderText,
