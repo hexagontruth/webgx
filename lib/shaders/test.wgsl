@@ -1,33 +1,26 @@
-struct Cursor {
-  pos: vec2<f32>,
-  vel: vec2<f32>,
-  acc: vec2<f32>,
-  downAt: f32,
-  upAt: f32,
-  downPos: vec2<f32>,
-}
+#include structs/global-uniforms
+#include structs/vertex-data
+#include partials/constants
+#include partials/math
+#include partials/color
 
-struct VertexOut {
-  @builtin(position) position : vec4<f32>,
-  @location(1) uv : vec2<f32>, 
-};
+@group(0) @binding(0) var<uniform> gu: GlobalUniforms;
 
-@group(0) @binding(0) var<uniform> uCounter : u32;
-@group(0) @binding(1) var<uniform> uPeriod : u32;
-@group(0) @binding(2) var<uniform> uTime : f32;
-@group(0) @binding(3) var<uniform> uCursor : Cursor;
-
-@vertex
-fn vertex_main(@location(0) position: vec4<f32>) -> VertexOut
-{
-  var output : VertexOut;
-  output.position = position;
-  output.uv = position.xy * .5 + .5;
-  return output;
-}
+#include partials/vertex-default
 
 @fragment
-fn fragment_main(fragData : VertexOut) -> @location(0) vec4<f32>
+fn fragment_main(data: VertexData) -> @location(0) vec4f
 {
-  return vec4(fragData.uv, uTime, 1);
+  var c : vec3f;
+  c.r = floor((data.uv.y - gu.time) * 12)/12;
+  c.r += step(1/sr3*14/12., amax3(cart2hex(data.cv)))/2.;
+  c.r += step(1/sr3*10/12., amax3(cart2hex(data.cv)))/2.;
+  c.r += step(1/sr3*6/12., amax3(cart2hex(data.cv)))/2.;
+  c.r += floor(data.uv.x * 2)/2;
+  c.r += floor(data.uv.y * 2)/2;
+
+  c.g = 0.75;
+  c.b = 5./6;
+  c = hsv2rgb(vec4f(c, 1)).xyz;
+  return vec4f(c, 1);
 }

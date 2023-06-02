@@ -42,7 +42,7 @@ fn fragment_main(data: VertexData) -> @location(0) vec4f
   // s += texture(lastTexture, uv + vec2f(sin(gu.time * tau), cos(gu.time * tau)/4.));
   s = s / 2.;
 
-  s += textureSample(resourceTextures, linearSampler, uv, 0);
+  // s += textureSample(resourceTextures, linearSampler, uv, 0);
   return s;
 
   c = rgb2hsv(c);
