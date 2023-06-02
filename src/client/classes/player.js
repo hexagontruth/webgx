@@ -47,7 +47,7 @@ export default class Player {
     this.settings = this.program.settings;
     const { settings } = this.program;
 
-    this.canvas.width = this.canvas.height = settings.dim;
+    this.canvas.width = this.canvas.height = settings.dim[0];
     this.exportCanvas.width = this.exportCanvas.height = settings.exportDim;
   }
 
@@ -82,7 +82,7 @@ export default class Player {
 
   async getDataUrl() {
     const dim = this.program.settings.exportDim ?? this.program.settings.dim;
-    this.exportCtx.drawImage(this.canvas, 0, 0, dim, dim);
+    this.exportCtx.drawImage(this.canvas, 0, 0, ...dim);
     return await this.exportCanvas.toDataURL('image/png', 1);
   }
 
@@ -132,13 +132,6 @@ export default class Player {
         this.setStreamFit();
       }
       this.videoCapture.srcObject = this.stream;
-
-      let args = {
-        dim: this.program.settings.dim,
-        img: this.videoCapture,
-        fit: this.app.config.streamFit
-      };
-
     }
     // Remove stream
     else {
@@ -146,7 +139,6 @@ export default class Player {
       this.streamActive = false;
       this.videoCapture.srcObject = null;
       this.setStreamFit();
-      const dim = this.program?.settings.dim;
     }
   }
 
@@ -161,13 +153,12 @@ export default class Player {
         bytesPerRow: 4 * 4 * 1024,
       },
       {
-        width: dim,
-        height: dim,
+        width: dim.width,
+        height: dim.height,
       },
     );
     return this.streamFitBox = Box.fitOffset(
-      this.program?.settings.dim,
-      this.program?.settings.dim,
+      ...new Dim(this.program?.settings.dim),
       this.videoCapture?.videoWidth,
       this.videoCapture?.videoHeight,
       this.config.streamFit,

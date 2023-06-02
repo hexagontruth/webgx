@@ -1,4 +1,4 @@
-import { getText, join, merge } from '../util';
+import { join, merge } from '../util';
 
 export default class Pipeline {
   static generateDefaults() {
@@ -75,7 +75,7 @@ export default class Pipeline {
       0, // clock
       0, // counter
       settings.period,
-      settings.dim, settings.dim,
+      ...settings.dim,
     ]);
     this.device.queue.writeBuffer(
       this.vertexBuffer, 0,
@@ -212,8 +212,8 @@ export default class Pipeline {
         texture: program.inputTexture,
       },
       {
-        width: this.settings.dim,
-        height: this.settings.dim,
+        width: this.settings.dim.width,
+        height: this.settings.dim.height,
       },
     );
     commandEncoder.copyTextureToTexture(
@@ -225,8 +225,8 @@ export default class Pipeline {
         texture: program.lastTexture,
       },
       {
-        width: this.settings.dim,
-        height: this.settings.dim,
+        width: this.settings.dim.width,
+        height: this.settings.dim.height,
         depthOrArrayLayers: 1,
       },
     );
@@ -248,8 +248,8 @@ export default class Pipeline {
         origin: { x: 0, y: 0, z: txIdx },
       },
       {
-        width: this.settings.dim,
-        height: this.settings.dim,
+        width: this.settings.dim.width,
+        height: this.settings.dim.height,
         depthOrArrayLayers: 1,
       },
     );

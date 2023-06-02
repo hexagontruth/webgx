@@ -1,5 +1,6 @@
 import { getText, importObject, indexMap, join, merge } from '../util';
 
+import Dim from './dim';
 import Pipeline from './pipeline';
 import VertexData from './vertex-data';
 
@@ -10,6 +11,7 @@ export default class Program {
     settings: {
       dim: 1024,
       exportDim: null,
+      resourceDim: null,
       interval: 30,
       start: 0,
       stop: null,
@@ -57,7 +59,9 @@ export default class Program {
       settings.stop = settings.start + settings.period;
     }
 
+    settings.dim = new Dim(settings.dim);
     settings.exportDim = settings.exportDim ?? settings.dim;
+    settings.resourceDim = settings.ResourceDim ?? settings.dim;
 
     this.resourceCount = this.settings.resources.length;
 
@@ -98,7 +102,7 @@ export default class Program {
     };
 
     this.streamTexture = this.device.createTexture({
-      size: [settings.dim, settings.dim],
+      size: settings.dim,
       format: 'rgba8unorm',
       usage:
         GPUTextureUsage.COPY_DST |
@@ -107,7 +111,7 @@ export default class Program {
     });
 
     this.drawTexture = this.device.createTexture({
-      size: [settings.dim, settings.dim],
+      size: settings.dim,
       format: 'bgra8unorm',
       usage:
         GPUTextureUsage.COPY_SRC |
@@ -116,7 +120,7 @@ export default class Program {
     });
 
     this.lastTexture = this.device.createTexture({
-      size: [settings.dim, settings.dim],
+      size: settings.dim,
       format: 'bgra8unorm',
       usage:
         GPUTextureUsage.COPY_DST |
@@ -125,7 +129,7 @@ export default class Program {
     });
 
     this.inputTexture = this.device.createTexture({
-      size: [settings.dim, settings.dim],
+      size: settings.dim,
       format: 'bgra8unorm',
       usage:
         GPUTextureUsage.COPY_DST |
@@ -135,7 +139,7 @@ export default class Program {
 
     this.arrayTextures = indexMap(2).map(() => {
       return this.device.createTexture({
-        size: [settings.dim, settings.dim, settings.texturePairs],
+        size: [...settings.dim, settings.texturePairs],
         format: 'bgra8unorm',
         usage:
           GPUTextureUsage.COPY_DST |
@@ -192,13 +196,11 @@ export default class Program {
       img.src = join('/data/resources', filename);
       return img;
     });
-
-    const resourceTextureDim =
       
     this.resourceTextures = this.device.createTexture({
       size:
-        this.resourceCount > 2 ? [settings.dim, settings.dim, this.resourceCount] :
-        this.resourceCount > 1 ? [settings.dim, settings.dim, 2] :
+        this.resourceCount > 2 ? [...settings.dim, this.resourceCount] :
+        this.resourceCount > 1 ? [...settings.dim, 2] :
         [1, 1, 2],
       format: 'rgba8unorm',
       usage:
@@ -296,8 +298,8 @@ export default class Program {
         texture: this.ctx.getCurrentTexture(),
       },
       {
-        width: this.settings.dim,
-        height: this.settings.dim,
+        width: this.settings.dim.width,
+        height: this.settings.dim.height,
         depthOrArrayLayers: 1,
       },
     );
