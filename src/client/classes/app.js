@@ -1,5 +1,5 @@
 import { merge, importObject, postJson } from '../util';
-import Box from './box';
+import Fit from './fit';
 import Config from './config';
 import Player from './player';
 
@@ -221,7 +221,9 @@ export default class App {
 
   handleResize() {
     if (!this.config) return;
-    const box = Box.fitOffset(window.innerWidth, window.innerHeight, 1, 1, this.config.fit);
+    const fit = new Fit(window.innerWidth, window.innerHeight, 1, 1, this.config.fit);
+    const box = fit.child;
+    console.log(box);
     this.elements.mainContainer.style.inset = `${box.y}px ${box.x}px`;
   }
 }

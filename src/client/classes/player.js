@@ -1,5 +1,4 @@
-import { createElement, getText, importObject, merge, postJson } from '../util';
-import Box from './box';
+import { createElement } from '../util';
 import Dim from './dim';
 import Fit from './fit';
 window.Fit = Fit;
@@ -159,7 +158,7 @@ export default class Player {
         height: dim.height,
       },
     );
-    return this.streamFitBox = Box.fitOffset(
+    return this.streamFitBox = new Fit(
       ...new Dim(this.program?.settings.dim),
       this.videoCapture?.videoWidth,
       this.videoCapture?.videoHeight,
@@ -169,7 +168,7 @@ export default class Player {
 
   async updateStream() {
     if (this.streamActive) {
-      const { streamFitBox } = this;
+      const streamFitBox = this.streamFitBox.child
       const bitmap = await createImageBitmap(
         this.videoCapture,
         max(-streamFitBox.x, 0) * this.videoCapture.videoWidth / streamFitBox.w,
