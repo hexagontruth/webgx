@@ -34,4 +34,8 @@ export default class Dim extends Array {
   get d() {
     return this.depth;
   }
+
+  get size() {
+    return this.slice();
+  }
 }

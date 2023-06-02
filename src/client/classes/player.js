@@ -1,6 +1,8 @@
 import { createElement, getText, importObject, merge, postJson } from '../util';
 import Box from './box';
 import Dim from './dim';
+import Fit from './fit';
+window.Fit = Fit;
 import Program from './program';
 
 const { max, min } = Math;
