@@ -145,14 +145,14 @@ export default class Player {
   }
 
   setStreamFit() {
-    const dim = this.program?.settings.dim;
+    const dim = new Dim(this.program?.settings.dim);
     this.device?.queue.writeTexture(
       {
         texture: this.program.streamTexture,
       },
-      new Float32Array(dim * dim * 4),
+      new Float32Array(dim.area * 4),
       {
-        bytesPerRow: 4 * 4 * 1024,
+        bytesPerRow: 4 * 4 * dim.width,
       },
       {
         width: dim.width,

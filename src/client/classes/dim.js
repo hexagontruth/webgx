@@ -5,8 +5,11 @@ export default class Dim extends Array {
       if (args[0] instanceof Dim) {
         this.push(...args[0]);
       }
-      else {
+      else if (typeof args[0] == 'number') {
         this.push(...args.concat(args));
+      }
+      else {
+        this.push(0, 0);
       }
     } else {
       this.push(...args);
@@ -35,7 +38,7 @@ export default class Dim extends Array {
     return this.depth;
   }
 
-  get size() {
-    return this.slice();
+  get area() {
+    return this[0] * this[1];
   }
 }
