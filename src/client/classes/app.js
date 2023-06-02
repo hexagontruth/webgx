@@ -223,7 +223,6 @@ export default class App {
     if (!this.config) return;
     const fit = new Fit(window.innerWidth, window.innerHeight, 1, 1, this.config.fit);
     const box = fit.child;
-    console.log(box);
     this.elements.mainContainer.style.inset = `${box.y}px ${box.x}px`;
   }
 }

@@ -287,7 +287,7 @@ export default class Program {
   draw(txIdx) {
     const commandEncoder = this.device.createCommandEncoder();
     commandEncoder.copyTextureToTexture(
-      txIdx ? {
+      txIdx != null ? {
         // texture: this.alternatingTextures[this.next][0],
         texture: this.arrayTextures[this.next],
         origin: { x: 0, y: 0, z: txIdx },
