@@ -1,4 +1,6 @@
-export default class Box extends Array {
+import BaseDim from './base-dim';
+
+export default class Box extends BaseDim {
   constructor(x=0, y=0, w=0, h=0) {
     super();
     if (isNaN(x + y + w + h)) {
@@ -20,25 +22,8 @@ export default class Box extends Array {
   get y2() {
     return this.y + this.h;
   }
-  get width() {
-    return this[2];
-  }
-  get height() {
-    return this[3];
-  }
 
-  get w() {
-    return this.width;
-  }
-
-  get h() {
-    return this.height;
-  }
-
-  get area() {
-    return this[0] * this[1];
-  }
-  get aspectRatio() {
-    return this.w / this.h;
+  get pos() {
+    return this.slice(0, 2);
   }
 }

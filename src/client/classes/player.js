@@ -160,29 +160,28 @@ export default class Player {
     );
     return this.streamFitBox = new Fit(
       ...new Dim(this.program?.settings.dim),
-      this.videoCapture?.videoWidth,
-      this.videoCapture?.videoHeight,
+      ...new Dim(this.videoCapture),
       this.config.streamFit,
     );
   }
 
   async updateStream() {
     if (this.streamActive) {
-      const streamFitBox = this.streamFitBox.child
+      const { child, parent } = this.streamFitBox;
       const bitmap = await createImageBitmap(
         this.videoCapture,
-        max(-streamFitBox.x, 0) * this.videoCapture.videoWidth / streamFitBox.w,
-        max(-streamFitBox.y, 0) * this.videoCapture.videoHeight / streamFitBox.h,
-        (streamFitBox.w + min(streamFitBox.x*2, 0)) * this.videoCapture.videoWidth / streamFitBox.w,
-        (streamFitBox.h + min(streamFitBox.y*2, 0)) * this.videoCapture.videoHeight / streamFitBox.h,
+        max(-child.x, 0) * this.videoCapture.videoWidth / child.w,
+        max(-child.y, 0) * this.videoCapture.videoHeight / child.h,
+        (child.w + min(child.x*2, 0)) * this.videoCapture.videoWidth / child.w,
+        (child.h + min(child.y*2, 0)) * this.videoCapture.videoHeight / child.h,
         {
-          resizeWidth: streamFitBox.w + min(streamFitBox.x*2, 0),
-          resizeHeight: streamFitBox.h + min(streamFitBox.y*2, 0),
+          resizeWidth: child.w + min(child.x*2, 0),
+          resizeHeight: child.h + min(child.y*2, 0),
         },
       );
       const textureOrigin = [
-        max(streamFitBox.x, 0),
-        max(streamFitBox.y, 0),
+        max(child.x, 0),
+        max(child.y, 0),
       ];
       this.device.queue.copyExternalImageToTexture(
         {

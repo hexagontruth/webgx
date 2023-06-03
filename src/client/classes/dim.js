@@ -1,44 +1,28 @@
-export default class Dim extends Array {
+import BaseDim from './base-dim';
+
+export default class Dim extends BaseDim {
   constructor(...args) {
     super();
     if (args.length == 1) {
-      if (args[0] instanceof Dim) {
-        this.push(...args[0]);
+      const arg = args[0];
+      if (arg instanceof BaseDim) {
+        this.push(...arg.dim);
       }
-      else if (typeof args[0] == 'number') {
-        this.push(...args.concat(args));
+      else if (arg instanceof HTMLVideoElement) {
+        this.push(arg.videoWidth, arg.videoHeight);
+      }
+      else if (arg instanceof Image) {
+        this.push(arg.width, arg.height);
+      }
+      else if (typeof arg == 'number') {
+        this.push(arg, arg);
       }
       else {
         this.push(0, 0);
       }
-    } else {
+    }
+    else {
       this.push(...args);
     }
-  }
-  get width() {
-    return this[0];
-  }
-  get height() {
-    return this[1];
-  }
-
-  get depth() {
-    return this[2];
-  }
-
-  get w() {
-    return this.width;
-  }
-
-  get h() {
-    return this.height;
-  }
-
-  get d() {
-    return this.depth;
-  }
-
-  get area() {
-    return this[0] * this[1];
   }
 }

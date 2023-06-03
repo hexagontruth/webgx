@@ -1,6 +1,8 @@
 import Box from './box';
 import Dim from './dim';
 
+const { max, min } = Math;
+
 export default class Fit {
   fit = 'contain';
 
@@ -35,5 +37,17 @@ export default class Fit {
   
     this.child = new Box(cx, cy, cw, ch);
     this.parent = new Box(px, py, pw, ph);
+
+    this.childCrop = new Box(
+      max(-cx, 0) * ocw / cw,
+      max(-cy, 0) * och / ch,
+      (cw + min(cx * 2, 0)) * ocw / cw,
+      (ch + min(cy * 2, 0)) * och / ch,
+    );
+    
+    this.childScale = new Dim(
+      cw + min(cx * 2, 0),
+      ch + min(cy * 2, 0),
+    );
   }
 }
