@@ -88,7 +88,13 @@ export default class App {
     }
     else if (key == 'recordVideo') {
       this.elements.recordVideoButton.classList.toggle('active', val);
-      postJson('/api/video', { set: val });
+      const data = {
+        set: val,
+      }
+      if (val && this.player) {
+        data.settings = this.player.program.settings.output;
+      }
+      postJson('/api/video', data);
     }
     else {
       // TODO: Something

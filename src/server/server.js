@@ -4,7 +4,7 @@ const { spawn, execSync } = require('child_process');
 
 const express = require('express');
 
-const { baseJoin } = require('./util');
+const { baseJoin, merge } = require('./util');
 
 // ---
 
@@ -39,7 +39,7 @@ class Server {
       const result = {};
 
       if (typeof req.body.set == 'boolean') {
-        req.body.set ? this.startVideo() : this.endVideo();
+        req.body.set ? this.startVideo(req.body.settings) : this.endVideo();
         result.set = req.body.set;
         console.log(`Video recording ${this.recordingVideo ? 'started' : 'ended'}`);
       }
@@ -81,23 +81,23 @@ class Server {
     });
   }
 
-  startVideo() {
-    const { config } = this;
+  startVideo(settings) {
+    const config = merge({}, this.config.media, settings);
     if (this.recordingVideo) return;
     this.recordingVideo = true;
-    let filepath = join(config.media.outputDir, config.media.videoFilename);
+    let filepath = join(config.outputDir, config.videoFilename);
     filepath = this.generateFilepath(filepath, this.videoIdxChars, this.videoIdx++);
-    let args = [
+    const args = [
       '-y',
       '-c:v', 'png',
-      '-r', `${config.media.fps}`,
+      '-r', `${config.fps}`,
       '-f', 'image2pipe',
       '-i', '-',
       '-pix_fmt', 'yuv420p',
 
-      '-vf', `scale=${config.media.width}x${config.media.height}`,
-      '-c:v', config.media.codec,
-      '-crf', `${config.media.crf}`,
+      '-vf', `scale=${config.width}x${config.height}`,
+      '-c:v', config.codec,
+      '-crf', `${config.crf}`,
       filepath,
     ];
     this.child = spawn('ffmpeg', args, {stdio: ['pipe', 'pipe', 'pipe']});

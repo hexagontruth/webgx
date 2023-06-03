@@ -167,16 +167,13 @@ export default class Player {
 
   async updateStream() {
     if (this.streamActive) {
-      const { child, parent } = this.streamFitBox;
+      const { child, childCrop, childScale } = this.streamFitBox;
       const bitmap = await createImageBitmap(
         this.videoCapture,
-        max(-child.x, 0) * this.videoCapture.videoWidth / child.w,
-        max(-child.y, 0) * this.videoCapture.videoHeight / child.h,
-        (child.w + min(child.x*2, 0)) * this.videoCapture.videoWidth / child.w,
-        (child.h + min(child.y*2, 0)) * this.videoCapture.videoHeight / child.h,
+        ...childCrop,
         {
-          resizeWidth: child.w + min(child.x*2, 0),
-          resizeHeight: child.h + min(child.y*2, 0),
+          resizeWidth: childScale.width,
+          resizeHeight: childScale.height,
         },
       );
       const textureOrigin = [
