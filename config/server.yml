@@ -4,7 +4,6 @@ default:
     host: localhost
   media:
     width: 1440
-    height: 1440
     fps: 60
     codec: libx264
     crf: 15

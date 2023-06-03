@@ -49,7 +49,8 @@ export default class Player {
     const { settings } = this.program;
 
     this.canvas.width = this.canvas.height = settings.dim[0];
-    this.exportCanvas.width = this.exportCanvas.height = settings.exportDim;
+    this.exportCanvas.width = settings.exportDim.width;
+    this.exportCanvas.height = settings.exportDim.height;
   }
 
   setTimer(cond) {

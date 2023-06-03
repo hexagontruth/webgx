@@ -60,8 +60,8 @@ export default class Program {
     }
 
     settings.dim = new Dim(settings.dim);
-    settings.exportDim = settings.exportDim ?? settings.dim;
-    settings.resourceDim = settings.ResourceDim ?? settings.dim;
+    settings.exportDim =new Dim(settings.exportDim ?? settings.dim);
+    settings.resourceDim = new Dim(settings.ResourceDim ?? settings.dim);
 
     this.resourceCount = this.settings.resources.length;
 

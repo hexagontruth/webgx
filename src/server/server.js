@@ -95,7 +95,7 @@ class Server {
       '-i', '-',
       '-pix_fmt', 'yuv420p',
 
-      '-vf', `scale=${config.width}x${config.height}`,
+      '-vf', `scale=${config.width}:-1`,
       '-c:v', config.codec,
       '-crf', `${config.crf}`,
       filepath,
