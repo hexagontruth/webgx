@@ -73,30 +73,110 @@ fn hexbin(base : vec2f, s : f32) -> vec4f {
   return vec4f(dv, coord);
 }
 
-// fn hexbin(bv: vec2f, s: f32) -> vec4f {
-//   var res = s / 3.;
-//   var cv : vec2f;
-//   var dv : vec2f;
-//   cv = bv;
-//   cv *= res;
+fn interpolatedCubic(p: vec3f) -> array<vec4f,3> {
+  var q : vec3f;
+  var v : array<vec3f,3>;
+  var w : array<vec4f,3>;
+  var alt : vec3f;
+  var i0 : i32;
+  var i1 : i32;
+  var i2 : i32;
 
-//   var r = vec2f(1., 1. / sr3);
-//   r = vec2f(r.y, r.x);
-//   var h = r * 0.5;
-  
-//   var a = (cv % r) - h;
-//   var b = ((cv - h) % r) - h;
+  var fl = floor(p);
+  var cl = ceil(p);
+  var r = round(p);
+  var d = abs(r - p);
 
-//   var delta = length(a) - length(b);
-//   dv = select(b, a, delta < 0);
+  for (var i = 0; i < 3; i++) {
+    alt[i] = select(fl[i], cl[i], r[i] == fl[i]);
+  }
 
-//   a = modf(bv, r) - h;
-//   b = modf(bv - h, r) - h;
-//   var coord = select(b, a, length(a) < length(b));
-//   coord = (cv - dv) / res;
-//   dv *= 3.;
-//   return vec4f(dv, coord);
-// }
+  if (d.x > d.y && d.x > d.z) {
+    i0 = 0;
+  }
+  else if (d.y > d.z) {
+    i0 = 1;
+  }
+  else {
+    i0 = 2;
+  }
+  i1 = (i0 + 1) % 3;
+  i2 = (i0 + 2) % 3;
+
+  r[i0] = -r[i1] - r[i2];
+  v[0] = r;
+  v[1] = r;
+  v[2] = r;
+  v[1][i1] = alt[i1];
+  v[1][i0] = -v[1][i1] - v[1][i2];
+  v[2][i2] = alt[i2];
+  v[2][i0] = -v[2][i1] - v[2][i2];
+
+  for (var i = 0; i < 3; i++) {
+    q[i] = 1. - amax3(v[i] - p);
+  }
+
+  q = q / sum3(q);
+
+  w[0] = vec4f(v[0], q.x);
+  w[1] = vec4f(v[1], q.y);
+  w[2] = vec4f(v[2], q.z);
+
+  if (q.y < q.z) {
+    // var temp = v[1];
+    // v[1] = v[2];
+    // v[2] = temp;
+    w = array(w[0], w[2], w[1]);
+  }
+  return w;
+}
+
+fn extendedCubic(p: vec3f) -> array<vec3f, 12> {
+  var dif : vec3f;
+  var r = interpolatedCubic(p);
+  var v : array<vec3f, 12>;
+  v[0] = r[0].xyz;
+  v[1] = r[1].xyz;
+  v[2] = r[2].xyz;
+  for (var i = 0; i < 3; i++) {
+    for (var j = 0; j < 2; j++) {
+      dif = v[(i + j + 1) % 3] - v[(i + j + 2) % 3];
+      v[3 + j + i * 3] = v[i] - dif;
+    }
+    dif = v[i] - v[(i + 1) % 3];
+    v[5 + i * 3] = v[i] + dif;
+  }
+  return v;
+}
+
+fn rot2(p: vec2f, a: f32) -> vec2f {
+  var ca = cos(a);
+  var sa = sin(a);
+  return mat2x2(
+    ca, sa,
+    -sa, ca
+  ) * p;
+}
+
+fn rot3(p: vec3f, u: vec3f, a: f32) -> vec3f {
+  var cosa = cos(a);
+  var cosa1 = 1. - cosa;
+  var sina = sin(a);
+  var m = mat3x3(
+    cosa + u.x * u.x * cosa1,         u.x * u.y * cosa1 + u.z * sina,   u.z * u.x * cosa1 - u.y * sina,
+    u.x * u.y * cosa1 - u.z * sina,   cosa + u.y * u.y * cosa1,         u.z * u.y * cosa1 + u.x * sina,
+    u.x * u.z * cosa1 + u.y * sina,   u.y * u.z * cosa1 - u.x * sina,   cosa + u.z * u.z * cosa1
+  );
+  return m * p;
+}
+
+fn trot2(p: vec2f, a: f32) -> vec2f {
+  return rot2(p, a * tau);
+}
+
+fn trot3(p: vec3f, u: vec3f, a: f32) -> vec3f {
+  return rot3(p, u, a * tau);
+}
 
 fn amax2(v: vec2f) -> f32 {
   var a = abs(v);

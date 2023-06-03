@@ -21,11 +21,20 @@ fn fragment_main(data: VertexData) -> @location(0) vec4f
   var r = step(0.75, amax3(hex));
 
   var tv = uv;
+
+  hex *= 36.;
+  var dist = interpolatedCubic(hex);
+  hex = dist[0].xyz /36.;
+  tv = hex2cart(hex);
+  tv = tv * 0.5 + 0.5;
+  // tv = tv * 2 + 1;
+  // tv = trot2(tv, gu.time);
+  // tv = tv * 0.5 + 0.5;
   // if (uv.x > gu.time) {
   //   tv.x = abs(fract(tv.x + 0.25));
   // }
   var flurg = (floor(tv.x * 6)/6. % 2);
-  tv.x = fract(tv.x + gu.time* 0.5 + flurg);
+  tv.x = fract(tv.x + gu.time* 1. + flurg);
   // tv.y = mix(tv.y, 1.-tv.y, flurg);
   var s = texture(stream, scaleUv(tv, 1.5));
   var t = textureRepeat(stream, scaleUv(tv, 1.5));
