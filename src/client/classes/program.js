@@ -1,10 +1,13 @@
 import { getText, importObject, indexMap, join, merge } from '../util';
 
 import Dim from './dim';
+import Fit from './fit';
 import Pipeline from './pipeline';
 import VertexData from './vertex-data';
 
 const PROGRAM_PATH = '/data/programs/';
+
+const { max, min } = Math;
 
 export default class Program {
   static programDefaults = {
@@ -191,16 +194,10 @@ export default class Program {
       });
     });
 
-    this.resources = settings.resources.map((filename) => {
-      const img = new Image();
-      img.src = join('/data/resources', filename);
-      return img;
-    });
-      
     this.resourceTextures = this.device.createTexture({
       size:
-        this.resourceCount > 2 ? [...settings.dim, this.resourceCount] :
-        this.resourceCount > 1 ? [...settings.dim, 2] :
+        this.resourceCount > 1 ? [...settings.dim, this.resourceCount] :
+        this.resourceCount > 0 ? [...settings.dim, 2] :
         [1, 1, 2],
       format: 'rgba8unorm',
       usage:
@@ -208,6 +205,47 @@ export default class Program {
         GPUTextureUsage.COPY_SRC |
         GPUTextureUsage.TEXTURE_BINDING |
         GPUTextureUsage.RENDER_ATTACHMENT,
+    });
+
+    this.resources = settings.resources.map((filename, idx) => {
+      const img = new Image();
+      img.onload = async () => {
+        const fit = new Fit(
+          ...this.settings.dim,
+          ...new Dim(img),
+          'cover',
+        );
+        const { child, childCrop, childScale } = fit;
+        const bitmap = await createImageBitmap(
+          img,
+          ...childCrop,
+          {
+            resizeWidth: childScale.width,
+            resizeHeight: childScale.height,
+          },
+        );
+        const textureOrigin = [
+          max(child.x, 0),
+          max(child.y, 0),
+        ];
+        this.device.queue.copyExternalImageToTexture(
+          {
+            source: bitmap,
+            // flipY: true,
+          },
+          {
+            texture: this.resourceTextures,
+            origin: {
+              x: max(child.x, 0),
+              y: max(child.y, 0),
+              z: idx,
+            }
+          },
+          [bitmap.width, bitmap.height],
+        );
+      }
+      img.src = join('/data/resources', filename);
+      return img;
     });
 
     const pipelineDefs = this.generatePipelineDefs(this);

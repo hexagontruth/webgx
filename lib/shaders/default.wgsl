@@ -22,9 +22,9 @@ fn fragment_main(data: VertexData) -> @location(0) vec4f
 
   var tv = uv;
 
-  hex *= 36.;
+  hex *= 60.;
   var dist = interpolatedCubic(hex);
-  hex = dist[0].xyz /36.;
+  hex = dist[0].xyz /60.;
   tv = hex2cart(hex);
   tv = tv * 0.5 + 0.5;
   // tv = tv * 2 + 1;
@@ -45,6 +45,8 @@ fn fragment_main(data: VertexData) -> @location(0) vec4f
   if (uv.y < 1./3) {
     s = u;
   }
+
+  // s = textureSample(resourceTextures, linearSampler, uv, 0);
 
   // s += textureIdx(uv, 0);
   s += texture(inputTexture, uv);
