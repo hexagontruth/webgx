@@ -3,9 +3,10 @@
 #include ../structs/vertex-data
 
 #include constants
+#include bindings
 #include math
 #include color
 #include texture
-#include bindings
+
 
 #include vertex-default

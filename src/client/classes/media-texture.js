@@ -6,10 +6,12 @@ const { max, min } = Math;
 export default class MediaTexture {
   static async awaitLoad(device, texture, media, fit='contain', idx=undefined) {
     return new Promise((resolve) => {
-      const eventKey = media instanceof HTMLVideoElement ? 'onloadeddata' : 'onload';
-      media[eventKey] = () => {
+      const eventKey = media instanceof HTMLVideoElement ? 'loadeddata' : 'load';
+      const fn = () => {
+        media.removeEventListener(eventKey, fn);
         resolve(new MediaTexture(device, texture, media, fit, idx));
-      };
+      }
+      media.addEventListener(eventKey, fn);
     });
   }
   constructor(device, texture, media, fit='contain', idx=undefined) {

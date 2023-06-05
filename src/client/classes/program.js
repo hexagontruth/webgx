@@ -15,7 +15,7 @@ export default class Program {
     settings: {
       dim: 1024,
       exportDim: null,
-      resourceDim: null,
+      mediaDim: null,
       interval: 30,
       start: 0,
       stop: null,
@@ -25,7 +25,7 @@ export default class Program {
       mediaFit: 'cover',
       texturePairs: 3,
       output: {},
-      images: [],
+      media: [],
       params: {},
     },
     features: [
@@ -33,7 +33,8 @@ export default class Program {
       'shader-f16',
     ],
     actions: {
-      main: () => null,
+      draw: () => null,
+      reset: () => null,
     },
     generatePipelineDefs: () => ({}),
   };
@@ -68,9 +69,9 @@ export default class Program {
 
     settings.dim = new Dim(settings.dim);
     settings.exportDim =new Dim(settings.exportDim ?? settings.dim);
-    settings.resourceDim = new Dim(settings.ResourceDim ?? settings.dim);
+    settings.mediaDim = new Dim(settings.ResourceDim ?? settings.dim);
 
-    this.resourceCount = this.settings.resources.length;
+    this.mediaCount = this.settings.media.length;
 
     this.adapter = await navigator.gpu.requestAdapter();
     this.features = this.features.filter((e) => this.adapter.features.has(e));
@@ -144,7 +145,7 @@ export default class Program {
         GPUTextureUsage.TEXTURE_BINDING,
     });
 
-    this.arrayTextures = indexMap(2).map(() => {
+    this.renderTextures = indexMap(2).map(() => {
       return this.device.createTexture({
         size: [...settings.dim, settings.texturePairs],
         format: 'bgra8unorm',
@@ -184,7 +185,7 @@ export default class Program {
         entries: [
           {
             binding: 0,
-            resource: this.arrayTextures[idx].createView(),
+            resource: this.renderTextures[idx].createView(),
           },
           {
              binding: 1,
@@ -198,10 +199,10 @@ export default class Program {
       });
     });
 
-    this.resourceTextures = this.device.createTexture({
+    this.mediaTextures = this.device.createTexture({
       size:
-        this.resourceCount > 1 ? [...settings.dim, this.resourceCount] :
-        this.resourceCount > 0 ? [...settings.dim, 2] :
+        this.mediaCount > 1 ? [...settings.dim, this.mediaCount] :
+        this.mediaCount > 0 ? [...settings.dim, 2] :
         [1, 1, 2],
       format: 'rgba8unorm',
       usage:
@@ -211,31 +212,25 @@ export default class Program {
         GPUTextureUsage.RENDER_ATTACHMENT,
     });
 
-    this.resources = await Promise.all(settings.resources.map(async (filename, idx) => {
+    this.media = await Promise.all(settings.media.map(async (filename, idx) => {
       const ext = filename.match(/\.(\w+)$/)?.[1];
       const isImage = ['jpg', 'jpeg', 'gif', 'png', 'webp'].includes(ext);
-      const el = isImage ? new Image() : createElement(
-        'video',
-        {
-          muted: true,
-          loop: true,
-          autoplay: true,
-        },
-      );
+      let el = isImage ? new Image() : createElement('video', {loop: true, autoplay: true});
+      el.addEventListener('loadeddata', () => el.muted = true);
       window.test = el;
       const mediaTexture = MediaTexture.awaitLoad(
           this.device,
-          this.resourceTextures,
+          this.mediaTextures,
           el,
           this.mediaFit,
           idx,
         );
       // mediaTexture.then((e) => e.media.play && e.media.play());
-      el.src = join('/data/resources', filename);
+      el.src = join('/data/media', filename);
       return mediaTexture;
     }));
 
-    this.resources.forEach((mediaTexture) => {
+    this.media.forEach((mediaTexture) => {
       if (mediaTexture.isVideo) {
         this.activeStreams.push(mediaTexture);
       }
@@ -307,7 +302,7 @@ export default class Program {
     this.next = (this.counter + 1) % 2;
   }
 
-  async run(action='main') {
+  async run(action='draw') {
     await Promise.all(this.activeStreams.map((e) => e.update()));
     await this.actions[action](this);
   }
@@ -321,7 +316,7 @@ export default class Program {
     commandEncoder.copyTextureToTexture(
       txIdx != null ? {
         // texture: this.alternatingTextures[this.next][0],
-        texture: this.arrayTextures[this.next],
+        texture: this.renderTextures[this.next],
         origin: { x: 0, y: 0, z: txIdx },
       } : {
         texture: this.drawTexture,

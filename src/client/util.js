@@ -5,12 +5,7 @@ export function createElement(...args) {
   const opts = Object.assign({}, ...args);
   const el = document.createElement(tagName);
   Object.entries(opts).forEach(([key, val]) => {
-    if (el[key] !== undefined) {
-      el[key] = val;
-    }
-    else {
-      el.setAttribute(key, val);
-    }
+    el.setAttribute(key, val);
   });
   return el;
 }

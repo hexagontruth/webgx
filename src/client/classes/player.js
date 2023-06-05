@@ -23,14 +23,7 @@ export default class Player {
     this.exportCanvas = createElement('canvas');
     this.exportCtx = this.exportCanvas.getContext('2d');
 
-    this.videoCapture = createElement(
-      'video',
-      {
-        loop: true,
-        autoplay: true,
-        muted: true,
-      },
-    );
+    this.videoCapture = createElement('video', { autoplay: true });
     this.setStreamFit();
 
     this.canvas.addEventListener('pointerdown', (ev) => app.handlePointer(ev));
@@ -122,6 +115,7 @@ export default class Player {
 
   resetCounter() {
     this.program.resetCounter();
+    this.program.run('reset');
     this.play || this.render();
   }
 
@@ -172,15 +166,6 @@ export default class Player {
   async updateStream() {
     if (this.streamActive) {
       const { child, childCrop, childScale } = this.streamFitBox;
-      console.log(this.videoCapture.videoWidth, this.videoCapture.videoHeight, childCrop, childScale);
-      console.log(
-        this.videoCapture,
-        ...childCrop,
-        {
-          resizeWidth: childScale.width,
-          resizeHeight: childScale.height,
-        },
-      )
       const bitmap = await createImageBitmap(
         this.videoCapture,
         ...childCrop,

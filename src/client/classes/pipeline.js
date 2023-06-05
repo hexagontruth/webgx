@@ -170,7 +170,7 @@ export default class Pipeline {
         },
         {
           binding: 5,
-          resource: this.program.resourceTextures.createView(),
+          resource: this.program.mediaTextures.createView(),
         }
       ],
     });
@@ -218,7 +218,7 @@ export default class Pipeline {
     );
     commandEncoder.copyTextureToTexture(
       {
-        texture: program.arrayTextures[cur],
+        texture: program.renderTextures[cur],
         origin: { x: 0, y: 0, z: txIdx },
       },
       {
@@ -244,7 +244,7 @@ export default class Pipeline {
         texture: program.drawTexture,
       },
       {
-        texture: program.arrayTextures[next],
+        texture: program.renderTextures[next],
         origin: { x: 0, y: 0, z: txIdx },
       },
       {

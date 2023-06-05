@@ -6,8 +6,8 @@
 
 @group(0) @binding(4) var stream : texture_2d<f32>;
 
-@group(0) @binding(5) var resourceTextures : texture_2d_array<f32>;
+@group(0) @binding(5) var mediaTextures : texture_2d_array<f32>;
 
-@group(1) @binding(0) var arrayTextures : texture_2d_array<f32>;
+@group(1) @binding(0) var renderTextures : texture_2d_array<f32>;
 @group(1) @binding(1) var lastTexture : texture_2d<f32>;
 @group(1) @binding(2) var inputTexture : texture_2d<f32>;
