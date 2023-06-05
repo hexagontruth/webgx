@@ -1,6 +1,7 @@
 import { createElement } from '../util';
 import Dim from './dim';
 import FitBox from './fit-box';
+import MediaTexture from './media-texture';
 import Program from './program';
 
 const { max, min } = Math;
@@ -124,9 +125,12 @@ export default class Player {
     this.play || this.render();
   }
 
-  setStream(stream) {
+  async setStream(stream) {
     const oldStream = this.stream;
     this.stream = stream;
+    // const mediaTexture = await MediaTexture.awaitLoad(
+
+    // );
     if (stream) {
       this.videoCapture.onloadeddata = () => {
         this.streamActive = true;
@@ -168,7 +172,15 @@ export default class Player {
   async updateStream() {
     if (this.streamActive) {
       const { child, childCrop, childScale } = this.streamFitBox;
-      console.log(this.videoCapture.videoWidth, this.videoCapture.videoHeight, childCrop, childScale)
+      console.log(this.videoCapture.videoWidth, this.videoCapture.videoHeight, childCrop, childScale);
+      console.log(
+        this.videoCapture,
+        ...childCrop,
+        {
+          resizeWidth: childScale.width,
+          resizeHeight: childScale.height,
+        },
+      )
       const bitmap = await createImageBitmap(
         this.videoCapture,
         ...childCrop,
