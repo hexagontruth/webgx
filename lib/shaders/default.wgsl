@@ -53,8 +53,8 @@ fn fragment_main(data: VertexData) -> @location(0) vec4f
   // s += texture(lastTexture, uv + vec2f(sin(gu.time * tau), cos(gu.time * tau)/4.));
   s = s / 2.;
 
-  // s += textureSample(resourceTextures, linearSampler, uv, 0);
-  return s;
+  s += mediaIdx(uv, 1);
+  return s/2;
 
   c = rgb2hsv(c);
   c.r += floor((uv.y + gu.time) * 9.)/9. + r/2.;

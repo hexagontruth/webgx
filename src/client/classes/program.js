@@ -1,7 +1,8 @@
-import { getText, importObject, indexMap, join, merge } from '../util';
+import { createElement, getText, importObject, indexMap, join, merge } from '../util';
 
 import Dim from './dim';
 import Fit from './fit';
+import MediaTexture from './media-texture';
 import Pipeline from './pipeline';
 import VertexData from './vertex-data';
 
@@ -20,9 +21,11 @@ export default class Program {
       stop: null,
       period: 360,
       skip: 1,
+      fit: 'contain',
+      mediaFit: 'cover',
       texturePairs: 3,
       output: {},
-      resources: [],
+      images: [],
       params: {},
     },
     features: [
@@ -46,6 +49,7 @@ export default class Program {
     this.ctx = ctx;
     this.shaderTextRequests = {};
     this.shaderTexts = {};
+    this.activeStreams = [];
     this.resetCounter();
   }
 
@@ -207,45 +211,32 @@ export default class Program {
         GPUTextureUsage.RENDER_ATTACHMENT,
     });
 
-    this.resources = settings.resources.map((filename, idx) => {
-      const img = new Image();
-      img.onload = async () => {
-        const fit = new Fit(
-          ...this.settings.dim,
-          ...new Dim(img),
-          'cover',
+    this.resources = await Promise.all(settings.resources.map(async (filename, idx) => {
+      const ext = filename.match(/\.(\w+)$/)?.[1];
+      const isImage = ['jpg', 'jpeg', 'gif', 'png', 'webp'].includes(ext);
+      const el = isImage ? new Image() : createElement(
+        'video',
+        {
+          loop: true,
+          autoplay: true,
+          muted: true,
+        },
+      );
+      const mediaTexture = MediaTexture.awaitLoad(
+          this.device,
+          this.resourceTextures,
+          el,
+          this.mediaFit,
+          idx,
         );
-        const { child, childCrop, childScale } = fit;
-        const bitmap = await createImageBitmap(
-          img,
-          ...childCrop,
-          {
-            resizeWidth: childScale.width,
-            resizeHeight: childScale.height,
-          },
-        );
-        const textureOrigin = [
-          max(child.x, 0),
-          max(child.y, 0),
-        ];
-        this.device.queue.copyExternalImageToTexture(
-          {
-            source: bitmap,
-            // flipY: true,
-          },
-          {
-            texture: this.resourceTextures,
-            origin: {
-              x: max(child.x, 0),
-              y: max(child.y, 0),
-              z: idx,
-            }
-          },
-          [bitmap.width, bitmap.height],
-        );
+      el.src = join('/data/resources', filename);
+      return mediaTexture;
+    }));
+
+    this.resources.forEach((mediaTexture) => {
+      if (mediaTexture.isVideo) {
+        this.activeStreams.push(mediaTexture);
       }
-      img.src = join('/data/resources', filename);
-      return img;
     });
 
     const pipelineDefs = this.generatePipelineDefs(this);
@@ -315,6 +306,7 @@ export default class Program {
   }
 
   async run(action='main') {
+    await Promise.all(this.activeStreams.map((e) => e.update()));
     await this.actions[action](this);
   }
 

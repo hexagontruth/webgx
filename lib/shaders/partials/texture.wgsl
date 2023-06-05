@@ -14,6 +14,10 @@ fn textureIdx(uv : vec2f, idx : i32) -> vec4f {
   return textureSample(arrayTextures, linearSampler, uv, idx);
 }
 
+fn mediaIdx(uv : vec2f, idx : i32) -> vec4f {
+  return textureSample(resourceTextures, linearSampler, vec2f(uv.x, 1 - uv.y), idx);
+}
+
 fn gaussianBlur(range: i32, sd: f32, uv: vec2f) -> vec4f {
   var s : vec4f;
   var n : vec4f;

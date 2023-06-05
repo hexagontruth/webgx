@@ -4,6 +4,10 @@ import Dim from './dim';
 const { max, min } = Math;
 
 export default class Fit {
+  static set() {
+
+  }
+  
   fit = 'contain';
 
   constructor(...args) {
@@ -44,7 +48,7 @@ export default class Fit {
       (cw + min(cx * 2, 0)) * ocw / cw,
       (ch + min(cy * 2, 0)) * och / ch,
     );
-    
+
     this.childScale = new Dim(
       cw + min(cx * 2, 0),
       ch + min(cy * 2, 0),

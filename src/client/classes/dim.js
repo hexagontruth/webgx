@@ -11,7 +11,7 @@ export default class Dim extends BaseDim {
       else if (arg instanceof HTMLVideoElement) {
         this.push(arg.videoWidth, arg.videoHeight);
       }
-      else if (arg instanceof Image) {
+      else if (arg instanceof Image || arg instanceof GPUTexture) {
         this.push(arg.width, arg.height);
       }
       else if (typeof arg == 'number') {
