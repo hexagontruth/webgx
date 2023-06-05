@@ -3,11 +3,11 @@ import Dim from './dim';
 
 const { max, min } = Math;
 
-export default class Fit {
+export default class FitBox {
   static set() {
 
   }
-  
+
   fit = 'contain';
 
   constructor(...args) {
@@ -53,5 +53,9 @@ export default class Fit {
       cw + min(cx * 2, 0),
       ch + min(cy * 2, 0),
     );
+  }
+
+  get inset() {
+    return `${this.childBox.y}px ${this.childBox.x}px`
   }
 }

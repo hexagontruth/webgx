@@ -14,6 +14,12 @@ export default class Dim extends BaseDim {
       else if (arg instanceof Image || arg instanceof GPUTexture) {
         this.push(arg.width, arg.height);
       }
+      else if (arg instanceof Window) {
+        this.push(arg.innerWidth, arg.innerHeight);
+      }
+      else if (arg instanceof HTMLElement) {
+        this.push(arg.offsetWidth, arg.offsetHeight);
+      }
       else if (typeof arg == 'number') {
         this.push(arg, arg);
       }

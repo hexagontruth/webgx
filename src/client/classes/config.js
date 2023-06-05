@@ -5,8 +5,6 @@ export default class Config {
     program: 'default',
     autoplay: true,
     maxDim: 0,
-    fit: 'cover',
-    streamFit: 'cover',
     controlsHidden: false,
     webcamEnabled: false,
     screenShareEnabled: false,
@@ -16,8 +14,6 @@ export default class Config {
 
   static sessionFields = [
     'controlsHidden',
-    'fit',
-    'streamFit',
     'webcamEnabled',
     'screenShareEnabled',
     'recordImages',
@@ -30,8 +26,6 @@ export default class Config {
     program: 'string',
     autoplay: 'boolean',
     maxDim: 'number',
-    fit: 'fit',
-    streamFit: 'fit',
     controlsHidden: 'boolean',
     webcamEnabled: 'boolean',
     screenShareEnabled: 'boolean',
@@ -41,7 +35,7 @@ export default class Config {
 
   static toggleFns = {
     boolean: (v) => !v,
-    fit: (v) => v == 'cover' ? 'contain' : 'cover',
+    // fit: (v) => v == 'cover' ? 'contain' : 'cover',
   };
 
   static queryAliases = {

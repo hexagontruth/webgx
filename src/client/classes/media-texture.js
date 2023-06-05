@@ -1,5 +1,5 @@
 import Dim from './dim';
-import Fit from './fit';
+import FitBox from './fit-box';
 
 const { max, min } = Math;
 
@@ -20,7 +20,7 @@ export default class MediaTexture {
     this.isVideo = media instanceof HTMLVideoElement;
     this.textureDim = new Dim(texture);
     this.mediaDim = new Dim(media);
-    this.fit = new Fit(
+    this.fit = new FitBox(
       ...this.textureDim,
       ...this.mediaDim,
       fit,

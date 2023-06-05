@@ -1,7 +1,7 @@
 import { createElement, getText, importObject, indexMap, join, merge } from '../util';
 
 import Dim from './dim';
-import Fit from './fit';
+import FitBox from './fit-box';
 import MediaTexture from './media-texture';
 import Pipeline from './pipeline';
 import VertexData from './vertex-data';
@@ -217,11 +217,12 @@ export default class Program {
       const el = isImage ? new Image() : createElement(
         'video',
         {
+          muted: true,
           loop: true,
           autoplay: true,
-          muted: true,
         },
       );
+      window.test = el;
       const mediaTexture = MediaTexture.awaitLoad(
           this.device,
           this.resourceTextures,
@@ -229,6 +230,7 @@ export default class Program {
           this.mediaFit,
           idx,
         );
+      // mediaTexture.then((e) => e.media.play && e.media.play());
       el.src = join('/data/resources', filename);
       return mediaTexture;
     }));

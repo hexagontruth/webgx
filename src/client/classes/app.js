@@ -1,6 +1,7 @@
 import { merge, importObject, postJson } from '../util';
-import Fit from './fit';
 import Config from './config';
+import Dim from './dim';
+import FitBox from './fit-box';
 import Player from './player';
 
 export default class App {
@@ -154,7 +155,7 @@ export default class App {
       }
       else if (key == 'f') {
         if (ev.shiftKey)
-          this.config.toggle('streamFit');
+          this.set('streamFit');
         else
           this.config.toggle('fit');
       }
@@ -226,9 +227,9 @@ export default class App {
   }
 
   handleResize() {
-    if (!this.config) return;
-    const fit = new Fit(window.innerWidth, window.innerHeight, 1, 1, this.config.fit);
-    const box = fit.child;
-    this.elements.mainContainer.style.inset = `${box.y}px ${box.x}px`;
+    const program = this.player?.program;
+    if (!program) return;
+    const fitBox = new FitBox(...new Dim(window), 1, 1, program.settings.fit);
+    this.elements.mainContainer.style.inset = fitBox.inset;
   }
 }
