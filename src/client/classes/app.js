@@ -70,6 +70,7 @@ export default class App {
       document.body.classList.toggle('hidden', val);
     }
     else if (key == 'fit') {
+      this.player?.setFit(val);
       this.handleResize();
     }
     else if (key == 'streamFit') {

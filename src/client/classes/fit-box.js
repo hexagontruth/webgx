@@ -56,6 +56,6 @@ export default class FitBox {
   }
 
   get inset() {
-    return `${this.childBox.y}px ${this.childBox.x}px`
+    return `${this.child.y}px ${this.child.x}px`
   }
 }

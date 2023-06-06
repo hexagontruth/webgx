@@ -1,3 +1,5 @@
+import Hook from './hook';
+
 import { numberString, merge } from '../util';
 
 export default class Config {
@@ -5,6 +7,8 @@ export default class Config {
     program: 'default',
     autoplay: true,
     maxDim: 0,
+    fit: 'cover',
+    streamFit: 'cover',
     controlsHidden: false,
     webcamEnabled: false,
     screenShareEnabled: false,
@@ -26,6 +30,8 @@ export default class Config {
     program: 'string',
     autoplay: 'boolean',
     maxDim: 'number',
+    fit: 'fit',
+    streamFit: 'fit',
     controlsHidden: 'boolean',
     webcamEnabled: 'boolean',
     screenShareEnabled: 'boolean',
@@ -35,7 +41,7 @@ export default class Config {
 
   static toggleFns = {
     boolean: (v) => !v,
-    // fit: (v) => v == 'cover' ? 'contain' : 'cover',
+    fit: (v) => v == 'cover' ? 'contain' : 'cover',
   };
 
   static queryAliases = {
@@ -55,6 +61,10 @@ export default class Config {
       this.retrieveConfig(),
       this.getQueryParams(),
     );
+
+    this.fields = Object.keys(Config.schema);
+    this.beforeHooks = new Hook(this, this.fields);
+    this.afterHooks = new Hook(this, this.fields);
   
     Config.sessionFields.forEach((field) => {
       this.set(field);
@@ -87,6 +97,22 @@ export default class Config {
     }
 
     return queryObj;
+  }
+
+  addBeforeHook(...args) {
+    return this.beforeHooks.add(...args);
+  }
+
+  deleteBeforeHook(...args) {
+    return this.beforeHooks.delete(...args);
+  }
+
+  addAfterHook(...args) {
+    return this.afterHooks.add(...args);
+  }
+
+  deleteAfterHook(...args) {
+    return this.afterHooks.delete(...args);
   }
   
   toggle(field) {
