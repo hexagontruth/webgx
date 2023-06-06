@@ -65,6 +65,9 @@ export default class Config {
     this.fields = Object.keys(Config.schema);
     this.beforeHooks = new Hook(this, this.fields);
     this.afterHooks = new Hook(this, this.fields);
+
+    this.beforeHooks.add('screenShareEnabled', (...args) => this.setScreenShareEnabled(...args));
+    this.beforeHooks.add('webcamEnabled', (...args) => this.setWebcamEnabled(...args));
   
     Config.sessionFields.forEach((field) => {
       this.set(field);
@@ -123,22 +126,17 @@ export default class Config {
     return next;
   }
 
-  set(field, value) {
-    value = value ?? this[field];
-    if (field == 'screenShareEnabled') {
-      this.setScreenShareEnabled(value);
-    }
-    else if (field == 'webcamEnabled') {
-      this.setWebcamEnabled(value);
-    }
-    else {
-      this[field] = value;
-      this.storeSessionConfig();
-      this.app?.set(field, value);
-    }
+  async set(key, val) {
+    const oldVal = this[key];
+    val = val ?? oldVal;
+    await Promise.all(this.beforeHooks.map(key, oldVal, val));
+    this[key] = val;
+    Config.sessionFields.includes(key) && this.storeSessionConfig();
+    await Promise.all(this.afterHooks.map(key, oldVal, val));
+    this.app?.set(key, val);
   }
 
-  setScreenShareEnabled(val) {
+  setScreenShareEnabled(oldVal, val) {
     val = val ?? this.screenShareEnabled;
     if (val) {
       navigator.mediaDevices.getDisplayMedia()
@@ -165,7 +163,7 @@ export default class Config {
     }
   }
 
-  setWebcamEnabled(val) {
+  setWebcamEnabled(oldVal, val) {
     val = val != null ? val : this.webcamEnabled;
     if (val) {
       let constraints = {
