@@ -39,7 +39,6 @@ export default class Hook {
 
   delete(key, id) {
     const queue = this.queues[key];
-    console.log(id, id instanceof HookFn);
     if (id instanceof HookFn) {
       return queue.delete(id);
     }
@@ -53,13 +52,22 @@ export default class Hook {
     this.queues[key].forEach((e) => e.call(...args));
   }
 
-  callConditional(key) {
-    let idx = 0;
+  test(key, ...args) {
+    let result;
     for (const hookFn of this.queues[key]) {
-      const result = hookFn.call(++idx);
+      result = hookFn.call(...args);
       if (result === false) break;
     }
-    return idx;
+    return result !== false;
+  }
+
+  async testAsync(key, ...args) {
+    let result;
+    for (const hookFn of this.queues[key]) {
+      result = await hookFn.call(...args);
+      if (result === false) break;
+    }
+    return result !== false;
   }
 
   map(key, ...args) {

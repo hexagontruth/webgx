@@ -15,6 +15,7 @@ export default class Player {
     this.play = this.config.autoplay;
     this.recording = false;
     this.streamActive = false;
+    this.streamType = null;
     this.stream = null;
 
     this.canvas = createElement('canvas', { class: 'player-canvas' });
@@ -25,6 +26,9 @@ export default class Player {
 
     this.videoCapture = createElement('video', { autoplay: true });
     this.setStreamFit();
+  
+    this.config.testSet.add('screenShareEnabled', (v) => this.setStreamEnabled(v, 'screenShare'));
+    this.config.testSet.add('webcamEnabled', (v) => this.setStreamEnabled(v, 'webcam'));
 
     this.canvas.addEventListener('pointerdown', (ev) => app.handlePointer(ev));
     this.canvas.addEventListener('pointerup', (ev) => app.handlePointer(ev));
@@ -32,7 +36,7 @@ export default class Player {
     this.canvas.addEventListener('pointercancel', (ev) => app.handlePointer(ev));
     this.canvas.addEventListener('pointermove', (ev) => app.handlePointer(ev));
 
-    this.init().then(() => this.render());
+    // this.init().then(() => this.render());
   }
 
   async init() {
@@ -53,11 +57,11 @@ export default class Player {
       if (this.recording && cond) {
         interval = max(settings.interval, settings.recordingInterval || 0);
       }
-      this.intervalTimer = setTimeout(() => this.render(), interval);
+      this.intervalTimer = setTimeout(() => this.draw(), interval);
     });
   }
 
-  async render() {
+  async draw() {
     await this.updateStream();
     this.program.stepCounter();
     await this.program.run();
@@ -104,7 +108,7 @@ export default class Player {
 
   togglePlay(val=!this.play) {
     this.play = val;
-    val && this.render();
+    val && this.draw();
     return val;
   }
 
@@ -116,16 +120,44 @@ export default class Player {
   resetCounter() {
     this.program.resetCounter();
     this.program.run('reset');
-    this.play || this.render();
+    this.play || this.draw();
   }
 
-  async setStream(stream) {
+  setFit() {
+
+  }
+
+  setStreamFit() {
+
+  }
+
+  async setStreamEnabled(val, type) {
+    try {
+      let stream;
+      if (val) {
+        stream = await (
+          type == 'screenShare' ?
+          navigator.mediaDevices.getDisplayMedia() :
+          navigator.mediaDevices.getUserMedia({
+            video: { width: { ideal: 4096 } },
+            audio: false,
+          })
+        );
+      }
+      this.setStream(stream, type);
+      return true;
+    }
+    catch(err) {
+      console.error(err);
+      return false;
+    }
+  }
+
+  setStream(stream, type) {
     const oldStream = this.stream;
     this.stream = stream;
-    // const mediaTexture = await MediaTexture.awaitLoad(
-
-    // );
     if (stream) {
+      this.streamType = type;
       this.videoCapture.onloadeddata = () => {
         this.streamActive = true;
         this.setStreamFit();
@@ -133,9 +165,13 @@ export default class Player {
       this.videoCapture.srcObject = this.stream;
     }
     // Remove stream
-    else {
+    else if (this.streamType == type) {
+      oldStream && oldStream.getTracks().forEach((track) => {
+        track.readyState == 'live' && track.stop();
+      });
       this.stream = null;
       this.streamActive = false;
+      this.streamType = null;
       this.videoCapture.srcObject = null;
       this.setStreamFit();
     }
@@ -164,6 +200,7 @@ export default class Player {
   }
 
   async updateStream() {
+    return;
     if (this.streamActive) {
       const { child, childCrop, childScale } = this.streamFitBox;
       const bitmap = await createImageBitmap(

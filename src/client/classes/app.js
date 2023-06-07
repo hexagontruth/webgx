@@ -40,6 +40,10 @@ export default class App {
     this.config = new Config(this);
     this.player = new Player(this, this.elements.playerContainer);
 
+    await this.config.setAll();
+    await this.player.init();
+    await this.player.draw();
+
     window.addEventListener('resize', () => this.handleResize());
 
     window.addEventListener('keydown', (ev) => this.handleKey(ev));
@@ -77,12 +81,11 @@ export default class App {
       this.player?.setStreamFit(val);
     }
     else if (key == 'webcamEnabled') {
+      // console.log(key, val, 'APP', this.player.stream);
       this.elements.webcamButton.classList.toggle('active', val);
-      this.player?.setStream(val ? this.config.stream : null);
     }
     else if (key == 'screenShareEnabled') {
       this.elements.screenShareButton.classList.toggle('active', val);
-      this.player?.setStream(val ? this.config.stream : null);
     }
     else if (key == 'recordImages') {
       this.elements.recordImagesButton.classList.toggle('active', val);

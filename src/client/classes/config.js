@@ -3,6 +3,19 @@ import Hook from './hook';
 import { numberString, merge } from '../util';
 
 export default class Config {
+  static schema = {
+    program: 'string',
+    autoplay: 'boolean',
+    maxDim: 'number',
+    fit: 'fit',
+    streamFit: 'fit',
+    controlsHidden: 'boolean',
+    webcamEnabled: 'boolean',
+    screenShareEnabled: 'boolean',
+    recordVideo: 'boolean',
+    recordImages: 'boolean',
+  };
+
   static defaults = {
     program: 'default',
     autoplay: true,
@@ -18,26 +31,20 @@ export default class Config {
 
   static sessionFields = [
     'controlsHidden',
-    'webcamEnabled',
-    'screenShareEnabled',
     'recordImages',
     'recordVideo',
+    'screenShareEnabled',
+    'webcamEnabled',
   ];
 
   static localFields = [];
 
-  static schema = {
-    program: 'string',
-    autoplay: 'boolean',
-    maxDim: 'number',
-    fit: 'fit',
-    streamFit: 'fit',
-    controlsHidden: 'boolean',
-    webcamEnabled: 'boolean',
-    screenShareEnabled: 'boolean',
-    recordVideo: 'boolean',
-    recordImages: 'boolean',
-  };
+  static radioSets = [
+    [
+      'webcamEnabled',
+      'screenShareEnabled',
+    ],
+  ];
 
   static toggleFns = {
     boolean: (v) => !v,
@@ -63,14 +70,15 @@ export default class Config {
     );
 
     this.fields = Object.keys(Config.schema);
-    this.beforeHooks = new Hook(this, this.fields);
-    this.afterHooks = new Hook(this, this.fields);
+    this.testSet = new Hook(this, this.fields);
+    this.beforeSet = new Hook(this, this.fields);
+    this.afterSet = new Hook(this, this.fields);
 
-    this.beforeHooks.add('screenShareEnabled', (...args) => this.setScreenShareEnabled(...args));
-    this.beforeHooks.add('webcamEnabled', (...args) => this.setWebcamEnabled(...args));
-  
-    Config.sessionFields.forEach((field) => {
-      this.set(field);
+    this.radioMap = {};
+    Config.radioSets.forEach((set) => {
+      set.forEach((key) => {
+        this.radioMap[key] = set.filter((e) => e != key);
+      });
     });
   }
 
@@ -101,22 +109,6 @@ export default class Config {
 
     return queryObj;
   }
-
-  addBeforeHook(...args) {
-    return this.beforeHooks.add(...args);
-  }
-
-  deleteBeforeHook(...args) {
-    return this.beforeHooks.delete(...args);
-  }
-
-  addAfterHook(...args) {
-    return this.afterHooks.add(...args);
-  }
-
-  deleteAfterHook(...args) {
-    return this.afterHooks.delete(...args);
-  }
   
   toggle(field) {
     const fn = Config.toggleFns[Config.schema[field]];
@@ -129,68 +121,23 @@ export default class Config {
   async set(key, val) {
     const oldVal = this[key];
     val = val ?? oldVal;
-    await Promise.all(this.beforeHooks.map(key, oldVal, val));
+    const test = await this.testSet.testAsync(key, val, oldVal);
+    if (!test) return;
+
+    await Promise.all(this.afterSet.map(key, val, oldVal));
+
+    val && this.radioMap[key] && await Promise.all(this.radioMap[key].map((e) => this.set(e, false)));
     this[key] = val;
     Config.sessionFields.includes(key) && this.storeSessionConfig();
-    await Promise.all(this.afterHooks.map(key, oldVal, val));
+
+    await Promise.all(this.afterSet.map(key, val, oldVal));
     this.app?.set(key, val);
   }
 
-  setScreenShareEnabled(oldVal, val) {
-    val = val ?? this.screenShareEnabled;
-    if (val) {
-      navigator.mediaDevices.getDisplayMedia()
-      .then((stream) => {
-        this.setWebcamEnabled(false);
-        this.screenShareEnabled = true;
-        this.stream = stream;
-        this.storeSessionConfig();
-        this.app?.set('screenShareEnabled', true);
-      })
-      .catch((err) => {
-        console.error(err);
-        this.setScreenShareEnabled(false);
-      });
-    }
-    else {
-      this.screenShareEnabled = false;
-      this.stream?.getTracks().forEach((track) => {
-        track.readyState == 'live' && track.stop();
-      });
-      this.stream = null;
-      this.storeSessionConfig();
-      this.app?.set('screenShareEnabled', val);
-    }
-  }
-
-  setWebcamEnabled(oldVal, val) {
-    val = val != null ? val : this.webcamEnabled;
-    if (val) {
-      let constraints = {
-        video: { width: { ideal: 4096 } },
-        // video: {width: 1080, height: 1920},
-        audio: false
-      };
-      navigator.mediaDevices.getUserMedia(constraints)
-      .then((stream) => {
-        this.setScreenShareEnabled(false);
-        this.webcamEnabled = true;
-        this.stream = stream;
-        this.storeSessionConfig();
-        this.app?.set('webcamEnabled', true);
-      })
-      .catch((err) => {
-        console.error(err);
-        this.setWebcamEnabled(false);
-      });
-    }
-    else {
-      this.webcamEnabled = false;
-      this.stream?.getTracks()[0].stop();
-      this.stream = null;
-      this.storeSessionConfig();
-      this.app?.set('webcamEnabled', false);
-    }
+  async setAll() {
+    await Promise.all(this.fields.map((key) => {
+      return this.set(key);
+    }));
   }
 
   // --- STORAGE ---
