@@ -154,9 +154,8 @@ export default class Player {
   }
 
   setStream(stream, type) {
-    const oldStream = this.stream;
-    this.stream = stream;
     if (stream) {
+      this.stream = stream;
       this.streamType = type;
       this.videoCapture.onloadeddata = () => {
         this.streamActive = true;
@@ -166,6 +165,7 @@ export default class Player {
     }
     // Remove stream
     else if (this.streamType == type) {
+      const oldStream = this.stream;
       oldStream && oldStream.getTracks().forEach((track) => {
         track.readyState == 'live' && track.stop();
       });
@@ -200,7 +200,6 @@ export default class Player {
   }
 
   async updateStream() {
-    return;
     if (this.streamActive) {
       const { child, childCrop, childScale } = this.streamFitBox;
       const bitmap = await createImageBitmap(

@@ -180,7 +180,7 @@ export default class App {
         if (this.player.play)
           this.togglePlay(false);
         else
-          this.player.render();
+          this.player.draw();
       }
       else if (ev.key == 'ArrowUp' || ev.key == 'ArrowDown') {
         const dir = ev.key == 'ArrowUp' ? -1 : 1;

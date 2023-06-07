@@ -215,9 +215,7 @@ export default class Program {
     this.media = await Promise.all(settings.media.map(async (filename, idx) => {
       const ext = filename.match(/\.(\w+)$/)?.[1];
       const isImage = ['jpg', 'jpeg', 'gif', 'png', 'webp'].includes(ext);
-      let el = isImage ? new Image() : createElement('video', {loop: true, autoplay: true});
-      el.addEventListener('loadeddata', () => el.muted = true);
-      window.test = el;
+      let el = isImage ? new Image() : createElement('video');
       const mediaTexture = MediaTexture.awaitLoad(
           this.device,
           this.mediaTextures,
@@ -225,7 +223,6 @@ export default class Program {
           this.mediaFit,
           idx,
         );
-      // mediaTexture.then((e) => e.media.play && e.media.play());
       el.src = join('/data/media', filename);
       return mediaTexture;
     }));

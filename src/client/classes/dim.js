@@ -24,7 +24,7 @@ export default class Dim extends BaseDim {
         this.push(arg, arg);
       }
       else {
-        this.push(0, 0);
+        this.push(64, 64);
       }
     }
     else {

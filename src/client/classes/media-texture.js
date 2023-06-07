@@ -6,9 +6,16 @@ const { max, min } = Math;
 export default class MediaTexture {
   static async awaitLoad(device, texture, media, fit='contain', idx=undefined) {
     return new Promise((resolve) => {
-      const eventKey = media instanceof HTMLVideoElement ? 'loadeddata' : 'load';
+      const isVideo = media instanceof HTMLVideoElement;
+      const eventKey = isVideo ? 'loadeddata' : 'load';
       const fn = () => {
         media.removeEventListener(eventKey, fn);
+        if (isVideo) {
+          media.muted = true;
+          media.setAttribute('loop', true);
+          media.setAttribute('autoplay', true);
+          media.play();
+        }
         resolve(new MediaTexture(device, texture, media, fit, idx));
       }
       media.addEventListener(eventKey, fn);
@@ -34,6 +41,9 @@ export default class MediaTexture {
     }
     if (!this.isVideo) {
       this.update();
+    }
+    else {
+
     }
   }
 
