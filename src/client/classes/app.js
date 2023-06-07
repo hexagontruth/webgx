@@ -40,6 +40,7 @@ export default class App {
     this.config = new Config(this);
     this.player = new Player(this, this.elements.playerContainer);
 
+    await this.player.buildProgram();
     await this.config.setAll();
     await this.player.init();
     await this.player.draw();

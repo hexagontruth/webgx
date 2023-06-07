@@ -39,8 +39,11 @@ export default class Player {
     // this.init().then(() => this.render());
   }
 
-  async init() {
+  async buildProgram() {
     this.program = await Program.build(this.config.program, this.ctx);
+  }
+
+  async init() {
     this.device = this.program.device;
     this.settings = this.program.settings;
     const { settings } = this.program;
