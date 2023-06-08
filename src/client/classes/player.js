@@ -1,8 +1,5 @@
 import { createElement } from '../util';
-import Dim from './dim';
-import FitBox from './fit-box';
 import Hook from './hook';
-import MediaTexture from './media-texture';
 import Program from './program';
 
 const { max, min } = Math;
@@ -10,7 +7,7 @@ const { max, min } = Math;
 export default class Player {
   static async build(app, container) {
     const player = new Player(app, container);
-    await player.buildProgram();
+    await player.init();
     return player;
   }
 
@@ -20,9 +17,6 @@ export default class Player {
 
     this.play = this.config.autoplay;
     this.recording = false;
-    this.streamActive = false;
-    this.streamType = null;
-    this.stream = null;
 
     this.canvas = createElement('canvas', { class: 'player-canvas' });
     this.container.appendChild(this.canvas);
@@ -32,34 +26,32 @@ export default class Player {
 
     this.hooks = new Hook(this, ['afterCounter', 'onPointer']);
 
-    this.videoCapture = createElement('video', { autoplay: true });
-    this.setStreamFit();
-  
-    this.config.testSet.add('screenShareEnabled', (v) => this.setStreamEnabled(v, 'screenShare'));
-    this.config.testSet.add('webcamEnabled', (v) => this.setStreamEnabled(v, 'webcam'));
-
-    this.canvas.addEventListener('pointerdown', (ev) => this.hooks.call('onPointer', ev));
-    this.canvas.addEventListener('pointerup', (ev) => this.hooks.call('onPointer', ev));
-    this.canvas.addEventListener('pointerout', (ev) => this.hooks.call('onPointer', ev));
-    this.canvas.addEventListener('pointercancel', (ev) => this.hooks.call('onPointer', ev));
-    this.canvas.addEventListener('pointermove', (ev) => this.hooks.call('onPointer', ev));
+    this.canvas.addEventListener('pointerdown', (ev) => this.handlePointer(ev));
+    this.canvas.addEventListener('pointerup', (ev) => this.handlePointer(ev));
+    this.canvas.addEventListener('pointerout', (ev) => this.handlePointer(ev));
+    this.canvas.addEventListener('pointercancel', (ev) => this.handlePointer(ev));
+    this.canvas.addEventListener('pointermove', (ev) => this.handlePointer(ev));
 
     // this.init().then(() => this.render());
   }
 
-  async buildProgram() {
-    this.program = await Program.build(this.config.program, this.ctx);
-    this.program.hooks.add('afterCounter', (...args) => this.hooks.call('afterCounter', ...args));
-  }
-
   async init() {
+    this.program = await Program.build(this.config.program, this.ctx);
     this.device = this.program.device;
-    this.settings = this.program.settings;
-    const { settings } = this.program;
 
-    this.canvas.width = this.canvas.height = settings.dim[0];
-    this.exportCanvas.width = settings.exportDim.width;
-    this.exportCanvas.height = settings.exportDim.height;
+    const { program, config } = this;
+
+    program.hooks.add('afterCounter', (...args) => this.hooks.call('afterCounter', ...args));
+
+    config.testSet.add('screenShareEnabled', (v) => program.setStreamEnabled(v, 'screenShare'));
+    config.testSet.add('webcamEnabled', (v) => program.setStreamEnabled(v, 'webcam'));
+    config.afterSet.add('streamFit', (v) => program.setStreamFit(v));
+    config.afterSet.add('mediaFit', (v) => program.setMediaFit(v));
+
+    this.canvas.width = program.settings.dim.width;
+    this.canvas.height = program.settings.dim.height;
+    this.exportCanvas.width = program.settings.exportDim.width;
+    this.exportCanvas.height = program.settings.exportDim.height;
   }
 
   setTimer(cond) {
@@ -74,7 +66,7 @@ export default class Player {
   }
 
   async draw() {
-    await this.updateStream();
+    await this.program.updateStream();
     this.program.stepCounter();
     await this.program.run();
     requestAnimationFrame(() => this.endFrame(), 0);
@@ -134,100 +126,21 @@ export default class Player {
     this.play || this.draw();
   }
 
-  async setStreamEnabled(val, type) {
-    try {
-      let stream;
-      if (val) {
-        stream = await (
-          type == 'screenShare' ?
-          navigator.mediaDevices.getDisplayMedia() :
-          navigator.mediaDevices.getUserMedia({
-            video: { width: { ideal: 4096 } },
-            audio: false,
-          })
-        );
-      }
-      this.setStream(stream, type);
-      return true;
-    }
-    catch(err) {
-      console.error(err);
-      return false;
-    }
-  }
+  handlePointer(ev) {
+    // this.player.uniforms.cursorLast = this.player.uniforms.cursorPos;
+    // this.player.uniforms.cursorPos = [
+    //   ev.offsetX / this.styleDim * 2 - 1,
+    //   ev.offsetY / this.styleDim * -2 + 1,
+    // ];
 
-  setStream(stream, type) {
-    if (stream) {
-      this.stream = stream;
-      this.streamType = type;
-      this.videoCapture.onloadeddata = () => {
-        this.streamActive = true;
-        this.setStreamFit();
-      }
-      this.videoCapture.srcObject = this.stream;
+    if (ev.type == 'pointerdown') {
+      this.cursorDown = true;
+      // this.player.uniforms.cursorLast = this.player.uniforms.cursorPos.slice();
     }
-    // Remove stream
-    else if (this.streamType == type) {
-      const oldStream = this.stream;
-      oldStream && oldStream.getTracks().forEach((track) => {
-        track.readyState == 'live' && track.stop();
-      });
-      this.stream = null;
-      this.streamActive = false;
-      this.streamType = null;
-      this.videoCapture.srcObject = null;
-      this.setStreamFit();
+    else if (ev.type == 'pointerup' || ev.type == 'pointerout' || ev.type == 'pointercancel') {
+      this.cursorDown = false;
     }
-  }
 
-  setStreamFit() {
-    const dim = new Dim(this.program?.settings.dim);
-    this.device?.queue.writeTexture(
-      {
-        texture: this.program.streamTexture,
-      },
-      new Float32Array(dim.area * 4),
-      {
-        bytesPerRow: 4 * 4 * dim.width,
-      },
-      {
-        width: dim.width,
-        height: dim.height,
-      },
-    );
-    return this.streamFitBox = new FitBox(
-      ...new Dim(this.program?.settings.dim),
-      ...new Dim(this.videoCapture),
-      this.config.streamFit,
-    );
-  }
-
-  async updateStream() {
-    if (this.streamActive) {
-      const { child, childCrop, childScale } = this.streamFitBox;
-      const bitmap = await createImageBitmap(
-        this.videoCapture,
-        ...childCrop,
-        {
-          resizeWidth: childScale.width,
-          resizeHeight: childScale.height,
-        },
-      );
-      const textureOrigin = [
-        max(child.x, 0),
-        max(child.y, 0),
-      ];
-      this.device.queue.copyExternalImageToTexture(
-        {
-          source: bitmap,
-          // flipY: true,
-        },
-        {
-          texture: this.program.streamTexture,
-          origin: textureOrigin,
-        },
-        [bitmap.width, bitmap.height],
-      );
-    }
+    // this.player.uniforms.cursorAngle = Math.atan2(ev.offsetY, ev.offsetX);
   }
 }

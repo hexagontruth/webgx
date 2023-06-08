@@ -47,6 +47,10 @@ export default class MediaTexture {
     }
   }
 
+  clearTexture() {
+    
+  }
+
   async update() {
     const bitmap = await createImageBitmap(
       this.media,

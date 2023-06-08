@@ -170,7 +170,7 @@ export default class Pipeline {
         },
         {
           binding: 5,
-          resource: this.program.mediaTextures.createView(),
+          resource: this.program.mediaTexture.createView(),
         }
       ],
     });

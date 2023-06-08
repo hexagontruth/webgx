@@ -33,6 +33,7 @@ export default class Config {
 
   static sessionFields = [
     'controlsHidden',
+    'fit',
     'recordImages',
     'recordVideo',
     'screenShareEnabled',
@@ -125,7 +126,7 @@ export default class Config {
     const test = await this.testSet.testAsync(key, val, oldVal);
     if (!test) return;
 
-    await Promise.all(this.afterSet.map(key, val, oldVal));
+    await Promise.all(this.beforeSet.map(key, val, oldVal));
 
     val && this.radioMap[key] && await Promise.all(this.radioMap[key].map((e) => this.set(e, false)));
     this[key] = val;

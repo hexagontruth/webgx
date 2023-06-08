@@ -442,5 +442,6 @@ canvas {
 body.hidden {
   .hideable {
     opacity: 0;
+    pointer-events: none;
   }
 }

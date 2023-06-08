@@ -23,8 +23,6 @@ export default class App {
 
   constructor() {
     this.shiftString = '';
-    this.styleDim = null;
-    
     window.addEventListener('load', () => this.init());
   }
 
@@ -43,8 +41,8 @@ export default class App {
     this.player = await Player.build(this.config, this.els.playerContainer);
     
     this.player.hooks.add('afterCounter', (val) => this.els.counterField.value = val);
-    this.player.hooks.add('onPointer', (ev) => this.handlePointer(ev));
 
+    this.config.afterSet.add('fit', () => this.handleResize());
     this.config.afterSet.add('controlsHidden', (val) => {
       body.classList.toggle('hidden', val);
     });
@@ -70,7 +68,7 @@ export default class App {
     });
 
     await this.config.setAll();
-    await this.player.init();
+
     await this.player.draw();
 
     window.addEventListener('resize', () => this.handleResize());
@@ -198,37 +196,17 @@ export default class App {
       if (ev.key == 'Control') {
         if (this.shiftString.length == 3 || this.shiftString.length == 6) {
           let code = '#' + this.shiftString;
-          this.body.style.backgroundColor = code;
+          body.style.backgroundColor = code;
         }
         this.shiftString = '';
       }
     }
   }
 
-  handlePointer(ev) {
-    if (!this.player?.uniforms)
-      return;
-    this.player.uniforms.cursorLast = this.player.uniforms.cursorPos;
-    this.player.uniforms.cursorPos = [
-      ev.offsetX / this.styleDim * 2 - 1,
-      ev.offsetY / this.styleDim * -2 + 1,
-    ];
-
-    if (ev.type == 'pointerdown') {
-      this.player.cursorDown = true;
-      this.player.uniforms.cursorLast = this.player.uniforms.cursorPos.slice();
-    }
-    else if (ev.type == 'pointerup' || ev.type == 'pointerout' || ev.type == 'pointercancel') {
-      this.player.cursorDown = false;
-    }
-
-    this.player.uniforms.cursorAngle = Math.atan2(ev.offsetY, ev.offsetX);
-  }
-
   handleResize() {
     const program = this.player?.program;
     if (!program) return;
-    const fitBox = new FitBox(...new Dim(window), 1, 1, program.settings.fit);
+    const fitBox = new FitBox(...new Dim(window), 1, 1, this.config.fit);
     this.els.mainContainer.style.inset = fitBox.inset;
   }
 }

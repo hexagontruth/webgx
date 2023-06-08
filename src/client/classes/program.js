@@ -24,7 +24,6 @@ export default class Program {
       stop: null,
       period: 360,
       skip: 1,
-      fit: 'contain',
       mediaFit: 'cover',
       streamFit: 'cover',
       texturePairs: 3,
@@ -55,7 +54,13 @@ export default class Program {
     this.shaderTextRequests = {};
     this.shaderTexts = {};
     this.activeStreams = [];
+    this.mediaFitBox = null;
+    this.streamFitBox = null;
+    this.streamActive = false;
+    this.streamType = null;
+    this.stream = null;
     this.hooks = new Hook(this, ['afterCounter', 'onFit']);
+    this.videoCapture = createElement('video', { autoplay: true });
     this.resetCounter();
   }
 
@@ -69,7 +74,7 @@ export default class Program {
     const { settings } = this;
 
     settings.dim = new Dim(settings.dim);
-    settings.exportDim =new Dim(settings.exportDim ?? settings.dim);
+    settings.exportDim = new Dim(settings.exportDim ?? settings.dim);
     settings.mediaDim = new Dim(settings.mediaDim ?? settings.dim);
 
     if (settings.stop == true) {
@@ -204,7 +209,7 @@ export default class Program {
       });
     });
 
-    this.mediaTextures = this.device.createTexture({
+    this.mediaTexture = this.device.createTexture({
       size:
         this.mediaCount > 1 ? [...settings.dim, this.mediaCount] :
         this.mediaCount > 0 ? [...settings.dim, 2] :
@@ -217,13 +222,13 @@ export default class Program {
         GPUTextureUsage.RENDER_ATTACHMENT,
     });
 
-    this.media = await Promise.all(settings.media.map(async (filename, idx) => {
+    this.mediaTextures = await Promise.all(settings.media.map(async (filename, idx) => {
       const ext = filename.match(/\.(\w+)$/)?.[1];
       const isImage = ['jpg', 'jpeg', 'gif', 'png', 'webp'].includes(ext);
       let el = isImage ? new Image() : createElement('video');
       const mediaTexture = MediaTexture.awaitLoad(
           this.device,
-          this.mediaTextures,
+          this.mediaTexture,
           el,
           this.mediaFit,
           idx,
@@ -232,7 +237,7 @@ export default class Program {
       return mediaTexture;
     }));
 
-    this.media.forEach((mediaTexture) => {
+    this.mediaTextures.forEach((mediaTexture) => {
       if (mediaTexture.isVideo) {
         this.activeStreams.push(mediaTexture);
       }
@@ -334,5 +339,111 @@ export default class Program {
       },
     );
     this.device.queue.submit([commandEncoder.finish()]);
+  }
+
+  setMediaFit(fit) {
+    this.settings.mediaFit = fit;
+    this.mediaTextures.forEach((e) => {
+      e.setFitBox(fit);
+      e.clearTexture();
+    });
+  }
+
+  setStreamFit(fit=this.settings.streamFit) {
+    this.settings.streamFit = fit;
+    const dim = this.settings.mediaDim;
+    this.device.queue.writeTexture(
+      {
+        texture: this.streamTexture,
+      },
+      new Float32Array(dim.area * 4),
+      {
+        bytesPerRow: 4 * 4 * dim.width,
+      },
+      {
+        width: dim.width,
+        height: dim.height,
+      },
+    );
+    this.streamFitBox = new FitBox(
+      ...new Dim(this.settings.dim),
+      ...new Dim(this.videoCapture),
+      fit,
+    );
+  }
+
+  async setStreamEnabled(val, type) {
+    try {
+      let stream;
+      if (val) {
+        stream = await (
+          type == 'screenShare' ?
+          navigator.mediaDevices.getDisplayMedia() :
+          navigator.mediaDevices.getUserMedia({
+            video: { width: { ideal: 4096 } },
+            audio: false,
+          })
+        );
+      }
+      this.setStream(stream, type);
+      return true;
+    }
+    catch(err) {
+      console.error(err);
+      return false;
+    }
+  }
+
+  setStream(stream, type) {
+    if (stream) {
+      this.stream = stream;
+      this.streamType = type;
+      this.videoCapture.onloadeddata = () => {
+        this.streamActive = true;
+        this.setStreamFit();
+      }
+      this.videoCapture.srcObject = this.stream;
+    }
+    // Remove stream
+    else if (this.streamType == type) {
+      const oldStream = this.stream;
+      oldStream && oldStream.getTracks().forEach((track) => {
+        track.readyState == 'live' && track.stop();
+      });
+      this.stream = null;
+      this.streamActive = false;
+      this.streamType = null;
+      this.videoCapture.srcObject = null;
+      this.setStreamFit();
+    }
+  }
+
+  async updateStream() {
+    if (this.streamActive) {
+      const { child, childCrop, childScale } = this.streamFitBox;
+      const bitmap = await createImageBitmap(
+        this.videoCapture,
+        ...childCrop,
+        {
+          resizeWidth: childScale.width,
+          resizeHeight: childScale.height,
+        },
+      );
+      const textureOrigin = [
+        max(child.x, 0),
+        max(child.y, 0),
+      ];
+      this.device.queue.copyExternalImageToTexture(
+        {
+          source: bitmap,
+          // flipY: true,
+        },
+        {
+          texture: this.streamTexture,
+          origin: textureOrigin,
+        },
+        [bitmap.width, bitmap.height],
+      );
+    }
   }
 }
