@@ -1,7 +1,10 @@
-import { createElement, getText, importObject, indexMap, join, merge } from '../util';
+import {
+  createElement, getText, importObject, indexMap, join, merge
+} from '../util';
 
 import Dim from './dim';
 import FitBox from './fit-box';
+import Hook from './hook';
 import MediaTexture from './media-texture';
 import Pipeline from './pipeline';
 import VertexData from './vertex-data';
@@ -23,6 +26,7 @@ export default class Program {
       skip: 1,
       fit: 'contain',
       mediaFit: 'cover',
+      streamFit: 'cover',
       texturePairs: 3,
       output: {},
       media: [],
@@ -51,6 +55,7 @@ export default class Program {
     this.shaderTextRequests = {};
     this.shaderTexts = {};
     this.activeStreams = [];
+    this.hooks = new Hook(this, ['afterCounter', 'onFit']);
     this.resetCounter();
   }
 
@@ -63,14 +68,14 @@ export default class Program {
     
     const { settings } = this;
 
+    settings.dim = new Dim(settings.dim);
+    settings.exportDim =new Dim(settings.exportDim ?? settings.dim);
+    settings.mediaDim = new Dim(settings.mediaDim ?? settings.dim);
+
     if (settings.stop == true) {
       settings.stop = settings.start + settings.period;
     }
-
-    settings.dim = new Dim(settings.dim);
-    settings.exportDim =new Dim(settings.exportDim ?? settings.dim);
-    settings.mediaDim = new Dim(settings.ResourceDim ?? settings.dim);
-
+  
     this.mediaCount = this.settings.media.length;
 
     this.adapter = await navigator.gpu.requestAdapter();
@@ -297,6 +302,7 @@ export default class Program {
     this.counter = n;
     this.cur = (this.counter + 2) % 2;
     this.next = (this.counter + 1) % 2;
+    this.hooks.call('afterCounter', this.counter, this.cur, this.next);
   }
 
   async run(action='draw') {

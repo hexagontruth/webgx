@@ -8,6 +8,7 @@ export default class Config {
     autoplay: 'boolean',
     maxDim: 'number',
     fit: 'fit',
+    mediaFit: 'fit',
     streamFit: 'fit',
     controlsHidden: 'boolean',
     webcamEnabled: 'boolean',
@@ -20,7 +21,8 @@ export default class Config {
     program: 'default',
     autoplay: true,
     maxDim: 0,
-    fit: 'cover',
+    fit: 'contain',
+    mediaFit: 'cover',
     streamFit: 'cover',
     controlsHidden: false,
     webcamEnabled: false,
@@ -57,8 +59,7 @@ export default class Config {
     h: 'controlsHidden',
   };
 
-  constructor(app) {
-    this.app = app;
+  constructor() {
     this.localStorage = window.localStorage;
     this.sessionStorage = window.sessionStorage;
 
@@ -131,7 +132,6 @@ export default class Config {
     Config.sessionFields.includes(key) && this.storeSessionConfig();
 
     await Promise.all(this.afterSet.map(key, val, oldVal));
-    this.app?.set(key, val);
   }
 
   async setAll() {

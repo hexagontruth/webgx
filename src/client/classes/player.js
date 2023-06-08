@@ -1,15 +1,21 @@
 import { createElement } from '../util';
 import Dim from './dim';
 import FitBox from './fit-box';
+import Hook from './hook';
 import MediaTexture from './media-texture';
 import Program from './program';
 
 const { max, min } = Math;
 
 export default class Player {
-  constructor(app, container) {
-    this.app = app;
-    this.config = app.config;
+  static async build(app, container) {
+    const player = new Player(app, container);
+    await player.buildProgram();
+    return player;
+  }
+
+  constructor(config, container) {
+    this.config = config;
     this.container = container;
 
     this.play = this.config.autoplay;
@@ -24,23 +30,26 @@ export default class Player {
     this.exportCanvas = createElement('canvas');
     this.exportCtx = this.exportCanvas.getContext('2d');
 
+    this.hooks = new Hook(this, ['afterCounter', 'onPointer']);
+
     this.videoCapture = createElement('video', { autoplay: true });
     this.setStreamFit();
   
     this.config.testSet.add('screenShareEnabled', (v) => this.setStreamEnabled(v, 'screenShare'));
     this.config.testSet.add('webcamEnabled', (v) => this.setStreamEnabled(v, 'webcam'));
 
-    this.canvas.addEventListener('pointerdown', (ev) => app.handlePointer(ev));
-    this.canvas.addEventListener('pointerup', (ev) => app.handlePointer(ev));
-    this.canvas.addEventListener('pointerout', (ev) => app.handlePointer(ev));
-    this.canvas.addEventListener('pointercancel', (ev) => app.handlePointer(ev));
-    this.canvas.addEventListener('pointermove', (ev) => app.handlePointer(ev));
+    this.canvas.addEventListener('pointerdown', (ev) => this.hooks.call('onPointer', ev));
+    this.canvas.addEventListener('pointerup', (ev) => this.hooks.call('onPointer', ev));
+    this.canvas.addEventListener('pointerout', (ev) => this.hooks.call('onPointer', ev));
+    this.canvas.addEventListener('pointercancel', (ev) => this.hooks.call('onPointer', ev));
+    this.canvas.addEventListener('pointermove', (ev) => this.hooks.call('onPointer', ev));
 
     // this.init().then(() => this.render());
   }
 
   async buildProgram() {
     this.program = await Program.build(this.config.program, this.ctx);
+    this.program.hooks.add('afterCounter', (...args) => this.hooks.call('afterCounter', ...args));
   }
 
   async init() {
@@ -78,7 +87,6 @@ export default class Player {
       this.getDataUrl()
       .then((data) => this.postFrame(data, counter));
     }
-    this.app.set('counter', counter);
     this.play && this.setTimer(cond);
   }
 
@@ -124,14 +132,6 @@ export default class Player {
     this.program.resetCounter();
     this.program.run('reset');
     this.play || this.draw();
-  }
-
-  setFit() {
-
-  }
-
-  setStreamFit() {
-
   }
 
   async setStreamEnabled(val, type) {

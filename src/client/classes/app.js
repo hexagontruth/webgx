@@ -4,6 +4,8 @@ import Dim from './dim';
 import FitBox from './fit-box';
 import Player from './player';
 
+const { body } = document;
+
 export default class App {
   static elementIds = {
     mainContainer: 'main-container',
@@ -27,9 +29,9 @@ export default class App {
   }
 
   async init() {
-    document.body.style.opacity = '1';
+    body.style.opacity = '1';
 
-    this.elements = Object.fromEntries(Object.entries(App.elementIds).map(([k, v]) => {
+    this.els = Object.fromEntries(Object.entries(App.elementIds).map(([k, v]) => {
       const el = document.querySelector(`#${v}`);
       if (el?.tagName == 'BUTTON') {
         el.onclick = (ev) => this.handleButton(ev);
@@ -37,10 +39,36 @@ export default class App {
       return [k, el];
     }));
 
-    this.config = new Config(this);
-    this.player = new Player(this, this.elements.playerContainer);
+    this.config = new Config();
+    this.player = await Player.build(this.config, this.els.playerContainer);
+    
+    this.player.hooks.add('afterCounter', (val) => this.els.counterField.value = val);
+    this.player.hooks.add('onPointer', (ev) => this.handlePointer(ev));
 
-    await this.player.buildProgram();
+    this.config.afterSet.add('controlsHidden', (val) => {
+      body.classList.toggle('hidden', val);
+    });
+    this.config.afterSet.add('webcamEnabled', (val) => {
+      this.els.webcamButton.classList.toggle('active', val);
+    });
+    this.config.afterSet.add('screenShareEnabled', (val) => {
+      this.els.screenShareButton.classList.toggle('active', val);
+    });
+    this.config.afterSet.add('recordImages', (val) => {
+      this.els.recordImagesButton.classList.toggle('active', val);
+      postJson('/api/images', { set: val });
+    });
+    this.config.afterSet.add('recordVideo', (val) => {
+      this.els.recordVideoButton.classList.toggle('active', val);
+      const data = {
+        set: val,
+      };
+      if (val && this.player) {
+        data.settings = this.player.program.settings.output;
+      }
+      postJson('/api/video', data);
+    });
+
     await this.config.setAll();
     await this.player.init();
     await this.player.draw();
@@ -55,81 +83,40 @@ export default class App {
 
   togglePlay(val) {
     const playing = this.player.togglePlay(val);
-    this.elements.playButton.classList.toggle('icon-play', !playing);
-    this.elements.playButton.classList.toggle('icon-stop', playing);
+    this.els.playButton.classList.toggle('icon-play', !playing);
+    this.els.playButton.classList.toggle('icon-stop', playing);
   }
 
   toggleRecord(val) {
     const recording = this.player.toggleRecord(val);
-    this.elements.recordButton.classList.toggle('active', recording);
-    this.elements.recordButton.classList.toggle('icon-record', !recording);
-    this.elements.recordButton.classList.toggle('icon-stop', recording);
-    this.elements.recordVideoButton.disabled = val;
-  }
-
-  set(key, val) {
-    if (key == 'counter') {
-      this.elements.counterField.value = val;
-    }
-    else if (key == 'controlsHidden') {
-      document.body.classList.toggle('hidden', val);
-    }
-    else if (key == 'fit') {
-      this.player?.setFit(val);
-      this.handleResize();
-    }
-    else if (key == 'streamFit') {
-      this.player?.setStreamFit(val);
-    }
-    else if (key == 'webcamEnabled') {
-      // console.log(key, val, 'APP', this.player.stream);
-      this.elements.webcamButton.classList.toggle('active', val);
-    }
-    else if (key == 'screenShareEnabled') {
-      this.elements.screenShareButton.classList.toggle('active', val);
-    }
-    else if (key == 'recordImages') {
-      this.elements.recordImagesButton.classList.toggle('active', val);
-      postJson('/api/images', { set: val });
-    }
-    else if (key == 'recordVideo') {
-      this.elements.recordVideoButton.classList.toggle('active', val);
-      const data = {
-        set: val,
-      }
-      if (val && this.player) {
-        data.settings = this.player.program.settings.output;
-      }
-      postJson('/api/video', data);
-    }
-    else {
-      // TODO: Something
-      console.error(`No setting configured: ${key}`);
-    }
+    this.els.recordButton.classList.toggle('active', recording);
+    this.els.recordButton.classList.toggle('icon-record', !recording);
+    this.els.recordButton.classList.toggle('icon-stop', recording);
+    this.els.recordVideoButton.disabled = val;
   }
 
   handleButton(ev) {
     const button = ev.target;
-    const { elements } = this;
-    if (button == elements.playButton) {
+    const { els } = this;
+    if (button == els.playButton) {
       this.togglePlay();
     }
-    else if (button == elements.recordButton) {
+    else if (button == els.recordButton) {
       this.toggleRecord();
     }
-    else if (button == elements.loadImagesButton) {
+    else if (button == els.loadImagesButton) {
       /*todo*/
     }
-    else if (button == elements.webcamButton) {
+    else if (button == els.webcamButton) {
       this.config.toggle('webcamEnabled');
     }
-    else if (button == elements.screenShareButton) {
+    else if (button == els.screenShareButton) {
       this.config.toggle('screenShareEnabled');
     }
-    else if (button == elements.recordImagesButton) {
+    else if (button == els.recordImagesButton) {
       this.config.toggle('recordImages');
     }
-    else if (button == elements.recordVideoButton) {
+    else if (button == els.recordVideoButton) {
       this.config.toggle('recordVideo');
     }
   }
@@ -159,10 +146,17 @@ export default class App {
           this.togglePlay();
       }
       else if (key == 'f') {
-        if (ev.shiftKey)
-          this.set('streamFit');
-        else
+        if (ev.shiftKey) {
+          if (ev.metaKey) {
+            this.config.toggle('mediaFit');
+          }
+          else {
+            this.config.toggle('streamFit');
+          }
+        }
+        else {
           this.config.toggle('fit');
+        }
       }
       else if (key == 'r') {
         this.player.resetCounter();
@@ -175,7 +169,7 @@ export default class App {
         this.config.toggle('webcamEnabled');
       }
       else if (key == 'b') {
-        document.body.classList.toggle('gray');
+        body.classList.toggle('gray');
       }
       else if (ev.key == ' ') {
         if (this.player.play)
@@ -235,6 +229,6 @@ export default class App {
     const program = this.player?.program;
     if (!program) return;
     const fitBox = new FitBox(...new Dim(window), 1, 1, program.settings.fit);
-    this.elements.mainContainer.style.inset = fitBox.inset;
+    this.els.mainContainer.style.inset = fitBox.inset;
   }
 }

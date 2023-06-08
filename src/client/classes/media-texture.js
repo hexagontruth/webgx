@@ -27,8 +27,14 @@ export default class MediaTexture {
     this.media = media;
     this.idx = idx;
     this.isVideo = media instanceof HTMLVideoElement;
-    this.textureDim = new Dim(texture);
-    this.mediaDim = new Dim(media);
+    this.setFitBox(fit);
+    this.isVideo || this.update();
+  }
+
+  setFitBox(fit) {
+    this.fit = fit;
+    this.textureDim = new Dim(this.texture);
+    this.mediaDim = new Dim(this.media);
     this.fit = new FitBox(
       ...this.textureDim,
       ...this.mediaDim,
@@ -37,13 +43,7 @@ export default class MediaTexture {
     this.textureOrigin = {
       x: max(this.fit.child.x, 0),
       y: max(this.fit.child.y, 0),
-      z: idx,
-    }
-    if (!this.isVideo) {
-      this.update();
-    }
-    else {
-
+      z: this.idx,
     }
   }
 
