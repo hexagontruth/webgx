@@ -36,10 +36,13 @@ export default class Player {
   }
 
   async init() {
-    this.program = await Program.build(this.config.programDef, this.ctx);
+    this.program = await Program.build(this.config.program, this.config.maxDim, this.ctx);
     this.device = this.program.device;
 
     const { program, config } = this;
+
+    config.put('mediaFit', this.program.settings.mediaFit);
+    config.put('streamFit', this.program.settings.streamFit);
 
     program.hooks.add('afterCounter', (...args) => this.hooks.call('afterCounter', ...args));
 
@@ -142,5 +145,9 @@ export default class Player {
     }
 
     // this.player.uniforms.cursorAngle = Math.atan2(ev.offsetY, ev.offsetX);
+  }
+
+  getDim() {
+    return this.program.settings.dim;
   }
 }

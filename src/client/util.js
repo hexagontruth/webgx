@@ -106,6 +106,9 @@ export function join(...args) {
 
 export async function getText(path) {
   const result = await fetch(path);
+  if (!result.ok) {
+    throw new Error(`Error fetching ${path}: ${result.status}`);
+  }
   return await result.text();
 }
 

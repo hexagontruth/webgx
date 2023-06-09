@@ -52,8 +52,7 @@ export default class Pipeline {
 
   async init() {
     const { settings } = this;
-    const shaderPath = join('/data/shaders', this.data.shader);
-    this.shaderText = await this.program.loadShader(shaderPath, this.data.params);
+    this.shaderText = await this.program.loadShader(this.data.shader, this.data.params);
 
     this.shaderModule = this.device.createShaderModule({
       code: this.shaderText,

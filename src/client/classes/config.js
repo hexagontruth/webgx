@@ -1,8 +1,7 @@
-import { importObject, numberString, merge } from '../util';
+import { numberString, merge } from '../util';
 
+import Dim from './dim';
 import Hook from './hook';
-
-const PROGRAM_PATH = '/data/programs/';
 
 export default class Config {
   static schema = {
@@ -22,6 +21,7 @@ export default class Config {
   static defaults = {
     program: 'default',
     autoplay: true,
+    dim: 1024,
     maxDim: 0,
     fit: 'contain',
     mediaFit: 'cover',
@@ -61,12 +61,6 @@ export default class Config {
     d: 'maxDim',
     h: 'controlsHidden',
   };
-
-  static async build() {
-    const config = new Config();
-    await config.init();
-    return config;
-  }
 
   constructor() {
     this.localStorage = window.localStorage;
@@ -119,10 +113,6 @@ export default class Config {
 
     return queryObj;
   }
-
-  async init() {
-    this.programDef = await importObject(`${PROGRAM_PATH}${this.program}.js`);
-  }
   
   toggle(field) {
     const fn = Config.toggleFns[Config.schema[field]];
@@ -132,9 +122,14 @@ export default class Config {
     return next;
   }
 
+  put(key, val) {
+    this[key] = val;
+  }
+
   async set(key, val) {
     const oldVal = this[key];
     val = val ?? oldVal;
+
     const test = await this.testSet.testAsync(key, val, oldVal);
     if (!test) return;
 

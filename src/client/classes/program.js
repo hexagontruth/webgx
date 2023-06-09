@@ -1,5 +1,5 @@
 import {
-  createElement, getText, indexMap, join, merge
+  createElement, getText, importObject, indexMap, join, merge
 } from '../util';
 
 import Dim from './dim';
@@ -8,19 +8,24 @@ import Pipeline from './pipeline';
 import TexBox from './tex-box';
 import VertexData from './vertex-data';
 
+const PROGRAM_PATH = '/data/programs';
+const SHADER_PATH = '/data/shaders';
+
+const { max, min } = Math;
+
 export default class Program {
   static programDefaults = {
     settings: {
       dim: 1024,
       exportDim: null,
       mediaDim: null,
+      mediaFit: 'cover',
+      streamFit: 'cover',
       interval: 30,
       start: 0,
       stop: null,
       period: 360,
       skip: 1,
-      mediaFit: 'cover',
-      streamFit: 'cover',
       texturePairs: 3,
       output: {},
       media: [],
@@ -37,16 +42,16 @@ export default class Program {
     generatePipelineDefs: () => ({}),
   };
 
-  static async build(def, ctx) {
-    const program = new Program(def, ctx);
+  static async build(name, maxDim, ctx) {
+    const program = new Program(name, maxDim, ctx);
     await program.init();
     return program;
   }
 
-  constructor(def, ctx) {
-    merge(this, Program.programDefaults, def);
-
+  constructor(name, maxDim, ctx) {
+    this.name = name;
     this.ctx = ctx;
+    this.maxDim = maxDim;
     this.shaderTextRequests = {};
     this.shaderTexts = {};
     this.activeStreams = new Set();
@@ -59,11 +64,21 @@ export default class Program {
   }
 
   async init() {
+    const def = await importObject(join(PROGRAM_PATH, `${this.name}.js`));
+    merge(this, Program.programDefaults, def);
     const { settings } = this;
 
-    settings.dim = new Dim(settings.dim);
-    settings.exportDim = new Dim(settings.exportDim ?? settings.dim);
-    settings.mediaDim = new Dim(settings.mediaDim ?? settings.dim);
+    let dim = settings.dim;
+    dim = Array.isArray(dim) ? dim : [dim, dim];
+    const maxVal = max(...dim);
+    if (this.maxDim && maxVal > this.maxDim) {
+      dim = dim.map((e) => e / maxVal * this.maxDim);
+    }
+
+    settings.dim = new Dim(dim);
+    settings.exportDim = new Dim(settings.exportDim ?? dim);
+    settings.mediaDim = new Dim(settings.mediaDim ?? dim);
+    window.test = dim;
 
     if (settings.stop == true) {
       settings.stop = settings.start + settings.period;
@@ -183,7 +198,7 @@ export default class Program {
           this.device,
           this.mediaTexture,
           el,
-          this.mediaFit,
+          this.settings.mediaFit,
           idx,
         );
       el.src = join('/data/media', filename);
@@ -252,14 +267,17 @@ export default class Program {
 
   async loadShader(path, params) {
     params = merge({}, params, this.settings.params);
-    const rows = await this.loadShaderRows(path, params);
+    const rows = await this.loadShaderRows(SHADER_PATH, path, params);
     return rows.join('\n');
   }
 
-  async loadShaderRows(path, paramValues) {
-    // TODO: Make this actually async maybe idk
-    const dir = path.substring(0, path.lastIndexOf('/'));
-    const text = await getText(path);
+  // TODO: jfc this is awful
+  async loadShaderRows(basePath, path, paramValues) {
+    const segs = path.split('/');
+    const filename = segs.pop();
+    basePath = segs.length && segs[0].length == 0 ? SHADER_PATH : basePath;
+    const dir = join(basePath, ...segs);
+    const text = await getText(join(dir, filename));
     const sourceRows = text.split('\n');
     const params = {};
     let rows = [];
@@ -270,8 +288,8 @@ export default class Program {
         const directive = match[1];
         const args = match[2].split(/\s+/);
         if (directive == 'include') {
-          const includePath = join(dir, args[0] + '.wgsl');
-          let includeRows = await this.loadShaderRows(includePath);
+          const includePath = args[0] + '.wgsl';
+          let includeRows = await this.loadShaderRows(dir, includePath);
           rows = rows.concat(includeRows);
         }
         else if (directive == 'param') {
@@ -394,6 +412,7 @@ export default class Program {
       this.streamType = null;
       this.videoCapture.srcObject = null;
       this.activeStreams.delete(this.streamTexBox);
+      this.streamTexBox.clearTexture();
     }
   }
 }

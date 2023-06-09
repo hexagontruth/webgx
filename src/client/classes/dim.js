@@ -20,6 +20,9 @@ export default class Dim extends BaseDim {
       else if (arg instanceof HTMLElement) {
         this.push(arg.offsetWidth, arg.offsetHeight);
       }
+      else if (Array.isArray(arg)) {
+        this.push(...arg);
+      }
       else if (typeof arg == 'number') {
         this.push(arg, arg);
       }

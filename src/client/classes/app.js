@@ -37,7 +37,7 @@ export default class App {
       return [k, el];
     }));
 
-    this.config = await Config.build();
+    this.config = new Config();
     this.player = await Player.build(this.config, this.els.playerContainer);
     
     this.player.hooks.add('afterCounter', (val) => this.els.counterField.value = val);
@@ -203,7 +203,8 @@ export default class App {
 
   handleResize() {
     if (!this.player.program) return;
-    const fitBox = new FitBox(...new Dim(window), 1, 1, this.config.fit);
+    const fitBox = new FitBox(...new Dim(window), ...this.player.getDim(), this.config.fit);
+    this.fitBox = fitBox;
     this.els.mainContainer.style.inset = fitBox.inset;
   }
 }

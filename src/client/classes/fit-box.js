@@ -39,6 +39,7 @@ export default class FitBox {
     px = (ocw - pw) / 2;
     py = (och - ph) / 2;
   
+    this.originalDims = [opw, oph, ocw, och];
     this.child = new Box(cx, cy, cw, ch);
     this.parent = new Box(px, py, pw, ph);
 

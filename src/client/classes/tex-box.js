@@ -32,13 +32,13 @@ export default class TexBox {
   }
 
   setFitBox(fit) {
-    this.fit = fit;
+    this.fit = fit ?? this.fit;
     this.textureDim = new Dim(this.texture);
     this.mediaDim = new Dim(this.media);
-    this.fit = new FitBox(
+    this.fitBox = new FitBox(
       ...this.textureDim,
       ...this.mediaDim,
-      fit,
+      this.fit,
     );
     this.textureOrigin = {
       x: 0,
@@ -46,8 +46,8 @@ export default class TexBox {
       z: this.idx,
     }
     this.textureCopyOrigin = {
-      x: max(this.fit.child.x, 0),
-      y: max(this.fit.child.y, 0),
+      x: max(this.fitBox.child.x, 0),
+      y: max(this.fitBox.child.y, 0),
       z: this.idx,
     }
   }
@@ -72,10 +72,10 @@ export default class TexBox {
   async update() {
     const bitmap = await createImageBitmap(
       this.media,
-      ...this.fit.childCrop,
+      ...this.fitBox.childCrop,
       {
-        resizeWidth: this.fit.childScale.width,
-        resizeHeight: this.fit.childScale.height,
+        resizeWidth: this.fitBox.childScale.width,
+        resizeHeight: this.fitBox.childScale.height,
       },
     );
     this.device.queue.copyExternalImageToTexture(
