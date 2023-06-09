@@ -14,7 +14,7 @@ export default class Player {
   constructor(config, container) {
     this.config = config;
     this.container = container;
-
+    
     this.play = this.config.autoplay;
     this.recording = false;
 
@@ -36,7 +36,7 @@ export default class Player {
   }
 
   async init() {
-    this.program = await Program.build(this.config.program, this.ctx);
+    this.program = await Program.build(this.config.programDef, this.ctx);
     this.device = this.program.device;
 
     const { program, config } = this;

@@ -1,4 +1,4 @@
-import { merge, importObject, postJson } from '../util';
+import { postJson } from '../util';
 import Config from './config';
 import Dim from './dim';
 import FitBox from './fit-box';
@@ -37,7 +37,7 @@ export default class App {
       return [k, el];
     }));
 
-    this.config = new Config();
+    this.config = await Config.build();
     this.player = await Player.build(this.config, this.els.playerContainer);
     
     this.player.hooks.add('afterCounter', (val) => this.els.counterField.value = val);
@@ -72,10 +72,8 @@ export default class App {
     await this.player.draw();
 
     window.addEventListener('resize', () => this.handleResize());
-
     window.addEventListener('keydown', (ev) => this.handleKey(ev));
     window.addEventListener('keyup', (ev) => this.handleKey(ev));
-    
     this.handleResize();
   }
 

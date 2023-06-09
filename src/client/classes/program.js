@@ -1,17 +1,12 @@
 import {
-  createElement, getText, importObject, indexMap, join, merge
+  createElement, getText, indexMap, join, merge
 } from '../util';
 
 import Dim from './dim';
-import FitBox from './fit-box';
 import Hook from './hook';
 import Pipeline from './pipeline';
 import TexBox from './tex-box';
 import VertexData from './vertex-data';
-
-const PROGRAM_PATH = '/data/programs/';
-
-const { max, min } = Math;
 
 export default class Program {
   static programDefaults = {
@@ -42,14 +37,15 @@ export default class Program {
     generatePipelineDefs: () => ({}),
   };
 
-  static async build(name, ctx) {
-    const program = new Program(name, ctx);
+  static async build(def, ctx) {
+    const program = new Program(def, ctx);
     await program.init();
     return program;
   }
 
-  constructor(name, ctx) {
-    this.name = name;
+  constructor(def, ctx) {
+    merge(this, Program.programDefaults, def);
+
     this.ctx = ctx;
     this.shaderTextRequests = {};
     this.shaderTexts = {};
@@ -63,12 +59,6 @@ export default class Program {
   }
 
   async init() {
-    merge(
-      this,
-      Program.programDefaults,
-      await importObject(`${PROGRAM_PATH}${this.name}.js`),
-    );
-    
     const { settings } = this;
 
     settings.dim = new Dim(settings.dim);
@@ -361,8 +351,8 @@ export default class Program {
   }
 
   async setStreamEnabled(val, type) {
+    let stream;
     try {
-      let stream;
       if (val) {
         stream = await (
           type == 'screenShare' ?

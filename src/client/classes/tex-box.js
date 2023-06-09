@@ -41,6 +41,11 @@ export default class TexBox {
       fit,
     );
     this.textureOrigin = {
+      x: 0,
+      y: 0,
+      z: this.idx,
+    }
+    this.textureCopyOrigin = {
       x: max(this.fit.child.x, 0),
       y: max(this.fit.child.y, 0),
       z: this.idx,
@@ -48,16 +53,20 @@ export default class TexBox {
   }
 
   clearTexture() {
-    // this.device.queue.copyExternalImageToTexture(
-    //   {
-    //     source: 
-    //   },
-    //   {
-    //     texture: this.texture,
-    //     origin: this.textureOrigin,
-    //   },
-    //   [bitmap.width, bitmap.height],
-    // );
+    this.device?.queue.writeTexture(
+      {
+        texture: this.texture,
+        origin: this.textureOrigin,
+      },
+      new Uint8Array(this.texture.width * this.texture.height * 4),
+      {
+        bytesPerRow: 4 * this.texture.width,
+      },
+      {
+        width: this.texture.width,
+        height: this.texture.height,
+      },
+    );
   }
 
   async update() {
@@ -76,7 +85,7 @@ export default class TexBox {
       },
       {
         texture: this.texture,
-        origin: this.textureOrigin,
+        origin: this.textureCopyOrigin,
       },
       [bitmap.width, bitmap.height],
     );

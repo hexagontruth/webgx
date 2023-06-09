@@ -1,6 +1,8 @@
+import { importObject, numberString, merge } from '../util';
+
 import Hook from './hook';
 
-import { numberString, merge } from '../util';
+const PROGRAM_PATH = '/data/programs/';
 
 export default class Config {
   static schema = {
@@ -60,6 +62,12 @@ export default class Config {
     h: 'controlsHidden',
   };
 
+  static async build() {
+    const config = new Config();
+    await config.init();
+    return config;
+  }
+
   constructor() {
     this.localStorage = window.localStorage;
     this.sessionStorage = window.sessionStorage;
@@ -110,6 +118,10 @@ export default class Config {
     }
 
     return queryObj;
+  }
+
+  async init() {
+    this.programDef = await importObject(`${PROGRAM_PATH}${this.program}.js`);
   }
   
   toggle(field) {
