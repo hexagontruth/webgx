@@ -66,7 +66,7 @@ export default class Player {
   }
 
   async draw() {
-    await this.program.updateStream();
+    // await this.program.updateStream();
     this.program.stepCounter();
     await this.program.run();
     requestAnimationFrame(() => this.endFrame(), 0);

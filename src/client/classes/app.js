@@ -204,8 +204,7 @@ export default class App {
   }
 
   handleResize() {
-    const program = this.player?.program;
-    if (!program) return;
+    if (!this.player.program) return;
     const fitBox = new FitBox(...new Dim(window), 1, 1, this.config.fit);
     this.els.mainContainer.style.inset = fitBox.inset;
   }

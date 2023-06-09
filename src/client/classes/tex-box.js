@@ -3,7 +3,7 @@ import FitBox from './fit-box';
 
 const { max, min } = Math;
 
-export default class MediaTexture {
+export default class TexBox {
   static async awaitLoad(device, texture, media, fit='contain', idx=undefined) {
     return new Promise((resolve) => {
       const isVideo = media instanceof HTMLVideoElement;
@@ -16,7 +16,7 @@ export default class MediaTexture {
           media.setAttribute('autoplay', true);
           media.play();
         }
-        resolve(new MediaTexture(device, texture, media, fit, idx));
+        resolve(new TexBox(device, texture, media, fit, idx));
       }
       media.addEventListener(eventKey, fn);
     });
@@ -48,7 +48,16 @@ export default class MediaTexture {
   }
 
   clearTexture() {
-    
+    // this.device.queue.copyExternalImageToTexture(
+    //   {
+    //     source: 
+    //   },
+    //   {
+    //     texture: this.texture,
+    //     origin: this.textureOrigin,
+    //   },
+    //   [bitmap.width, bitmap.height],
+    // );
   }
 
   async update() {

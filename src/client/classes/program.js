@@ -5,8 +5,8 @@ import {
 import Dim from './dim';
 import FitBox from './fit-box';
 import Hook from './hook';
-import MediaTexture from './media-texture';
 import Pipeline from './pipeline';
+import TexBox from './tex-box';
 import VertexData from './vertex-data';
 
 const PROGRAM_PATH = '/data/programs/';
@@ -53,9 +53,7 @@ export default class Program {
     this.ctx = ctx;
     this.shaderTextRequests = {};
     this.shaderTexts = {};
-    this.activeStreams = [];
-    this.mediaFitBox = null;
-    this.streamFitBox = null;
+    this.activeStreams = new Set();
     this.streamActive = false;
     this.streamType = null;
     this.stream = null;
@@ -119,15 +117,6 @@ export default class Program {
       }),
     };
 
-    this.streamTexture = this.device.createTexture({
-      size: settings.dim,
-      format: 'rgba8unorm',
-      usage:
-        GPUTextureUsage.COPY_DST |
-        GPUTextureUsage.RENDER_ATTACHMENT |
-        GPUTextureUsage.TEXTURE_BINDING,
-    });
-
     this.drawTexture = this.device.createTexture({
       size: settings.dim,
       format: 'bgra8unorm',
@@ -165,6 +154,56 @@ export default class Program {
           GPUTextureUsage.TEXTURE_BINDING |
           GPUTextureUsage.RENDER_ATTACHMENT,
       });
+    });
+
+    this.streamTexture = this.device.createTexture({
+      size: settings.dim,
+      format: 'rgba8unorm',
+      usage:
+        GPUTextureUsage.COPY_DST |
+        GPUTextureUsage.RENDER_ATTACHMENT |
+        GPUTextureUsage.TEXTURE_BINDING,
+    });
+
+    this.streamTexBox = new TexBox(
+      this.device,
+      this.streamTexture,
+      this.videoCapture,
+      this.settings.streamFit,
+    );
+
+    this.mediaTexture = this.device.createTexture({
+      size:
+        this.mediaCount > 1 ? [...settings.dim, this.mediaCount] :
+        this.mediaCount > 0 ? [...settings.dim, 2] :
+        [1, 1, 2],
+      format: 'rgba8unorm',
+      usage:
+        GPUTextureUsage.COPY_DST |
+        GPUTextureUsage.COPY_SRC |
+        GPUTextureUsage.TEXTURE_BINDING |
+        GPUTextureUsage.RENDER_ATTACHMENT,
+    });
+
+    this.mediaTexBoxes = await Promise.all(settings.media.map(async (filename, idx) => {
+      const ext = filename.match(/\.(\w+)$/)?.[1];
+      const isImage = ['jpg', 'jpeg', 'gif', 'png', 'webp'].includes(ext);
+      let el = isImage ? new Image() : createElement('video');
+      const mediaTexture = TexBox.awaitLoad(
+          this.device,
+          this.mediaTexture,
+          el,
+          this.mediaFit,
+          idx,
+        );
+      el.src = join('/data/media', filename);
+      return mediaTexture;
+    }));
+
+    this.mediaTexBoxes.forEach((mediaTexture) => {
+      if (mediaTexture.isVideo) {
+        this.activeStreams.add(mediaTexture);
+      }
     });
 
     this.arrayGroupLayout = this.device.createBindGroupLayout({
@@ -207,40 +246,6 @@ export default class Program {
           }
         ],
       });
-    });
-
-    this.mediaTexture = this.device.createTexture({
-      size:
-        this.mediaCount > 1 ? [...settings.dim, this.mediaCount] :
-        this.mediaCount > 0 ? [...settings.dim, 2] :
-        [1, 1, 2],
-      format: 'rgba8unorm',
-      usage:
-        GPUTextureUsage.COPY_DST |
-        GPUTextureUsage.COPY_SRC |
-        GPUTextureUsage.TEXTURE_BINDING |
-        GPUTextureUsage.RENDER_ATTACHMENT,
-    });
-
-    this.mediaTextures = await Promise.all(settings.media.map(async (filename, idx) => {
-      const ext = filename.match(/\.(\w+)$/)?.[1];
-      const isImage = ['jpg', 'jpeg', 'gif', 'png', 'webp'].includes(ext);
-      let el = isImage ? new Image() : createElement('video');
-      const mediaTexture = MediaTexture.awaitLoad(
-          this.device,
-          this.mediaTexture,
-          el,
-          this.mediaFit,
-          idx,
-        );
-      el.src = join('/data/media', filename);
-      return mediaTexture;
-    }));
-
-    this.mediaTextures.forEach((mediaTexture) => {
-      if (mediaTexture.isVideo) {
-        this.activeStreams.push(mediaTexture);
-      }
     });
 
     const pipelineDefs = this.generatePipelineDefs(this);
@@ -311,7 +316,7 @@ export default class Program {
   }
 
   async run(action='draw') {
-    await Promise.all(this.activeStreams.map((e) => e.update()));
+    await Promise.all(Array.from(this.activeStreams).map((e) => e.update()));
     await this.actions[action](this);
   }
 
@@ -343,7 +348,7 @@ export default class Program {
 
   setMediaFit(fit) {
     this.settings.mediaFit = fit;
-    this.mediaTextures.forEach((e) => {
+    this.mediaTexBoxes.forEach((e) => {
       e.setFitBox(fit);
       e.clearTexture();
     });
@@ -351,25 +356,8 @@ export default class Program {
 
   setStreamFit(fit=this.settings.streamFit) {
     this.settings.streamFit = fit;
-    const dim = this.settings.mediaDim;
-    this.device.queue.writeTexture(
-      {
-        texture: this.streamTexture,
-      },
-      new Float32Array(dim.area * 4),
-      {
-        bytesPerRow: 4 * 4 * dim.width,
-      },
-      {
-        width: dim.width,
-        height: dim.height,
-      },
-    );
-    this.streamFitBox = new FitBox(
-      ...new Dim(this.settings.dim),
-      ...new Dim(this.videoCapture),
-      fit,
-    );
+    this.streamTexBox.setFitBox(fit);
+    this.streamTexBox.clearTexture();
   }
 
   async setStreamEnabled(val, type) {
@@ -400,7 +388,8 @@ export default class Program {
       this.streamType = type;
       this.videoCapture.onloadeddata = () => {
         this.streamActive = true;
-        this.setStreamFit();
+        this.streamTexBox.setFitBox();
+        this.activeStreams.add(this.streamTexBox);
       }
       this.videoCapture.srcObject = this.stream;
     }
@@ -414,36 +403,7 @@ export default class Program {
       this.streamActive = false;
       this.streamType = null;
       this.videoCapture.srcObject = null;
-      this.setStreamFit();
-    }
-  }
-
-  async updateStream() {
-    if (this.streamActive) {
-      const { child, childCrop, childScale } = this.streamFitBox;
-      const bitmap = await createImageBitmap(
-        this.videoCapture,
-        ...childCrop,
-        {
-          resizeWidth: childScale.width,
-          resizeHeight: childScale.height,
-        },
-      );
-      const textureOrigin = [
-        max(child.x, 0),
-        max(child.y, 0),
-      ];
-      this.device.queue.copyExternalImageToTexture(
-        {
-          source: bitmap,
-          // flipY: true,
-        },
-        {
-          texture: this.streamTexture,
-          origin: textureOrigin,
-        },
-        [bitmap.width, bitmap.height],
-      );
+      this.activeStreams.delete(this.streamTexBox);
     }
   }
 }
