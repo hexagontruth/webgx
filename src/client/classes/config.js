@@ -21,7 +21,6 @@ export default class Config {
   static defaults = {
     program: 'default',
     autoplay: true,
-    dim: 1024,
     maxDim: 0,
     fit: 'contain',
     mediaFit: 'cover',

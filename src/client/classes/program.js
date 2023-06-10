@@ -18,7 +18,6 @@ export default class Program {
     settings: {
       dim: 1024,
       exportDim: null,
-      mediaDim: null,
       mediaFit: 'cover',
       streamFit: 'cover',
       interval: 30,
@@ -31,6 +30,7 @@ export default class Program {
       media: [],
       params: {},
     },
+    customUniforms: {},
     features: [
       'depth-clip-control',
       'shader-f16',
@@ -77,8 +77,8 @@ export default class Program {
 
     settings.dim = new Dim(dim);
     settings.exportDim = new Dim(settings.exportDim ?? dim);
-    settings.mediaDim = new Dim(settings.mediaDim ?? dim);
-    window.test = dim;
+    const [w, h] = settings.dim;
+    settings.cover = w > h ? [1, h / w] : [w / h, 1];
 
     if (settings.stop == true) {
       settings.stop = settings.start + settings.period;
