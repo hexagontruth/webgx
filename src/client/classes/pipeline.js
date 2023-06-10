@@ -1,4 +1,4 @@
-import { join, merge } from '../util';
+import { indexMap, merge } from '../util';
 
 export default class Pipeline {
   static generateDefaults() {
@@ -62,18 +62,19 @@ export default class Pipeline {
       usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
     });
     this.globalUniformBuffer = this.device.createBuffer({
-      size: 24,
+      size: 32,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
     });
     this.customUniformBuffer = this.device.createBuffer({
       size: 24,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
     });
-    this.uniformData = new Float32Array([
+    this.globalUniformData = new Float32Array([
       0, // time
       0, // clock
       0, // counter
       settings.period,
+      ...settings.cover,
       ...settings.dim,
     ]);
     this.device.queue.writeBuffer(
@@ -81,7 +82,8 @@ export default class Pipeline {
       this.vertexData, 0,
       this.vertexData.length
     );
-    const bindGroupLayout = this.device.createBindGroupLayout({
+
+    this.uniformGroupLayout = this.device.createBindGroupLayout({
       entries: [
         {
           binding: 0,
@@ -91,33 +93,26 @@ export default class Pipeline {
         {
           binding: 1,
           visibility: GPUShaderStage.FRAGMENT,
-          sampler: {},
-        },
-        {
-          binding: 2,
-          visibility: GPUShaderStage.FRAGMENT,
-          sampler: {},
-        },
-        {
-          binding: 3,
-          visibility: GPUShaderStage.FRAGMENT,
-          sampler: {},
-        },
-        {
-          binding: 4,
-          visibility: GPUShaderStage.FRAGMENT,
-          texture: {},
-        },
-        {
-          binding: 5,
-          visibility: GPUShaderStage.FRAGMENT,
-          texture: {
-            viewDimension: '2d-array',
-          },
+          buffer: {},
         },
       ],
     });
-    const pipelineDescriptor = {
+
+    this.uniformGroup = this.device.createBindGroup({
+      layout: this.uniformGroupLayout,
+      entries: [
+        {
+          binding: 0,
+          resource: { buffer: this.globalUniformBuffer }
+        },
+        {
+          binding: 1,
+          resource: { buffer: this.customUniformBuffer },
+        }
+      ],
+    });
+
+    this.renderPipeline = this.device.createRenderPipeline({
       vertex: {
         module: this.shaderModule,
         entryPoint: 'vertex_main',
@@ -138,51 +133,22 @@ export default class Pipeline {
       },
       layout: this.device.createPipelineLayout({
           bindGroupLayouts: [
-            bindGroupLayout,
-            this.program.arrayGroupLayout,
+            this.program.swapGroupLayout,
+            this.uniformGroupLayout,
           ],
       }),
-    };
-    this.renderPipeline = this.device.createRenderPipeline(pipelineDescriptor);
-    this.bindGroup = this.device.createBindGroup({
-      layout: this.renderPipeline.getBindGroupLayout(0),
-      entries: [
-        {
-          binding: 0,
-          resource: { buffer: this.globalUniformBuffer }
-        },
-        {
-          binding: 1,
-          resource: this.program.samplers.linear,
-        },
-        {
-          binding: 2,
-          resource: this.program.samplers.mirror,
-        },
-        {
-          binding: 3,
-          resource: this.program.samplers.repeat,
-        },
-        {
-          binding: 4,
-          resource: this.program.streamTexture.createView(),
-        },
-        {
-          binding: 5,
-          resource: this.program.mediaTexture.createView(),
-        }
-      ],
     });
+
   }
 
   render(txIdx) {
     const { device, program, settings } = this;
     const { counter, cur, next } = program;
 
-    this.uniformData[0] = (counter / settings.period) % 1;
-    this.uniformData[1] = Date.now();
-    this.uniformData[2] = counter;
-    device.queue.writeBuffer(this.globalUniformBuffer, 0, this.uniformData);
+    this.globalUniformData[0] = (counter / settings.period) % 1;
+    this.globalUniformData[1] = Date.now();
+    this.globalUniformData[2] = counter;
+    device.queue.writeBuffer(this.globalUniformBuffer, 0, this.globalUniformData);
 
     const commandEncoder = device.createCommandEncoder();
     const clearColor = { r: 0.2, g: 0.5, b: 1.0, a: 1.0 };
@@ -233,8 +199,8 @@ export default class Pipeline {
     const passEncoder = commandEncoder.beginRenderPass(renderPassDescriptor);
     passEncoder.setPipeline(this.renderPipeline);
     passEncoder.setVertexBuffer(0, this.vertexBuffer);
-    passEncoder.setBindGroup(0, this.bindGroup);
-    passEncoder.setBindGroup(1, program.arrayGroup[cur]);
+    passEncoder.setBindGroup(0, this.program.swapGroups[cur]);
+    passEncoder.setBindGroup(1, this.uniformGroup);
     passEncoder.draw(4);
     passEncoder.end();
 

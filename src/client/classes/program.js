@@ -211,44 +211,91 @@ export default class Program {
       }
     });
 
-    this.arrayGroupLayout = this.device.createBindGroupLayout({
+    this.swapGroupLayout = this.device.createBindGroupLayout({
       entries: [
         {
           binding: 0,
+          visibility: GPUShaderStage.FRAGMENT,
+          sampler: {},
+        },
+        {
+          binding: 1,
+          visibility: GPUShaderStage.FRAGMENT,
+          sampler: {},
+        },
+        {
+          binding: 2,
+          visibility: GPUShaderStage.FRAGMENT,
+          sampler: {},
+        },
+        {
+          binding: 3,
+          visibility: GPUShaderStage.FRAGMENT,
+          texture: {},
+        },
+        {
+          binding: 4,
+          visibility: GPUShaderStage.FRAGMENT,
+          texture: {},
+        },
+        {
+          binding: 5,
+          visibility: GPUShaderStage.FRAGMENT,
+          texture: {},
+        },
+        {
+          binding: 6,
           visibility: GPUShaderStage.FRAGMENT,
           texture: {
             viewDimension: '2d-array',
           },
         },
         {
-          binding: 1,
+          binding: 7,
           visibility: GPUShaderStage.FRAGMENT,
-          texture: {},
-        },
-        {
-          binding: 2,
-          visibility: GPUShaderStage.FRAGMENT,
-          texture: {},
+          texture: {
+            viewDimension: '2d-array',
+          },
         },
       ],
     });
 
-    this.arrayGroup = indexMap(2).map((idx) => {
+    this.swapGroups = indexMap(2).map((idx) => {
       return this.device.createBindGroup({
-        layout: this.arrayGroupLayout,
+        layout: this.swapGroupLayout,
         entries: [
           {
             binding: 0,
-            resource: this.renderTextures[idx].createView(),
+            resource: this.samplers.linear,
           },
           {
-             binding: 1,
-             resource: this.lastTexture.createView(),
+            binding: 1,
+            resource: this.samplers.mirror,
           },
           {
             binding: 2,
+            resource: this.samplers.repeat,
+          },
+          {
+             binding: 3,
+             resource: this.lastTexture.createView(),
+          },
+          {
+            binding: 4,
             resource: this.inputTexture.createView(),
-          }
+          },
+          {
+            binding: 5,
+            resource: this.streamTexture.createView(),
+          },
+          {
+            binding: 6,
+            resource: this.mediaTexture.createView(),
+          },
+          {
+            binding: 7,
+            resource: this.renderTextures[idx].createView(),
+          },
         ],
       });
     });

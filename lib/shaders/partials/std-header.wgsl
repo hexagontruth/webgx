@@ -8,5 +8,4 @@
 #include color
 #include texture
 
-
 #include vertex-default
