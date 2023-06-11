@@ -22,30 +22,41 @@ function merge(...objs) {
     if (next == null || typeof next != 'object') {
       continue;
     }
-    for (let [key, value] of Object.entries(next)) {
-      if (value === undefined || ignoreNull && value === null) {
+    for (let [key, val] of Object.entries(next)) {
+      const baseVal = base[key];
+      const baseIsArray = Array.isArray(baseVal);
+      const valIsArray = Array.isArray(val);
+      const valIsTyped = ArrayBuffer.isView(val);
+      if (val === undefined || ignoreNull && val === null) {
         continue;
       }
-      if (typeof base[key] == 'object' && typeof value == 'object' && !Array.isArray(base[key])) {
-        base[key] = merge({}, base[key], value);
+      else if (valIsTyped) {
+        base[key] = val.slice();
+      }
+      else if (typeof baseVal == 'object' && typeof val == 'object' && !baseIsArray) {
+        base[key] = merge({}, base[key], val);
       }
       else {
+        const valObject = val;
         // TODO: Handle array base case
-        if (Array.isArray(base[key]) && Array.isArray(value)) {
+        if (baseIsArray && valIsArray) {
           if (arrayMerge) {
             if (arrayMerge == 'merge') {
-              const newValue = base[key].map((e, i) => value[i] !== undefined ? value[i] : e);
-              value = newValue.concat(value.slice(base[key].length));
+              const newVal = baseVal.map((e, i) => val[i] !== undefined ? val[i] : e);
+              val = newVal.concat(val.slice(baseVal.length));
             }
             else if (arrayMerge == 'add') {
-              value = base[key].concat(value);
+              val = baseVal.concat(val);
             }
           }
           if (arrayUnique) {
-            value = [...new Set(value)];
+            val = [...new Set(val)];
           }
         }
-        base[key] = value;
+        if (valObject === val && (valIsArray || valIsTyped)) {
+          val = val.slice();
+        }
+        base[key] = val;
       }
     }
   }

@@ -19,8 +19,10 @@ export default class BufferData {
     Object.entries(dataMap).forEach(([key, val]) => {
       val = Array.isArray(val) ? val : [val];
       this.dataMap[key] = val;
-      this.idxMap[key] = this.length;
-      this.length += val.length;
+      const padding = (val.length - this.length % val.length) % val.length;
+      const idx = this.length + padding;
+      this.idxMap[key] = idx;
+      this.length = idx + val.length;
     });
 
     this.data = new Float32Array(this.length);
