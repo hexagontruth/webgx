@@ -1,4 +1,6 @@
-import { indexMap, merge } from '../util';
+import { merge } from '../util';
+
+import BufferData from './buffer-data';
 
 export default class Pipeline {
   static generateDefaults() {
@@ -24,6 +26,7 @@ export default class Pipeline {
           stepMode: 'vertex',
         },
       ],
+      customUniforms: {},
     };
   }
 
@@ -42,12 +45,14 @@ export default class Pipeline {
 
   constructor(program, name, data) {
     this.data = merge({}, Pipeline.generateDefaults(), data);
-    this.vertexData = this.data.vertexData.slice();
-    
+    if (Object.keys(this.data.customUniforms).length == 0) {
+      this.data.customUniforms = { 'null': 0 };
+    }
     this.program = program;
     this.name = name;
     this.device = program.device;
     this.settings = program.settings;
+    this.vertexData = this.data.vertexData.slice();
   }
 
   async init() {
@@ -61,22 +66,8 @@ export default class Pipeline {
       size: this.vertexData.byteLength,
       usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
     });
-    this.globalUniformBuffer = this.device.createBuffer({
-      size: 32,
-      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-    });
-    this.customUniformBuffer = this.device.createBuffer({
-      size: 24,
-      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-    });
-    this.globalUniformData = new Float32Array([
-      0, // time
-      0, // clock
-      0, // counter
-      settings.period,
-      ...settings.cover,
-      ...settings.dim,
-    ]);
+    this.globalUniforms = BufferData.createUniform(this.device, this.program.globalUniformData);
+    this.customUniforms = BufferData.createUniform(this.device, this.data.customUniforms);
     this.device.queue.writeBuffer(
       this.vertexBuffer, 0,
       this.vertexData, 0,
@@ -103,11 +94,11 @@ export default class Pipeline {
       entries: [
         {
           binding: 0,
-          resource: { buffer: this.globalUniformBuffer }
+          resource: { buffer: this.globalUniforms.buffer },
         },
         {
           binding: 1,
-          resource: { buffer: this.customUniformBuffer },
+          resource: { buffer: this.customUniforms.buffer },
         }
       ],
     });
@@ -145,10 +136,11 @@ export default class Pipeline {
     const { device, program, settings } = this;
     const { counter, cur, next } = program;
 
-    this.globalUniformData[0] = (counter / settings.period) % 1;
-    this.globalUniformData[1] = Date.now();
-    this.globalUniformData[2] = counter;
-    device.queue.writeBuffer(this.globalUniformBuffer, 0, this.globalUniformData);
+    this.globalUniforms.set('time', (counter / settings.period) % 1);
+    this.globalUniforms.set('clock', Date.now());
+    this.globalUniforms.set('counter', counter);
+    this.globalUniforms.update();
+    this.customUniforms.update();
 
     const commandEncoder = device.createCommandEncoder();
     const clearColor = { r: 0.2, g: 0.5, b: 1.0, a: 1.0 };

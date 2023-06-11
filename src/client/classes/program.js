@@ -300,6 +300,14 @@ export default class Program {
       });
     });
 
+    this.globalUniformData = merge({
+      time: 0,
+      clock: 0,
+      counter: 0,
+      period: this.settings.period,
+      cover: this.settings.cover,
+      dim: this.settings.dim,
+    });
     const pipelineDefs = this.generatePipelineDefs(this);
     this.pipelines = await Pipeline.buildAll(this, pipelineDefs);
   }
