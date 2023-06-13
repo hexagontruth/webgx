@@ -1,6 +1,6 @@
 import { merge } from '../util';
 
-import BufferData from './buffer-data';
+import UniformBuffer from './uniform-buffer';
 
 export default class Pipeline {
   static generateDefaults() {
@@ -62,42 +62,34 @@ export default class Pipeline {
     this.shaderModule = this.device.createShaderModule({
       code: this.shaderText,
     });
+
     this.vertexBuffer = this.device.createBuffer({
       size: this.vertexData.byteLength,
       usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
     });
-    this.globalUniforms = BufferData.createUniform(this.device, this.program.globalUniformData);
-    this.customUniforms = BufferData.createUniform(this.device, this.data.customUniforms);
+
+    this.customUniforms = new UniformBuffer(this.device, this.data.customUniforms);
     this.device.queue.writeBuffer(
       this.vertexBuffer, 0,
       this.vertexData, 0,
       this.vertexData.length
     );
 
-    this.uniformGroupLayout = this.device.createBindGroupLayout({
+    this.customGroupLayout = this.device.createBindGroupLayout({
       entries: [
         {
           binding: 0,
-          visibility: GPUShaderStage.FRAGMENT,
-          buffer: {},
-        },
-        {
-          binding: 1,
           visibility: GPUShaderStage.FRAGMENT,
           buffer: {},
         },
       ],
     });
 
-    this.uniformGroup = this.device.createBindGroup({
-      layout: this.uniformGroupLayout,
+    this.customGroup = this.device.createBindGroup({
+      layout: this.customGroupLayout,
       entries: [
         {
           binding: 0,
-          resource: { buffer: this.globalUniforms.buffer },
-        },
-        {
-          binding: 1,
           resource: { buffer: this.customUniforms.buffer },
         }
       ],
@@ -125,21 +117,16 @@ export default class Pipeline {
       layout: this.device.createPipelineLayout({
           bindGroupLayouts: [
             this.program.swapGroupLayout,
-            this.uniformGroupLayout,
+            this.customGroupLayout,
           ],
       }),
     });
-
   }
 
   render(txIdx) {
     const { device, program, settings } = this;
     const { counter, cur, next } = program;
 
-    this.globalUniforms.set('time', (counter / settings.period) % 1);
-    this.globalUniforms.set('clock', Date.now());
-    this.globalUniforms.set('counter', counter);
-    this.globalUniforms.update();
     this.customUniforms.update();
 
     const commandEncoder = device.createCommandEncoder();
@@ -192,7 +179,7 @@ export default class Pipeline {
     passEncoder.setPipeline(this.renderPipeline);
     passEncoder.setVertexBuffer(0, this.vertexBuffer);
     passEncoder.setBindGroup(0, this.program.swapGroups[cur]);
-    passEncoder.setBindGroup(1, this.uniformGroup);
+    passEncoder.setBindGroup(1, this.customGroup);
     passEncoder.draw(4);
     passEncoder.end();
 

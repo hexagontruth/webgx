@@ -1,18 +1,9 @@
-import { merge } from '../util';
-
-export default class BufferData {
-  static createVertex(device, data) {
-    return new BufferData(device, data,GPUBufferUsage.COPY_DST | GPUBufferUsage.VERTEX);
-  }
-
-  static createUniform(device, data) {
-    return new BufferData(device, data,GPUBufferUsage.COPY_DST | GPUBufferUsage.UNIFORM);
-  }
-
-  constructor(device, dataMap, flags) {
+export default class UniformBuffer {
+  constructor(device, dataMap, opts={}) {
     this.device = device;
     this.dataMap = Object.assign({}, dataMap);
-    this.flags = flags;
+    this.opts = opts;
+    this.flags = opts.flags ?? GPUBufferUsage.COPY_DST | GPUBufferUsage.UNIFORM;
     this.idxMap = {};
     this.length = 0;
 
@@ -34,7 +25,7 @@ export default class BufferData {
 
     this.buffer = this.device.createBuffer({
       size: this.length * 4,
-      usage: flags,
+      usage: this.flags,
     });
   }
 
@@ -49,14 +40,23 @@ export default class BufferData {
   get(key) {
     const idx = this.idxMap[key];
     const length = this.dataMap[key].length; // Yes we could just get the value from here
-    const val = this.data.slice(idx, idx + length);
+    const val = Array.from(this.data.slice(idx, idx + length));
     return val.length > 1 ? val : val[0];
   }
 
+  getAll() {
+    return Object.fromEntries(Object.entries(this.dataMap).map(([k]) => [k, this.get(k)]));
+  }
+
   set(key, val) {
-    const idx = this.idxMap[key];
-    val = Array.isArray(val) ? val : [val];
-    this.data.set(val, idx);
-    this.dataMap[key] = val;
+    if (typeof key == 'object') {
+      Object.entries(key).forEach(([k, v]) => this.set(k, v));
+    }
+    else {
+      const idx = this.idxMap[key];
+      val = Array.isArray(val) ? val : [val];
+      this.data.set(val, idx);
+      this.dataMap[key] = val;
+    }
   }
 }

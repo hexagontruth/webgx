@@ -17,6 +17,7 @@ export default class Player {
     
     this.play = this.config.autoplay;
     this.recording = false;
+    this.cursorOut = true;
 
     this.canvas = createElement('canvas', { class: 'player-canvas' });
     this.container.appendChild(this.canvas);
@@ -31,6 +32,7 @@ export default class Player {
     this.canvas.addEventListener('pointerout', (ev) => this.handlePointer(ev));
     this.canvas.addEventListener('pointercancel', (ev) => this.handlePointer(ev));
     this.canvas.addEventListener('pointermove', (ev) => this.handlePointer(ev));
+    this.canvas.addEventListener('contextmenu', (ev) => ev.preventDefault());
 
     // this.init().then(() => this.render());
   }
@@ -129,22 +131,59 @@ export default class Player {
     this.play || this.draw();
   }
 
+  handleResize() {
+    this.boundingRect = this.canvas.getBoundingClientRect();
+  }
+
   handlePointer(ev) {
-    // this.player.uniforms.cursorLast = this.player.uniforms.cursorPos;
-    // this.player.uniforms.cursorPos = [
-    //   ev.offsetX / this.styleDim * 2 - 1,
-    //   ev.offsetY / this.styleDim * -2 + 1,
-    // ];
+    if (!this.program) return;
+    const cursorOut = this.cursorOut;
+    const { width, height } = this.boundingRect;
+    const x = ev.offsetX / width * 2 - 1;
+    const y = ev.offsetY / height * -2 + 1;
+    const data = this.program.getCursorUniforms();
+    let leftDown = ev.buttons % 2;
+    let rightDown = (ev.buttons >> 1) % 2;
 
-    if (ev.type == 'pointerdown') {
-      this.cursorDown = true;
-      // this.player.uniforms.cursorLast = this.player.uniforms.cursorPos.slice();
+    data.lastPos = cursorOut ? [x, y] : data.pos;
+    data.pos = [x, y];
+    const vel = [
+      data.pos[0] - data.lastPos[0],
+      data.pos[1] - data.lastPos[1],
+    ];
+    const acc = [
+      vel[0] - data.vel[0],
+      vel[1] - data.vel[1],
+    ];
+    data.vel = vel;
+    data.acc = acc;
+
+    if (ev.type == 'pointerout' || ev.type == 'pointercancel') {
+      leftDown = 0;
+      rightDown = 0;
+      this.cursorOut = true;
     }
-    else if (ev.type == 'pointerup' || ev.type == 'pointerout' || ev.type == 'pointercancel') {
-      this.cursorDown = false;
+    else {
+      this.cursorOut = false;
     }
 
-    // this.player.uniforms.cursorAngle = Math.atan2(ev.offsetY, ev.offsetX);
+    if (leftDown - data.leftDown == 1) {
+      data.leftDownAt = Date.now();
+    }
+    else if (leftDown - data.leftDown == -1) {
+      data.leftUpAt = Date.now();
+    }
+    if (rightDown - data.rightDown == 1) {
+      data.rightDownAt = Date.now();
+    }
+    else if (rightDown - data.rightDown == -1) {
+      data.rightUpAt = Date.now();
+    }
+
+    data.leftDown = leftDown;
+    data.rightDown = rightDown;
+
+    this.program.setCursorUniforms(data);
   }
 
   getDim() {

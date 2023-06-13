@@ -206,5 +206,6 @@ export default class App {
     const fitBox = new FitBox(...new Dim(window), ...this.player.getDim(), this.config.fit);
     this.fitBox = fitBox;
     this.els.mainContainer.style.inset = fitBox.inset;
+    this.player.handleResize();
   }
 }

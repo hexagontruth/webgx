@@ -4,7 +4,7 @@
 #include partials/math
 #include partials/color
 
-@group(1) @binding(0) var<uniform> gu: GlobalUniforms;
+@group(0) @binding(0) var<uniform> gu: GlobalUniforms;
 
 #include partials/vertex-default
 

@@ -6,6 +6,7 @@ import Dim from './dim';
 import Hook from './hook';
 import Pipeline from './pipeline';
 import TexBox from './tex-box';
+import UniformBuffer from './uniform-buffer';
 import VertexData from './vertex-data';
 
 const PROGRAM_PATH = '/data/programs';
@@ -99,6 +100,28 @@ export default class Program {
         GPUTextureUsage.COPY_SRC |
         GPUTextureUsage.COPY_DST |
         GPUTextureUsage.RENDER_ATTACHMENT,
+    });
+
+    this.globalUniforms = new UniformBuffer(this.device, {
+      time: 0,
+      clock: 0,
+      counter: 0,
+      period: this.settings.period,
+      cover: this.settings.cover,
+      dim: this.settings.dim,
+    });
+
+    this.cursorUniforms = new UniformBuffer(this.device, {
+      pos: [0, 0],
+      lastPos: [0, 0],
+      vel: [0, 0],
+      acc: [0, 0],
+      leftDown: 0,
+      leftDownAt: 0,
+      leftUpAt: 0,
+      rightDown: 0,
+      rightDownAt: 0,
+      rightUpAt: 0,
     });
 
     this.samplers ={
@@ -216,12 +239,12 @@ export default class Program {
         {
           binding: 0,
           visibility: GPUShaderStage.FRAGMENT,
-          sampler: {},
+          buffer: {},
         },
         {
           binding: 1,
           visibility: GPUShaderStage.FRAGMENT,
-          sampler: {},
+          buffer: {},
         },
         {
           binding: 2,
@@ -231,12 +254,12 @@ export default class Program {
         {
           binding: 3,
           visibility: GPUShaderStage.FRAGMENT,
-          texture: {},
+          sampler: {},
         },
         {
           binding: 4,
           visibility: GPUShaderStage.FRAGMENT,
-          texture: {},
+          sampler: {},
         },
         {
           binding: 5,
@@ -246,12 +269,22 @@ export default class Program {
         {
           binding: 6,
           visibility: GPUShaderStage.FRAGMENT,
+          texture: {},
+        },
+        {
+          binding: 7,
+          visibility: GPUShaderStage.FRAGMENT,
+          texture: {},
+        },
+        {
+          binding: 8,
+          visibility: GPUShaderStage.FRAGMENT,
           texture: {
             viewDimension: '2d-array',
           },
         },
         {
-          binding: 7,
+          binding: 9,
           visibility: GPUShaderStage.FRAGMENT,
           texture: {
             viewDimension: '2d-array',
@@ -266,51 +299,51 @@ export default class Program {
         entries: [
           {
             binding: 0,
-            resource: this.samplers.linear,
+            resource: { buffer: this.globalUniforms.buffer },
           },
           {
             binding: 1,
-            resource: this.samplers.mirror,
+            resource: { buffer: this.cursorUniforms.buffer },
           },
           {
             binding: 2,
-            resource: this.samplers.repeat,
+            resource: this.samplers.linear,
           },
           {
-             binding: 3,
-             resource: this.lastTexture.createView(),
+            binding: 3,
+            resource: this.samplers.mirror,
           },
           {
             binding: 4,
-            resource: this.inputTexture.createView(),
+            resource: this.samplers.repeat,
           },
           {
-            binding: 5,
-            resource: this.streamTexture.createView(),
+             binding: 5,
+             resource: this.lastTexture.createView(),
           },
           {
             binding: 6,
-            resource: this.mediaTexture.createView(),
+            resource: this.inputTexture.createView(),
           },
           {
             binding: 7,
+            resource: this.streamTexture.createView(),
+          },
+          {
+            binding: 8,
+            resource: this.mediaTexture.createView(),
+          },
+          {
+            binding: 9,
             resource: this.renderTextures[idx].createView(),
           },
         ],
       });
     });
 
-    this.globalUniformData = merge({
-      time: 0,
-      clock: 0,
-      counter: 0,
-      period: this.settings.period,
-      cover: this.settings.cover,
-      dim: this.settings.dim,
-    });
     const pipelineDefs = this.generatePipelineDefs(this);
     this.pipelines = await Pipeline.buildAll(this, pipelineDefs);
-  }
+  };
 
   frameCond(counter) {
     const { settings } = this;
@@ -379,6 +412,11 @@ export default class Program {
   }
 
   async run(action='draw') {
+    this.globalUniforms.set('time', (this.counter / this.settings.period) % 1);
+    this.globalUniforms.set('clock', Date.now());
+    this.globalUniforms.set('counter', this.counter);
+    this.globalUniforms.update();
+    this.cursorUniforms.update();
     await Promise.all(Array.from(this.activeStreams).map((e) => e.update()));
     await this.actions[action](this);
   }
@@ -407,6 +445,14 @@ export default class Program {
       },
     );
     this.device.queue.submit([commandEncoder.finish()]);
+  }
+
+  getCursorUniforms() {
+    return this.cursorUniforms.getAll();
+  }
+
+  setCursorUniforms(vals) {
+    this.cursorUniforms.set(vals);
   }
 
   setMediaFit(fit) {
