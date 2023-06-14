@@ -20,7 +20,6 @@ const configPaths = [
 
 class Config {
   constructor() {
-    let env = process.env.NODE_ENV || DEFAULT_ENV;
     configPaths.forEach((filename) => {
       const path = util.baseJoin(filename);
       const defaultConfig = {};
