@@ -1,6 +1,8 @@
 import { merge } from '../util';
 
 import UniformBuffer from './uniform-buffer';
+import VertexBuffer from './vertex-buffer';
+window.VertexBuffer = VertexBuffer;
 
 export default class Pipeline {
   static generateDefaults() {
@@ -8,12 +10,12 @@ export default class Pipeline {
       shader: 'default.wgsl',
       params: {},
       vertexData: new Float32Array([
-        -1, -1, 0, 1,
-        1, -1, 0, 1,
-        -1, 1, 0, 1,
-        1, 1, 0, 1,
+        -1, -1, 0, 1, 1, 1, 0, 1,
+        1, -1, 0, 1, 0, 0, 1, 1,
+        -1, 1, 0, 1, 1, 0, 1, 1,
+        1, 1, 0, 1, 0, 1, 1, 1,
       ]),
-      vertexBuffers: [
+      vertexBufferLayouts: [
         {
           attributes: [
             {
@@ -21,8 +23,29 @@ export default class Pipeline {
               offset: 0,
               format: 'float32x4',
             },
+            {
+              shaderLocation: 1,
+              offset: 16,
+              format: 'float32x4',
+            },
           ],
-          arrayStride: 16,
+          arrayStride: 32,
+          stepMode: 'vertex',
+        },
+        {
+          attributes: [
+            {
+              shaderLocation: 2,
+              offset: 0,
+              format: 'float32x4',
+            },
+            {
+              shaderLocation: 3,
+              offset: 16,
+              format: 'float32x4',
+            },
+          ],
+          arrayStride: 32,
           stepMode: 'vertex',
         },
       ],
@@ -99,7 +122,7 @@ export default class Pipeline {
       vertex: {
         module: this.shaderModule,
         entryPoint: 'vertex_main',
-        buffers: this.data.vertexBuffers,
+        buffers: this.data.vertexBufferLayouts,
       },
       fragment: {
         module: this.shaderModule,
@@ -178,6 +201,7 @@ export default class Pipeline {
     const passEncoder = commandEncoder.beginRenderPass(renderPassDescriptor);
     passEncoder.setPipeline(this.renderPipeline);
     passEncoder.setVertexBuffer(0, this.vertexBuffer);
+    passEncoder.setVertexBuffer(1, this.vertexBuffer);
     passEncoder.setBindGroup(0, this.program.swapGroups[cur]);
     passEncoder.setBindGroup(1, this.customGroup);
     passEncoder.draw(4);
