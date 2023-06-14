@@ -7,7 +7,7 @@ import Hook from './hook';
 import Pipeline from './pipeline';
 import TexBox from './tex-box';
 import UniformBuffer from './uniform-buffer';
-import VertexData from './vertex-data';
+import VertexBuffer from './vertex-buffer';
 
 const PROGRAM_PATH = '/data/programs';
 const SHADER_PATH = '/data/shaders';
@@ -395,10 +395,6 @@ export default class Program {
     return rows;
   }
 
-  buildVertexData(data) {
-    return new VertexData(this, data);
-  }
-
   resetCounter() {
     this.stepCounter(-1);
   }
@@ -453,6 +449,14 @@ export default class Program {
 
   setCursorUniforms(vals) {
     this.cursorUniforms.set(vals);
+  }
+
+  createUniformBuffer(...args) {
+    return new UniformBuffer(this.device, ...args);
+  }
+
+  createVertexBuffer(...args) {
+    return new VertexBuffer(this.device, ...args);
   }
 
   setMediaFit(fit) {

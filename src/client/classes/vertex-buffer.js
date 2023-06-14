@@ -10,12 +10,17 @@ export default class VertexBuffer {
     float32: Float32Array,
   };
 
+  static typeSizeMap = {
+    float32: 4,
+  };
+
   constructor(device, numVerts, paramData, opts={}) {
     this.device = device;
     this.numVerts = numVerts;
     this.paramData = paramData.map((e) => e.slice());
     this.opts = merge({}, VertexBuffer.defaultOpts, opts);
     this.ArrayConstructor = VertexBuffer.arrayTypeMap[this.opts.type];
+    this.typeSize = VertexBuffer.typeSizeMap[this.opts.type];
     this.offsetMap = [];
     this.lengthMap = [];
     this.stride = 0;
@@ -43,9 +48,52 @@ export default class VertexBuffer {
         this.data.set(slice, startIdx);
       }
     });
+
+    this.buffer = this.device.createBuffer({
+      size: this.length * this.typeSize,
+      usage: this.opts.flags,
+    });
   }
 
-  getLayout() {
-    
+  update() {
+    this.device.queue.writeBuffer(
+      this.buffer, 0,
+      this.data, 0,
+      this.data.length,
+    );
+  }
+
+  getLayout(startLocation=0) {
+    return   {
+      attributes: this.paramData.map((_, idx) => {
+        return {
+          shaderLocation: startLocation + idx,
+          offset: this.offsetMap[idx],
+          format: `${this.opts.type}x${this.lengthMap[idx]}`,
+        };
+      }),
+      arrayStride: this.stride,
+      stepMode: 'vertex',
+    };
+  }
+
+  get(idx, start, end) {
+    const length = this.lengthMap[idx];
+    const data = this.paramData[idx];
+    start = start * length;
+    end = (end ?? start + 1) * length;
+    return data.slice(start, end);
+  }
+
+  set(idx, start, val) {
+    const data = this.paramData[idx];
+    const length = this.lengthMap[idx];
+    const offset = this.offsetMap[idx];
+    start = start * length;
+    // Not using splice b/c of arg length concerns
+    for (let i = 0; i < val.length; i++) {
+      data[start + i] = val[i];
+    }
+    this.data.set(val, start * length + offset);
   }
 }

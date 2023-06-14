@@ -9,6 +9,21 @@ export default class Pipeline {
     return {
       shader: 'default.wgsl',
       params: {},
+      // vertexData: [
+      //   [
+      //     -1, -1, 0, 1,
+      //     1, -1, 0, 1,
+      //     -1, 1, 0, 1,
+      //     1, 1, 0, 1
+      //   ],
+      //   [
+      //     1, 1, 0, 1,
+      //     0, 1, 1, 1,
+      //     1, 0, 1, 1,
+      //     0.5, 0.5, 1, 1,
+      //   ],
+      // ],
+      // vertexCount: 4,
       vertexData: new Float32Array([
         -1, -1, 0, 1, 1, 1, 0, 1,
         1, -1, 0, 1, 0, 0, 1, 1,
