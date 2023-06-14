@@ -1,70 +1,23 @@
 import { merge } from '../util';
 
-import UniformBuffer from './uniform-buffer';
-import VertexBuffer from './vertex-buffer';
-window.VertexBuffer = VertexBuffer;
-
 export default class Pipeline {
   static generateDefaults() {
-    return {
-      shader: 'default.wgsl',
-      params: {},
-      // vertexData: [
-      //   [
-      //     -1, -1, 0, 1,
-      //     1, -1, 0, 1,
-      //     -1, 1, 0, 1,
-      //     1, 1, 0, 1
-      //   ],
-      //   [
-      //     1, 1, 0, 1,
-      //     0, 1, 1, 1,
-      //     1, 0, 1, 1,
-      //     0.5, 0.5, 1, 1,
-      //   ],
-      // ],
-      // vertexCount: 4,
-      vertexData: new Float32Array([
-        -1, -1, 0, 1, 1, 1, 0, 1,
-        1, -1, 0, 1, 0, 0, 1, 1,
-        -1, 1, 0, 1, 1, 0, 1, 1,
-        1, 1, 0, 1, 0, 1, 1, 1,
-      ]),
-      vertexBufferLayouts: [
-        {
-          attributes: [
-            {
-              shaderLocation: 0,
-              offset: 0,
-              format: 'float32x4',
-            },
-            {
-              shaderLocation: 1,
-              offset: 16,
-              format: 'float32x4',
-            },
-          ],
-          arrayStride: 32,
-          stepMode: 'vertex',
-        },
-        {
-          attributes: [
-            {
-              shaderLocation: 2,
-              offset: 0,
-              format: 'float32x4',
-            },
-            {
-              shaderLocation: 3,
-              offset: 16,
-              format: 'float32x4',
-            },
-          ],
-          arrayStride: 32,
-          stepMode: 'vertex',
-        },
-      ],
-      customUniforms: {},
+    return (p) => {
+      return {
+        shader: 'default.wgsl',
+        params: {},
+        vertexData: [
+          p.createVertexBuffer(4,
+            new Float32Array([
+              -1, -1, 0, 1,
+              1, -1, 0, 1,
+              -1, 1, 0, 1,
+              1, 1, 0, 1,
+            ]),
+          ),
+        ],
+        customUniforms: {},
+      };
     };
   }
 
@@ -82,7 +35,7 @@ export default class Pipeline {
   }
 
   constructor(program, name, data) {
-    this.data = merge({}, Pipeline.generateDefaults(), data);
+    this.data = merge({}, Pipeline.generateDefaults()(program), data);
     if (Object.keys(this.data.customUniforms).length == 0) {
       this.data.customUniforms = { 'null': 0 };
     }
@@ -90,28 +43,17 @@ export default class Pipeline {
     this.name = name;
     this.device = program.device;
     this.settings = program.settings;
-    this.vertexData = this.data.vertexData.slice();
+    this.vertexData = this.data.vertexData;
   }
 
   async init() {
-    const { settings } = this;
     this.shaderText = await this.program.loadShader(this.data.shader, this.data.params);
 
     this.shaderModule = this.device.createShaderModule({
       code: this.shaderText,
     });
 
-    this.vertexBuffer = this.device.createBuffer({
-      size: this.vertexData.byteLength,
-      usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
-    });
-
-    this.customUniforms = new UniformBuffer(this.device, this.data.customUniforms);
-    this.device.queue.writeBuffer(
-      this.vertexBuffer, 0,
-      this.vertexData, 0,
-      this.vertexData.length
-    );
+    this.customUniforms = this.program.createUniformBuffer(this.data.customUniforms);
 
     this.customGroupLayout = this.device.createBindGroupLayout({
       entries: [
@@ -133,11 +75,19 @@ export default class Pipeline {
       ],
     });
 
+    let locationIdx = 0;
+    const vertexBufferLayouts = this.vertexData.map((vertexBuffer) => {
+      vertexBuffer.update();
+      const layout = vertexBuffer.getLayout(locationIdx);
+      locationIdx += vertexBuffer.numParams;
+      return layout;
+    });
+
     this.renderPipeline = this.device.createRenderPipeline({
       vertex: {
         module: this.shaderModule,
         entryPoint: 'vertex_main',
-        buffers: this.data.vertexBufferLayouts,
+        buffers: vertexBufferLayouts,
       },
       fragment: {
         module: this.shaderModule,
@@ -179,12 +129,6 @@ export default class Pipeline {
         },
       ],
     };
-    
-    device.queue.writeBuffer(
-      this.vertexBuffer, 0,
-      this.vertexData, 0,
-      this.vertexData.length
-    );
 
     commandEncoder.copyTextureToTexture(
       {
@@ -215,8 +159,9 @@ export default class Pipeline {
 
     const passEncoder = commandEncoder.beginRenderPass(renderPassDescriptor);
     passEncoder.setPipeline(this.renderPipeline);
-    passEncoder.setVertexBuffer(0, this.vertexBuffer);
-    passEncoder.setVertexBuffer(1, this.vertexBuffer);
+    this.vertexData.forEach((vertexBuffer, idx) => {
+      passEncoder.setVertexBuffer(idx, vertexBuffer.buffer);
+    });
     passEncoder.setBindGroup(0, this.program.swapGroups[cur]);
     passEncoder.setBindGroup(1, this.customGroup);
     passEncoder.draw(4);

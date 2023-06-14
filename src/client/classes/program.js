@@ -40,7 +40,7 @@ export default class Program {
       draw: () => null,
       reset: () => null,
     },
-    generatePipelineDefs: () => ({}),
+    pipelines: {},
   };
 
   static async build(name, maxDim, ctx) {
@@ -65,8 +65,8 @@ export default class Program {
   }
 
   async init() {
-    const def = await importObject(join(PROGRAM_PATH, `${this.name}.js`));
-    merge(this, Program.programDefaults, def);
+    const defFn = await importObject(join(PROGRAM_PATH, `${this.name}.js`));
+    merge(this, Program.programDefaults, defFn(this));
     const { settings } = this;
 
     let dim = settings.dim;
@@ -341,8 +341,7 @@ export default class Program {
       });
     });
 
-    const pipelineDefs = this.generatePipelineDefs(this);
-    this.pipelines = await Pipeline.buildAll(this, pipelineDefs);
+    this.pipelines = await Pipeline.buildAll(this, this.pipelines);
   };
 
   frameCond(counter) {
@@ -414,7 +413,7 @@ export default class Program {
     this.globalUniforms.update();
     this.cursorUniforms.update();
     await Promise.all(Array.from(this.activeStreams).map((e) => e.update()));
-    await this.actions[action](this);
+    await this.actions[action]();
   }
 
   render(pipelineName, txIdx) {
