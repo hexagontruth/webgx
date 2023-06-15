@@ -74,6 +74,7 @@ export default class Pipeline {
       locationIdx += vertexBuffer.numParams;
       return layout;
     });
+    this.numVerts = this.vertexData[0].numVerts;
 
     this.renderPipeline = this.device.createRenderPipeline({
       vertex: {
@@ -103,9 +104,9 @@ export default class Pipeline {
     });
   }
 
-  render(txIdx) {
-    const { device, program, settings } = this;
-    const { counter, cur, next } = program;
+  render(txIdx, startVert=0, endVert=this.numVerts) {
+    const { device, program } = this;
+    const { cur, next } = program;
 
     const commandEncoder = device.createCommandEncoder();
     const clearColor = { r: 0.2, g: 0.5, b: 1.0, a: 1.0 };
@@ -147,6 +148,9 @@ export default class Pipeline {
       },
     );
 
+    this.program.globalUniforms.set('index', txIdx);
+    this.program.globalUniforms.update();
+
     const passEncoder = commandEncoder.beginRenderPass(renderPassDescriptor);
     passEncoder.setPipeline(this.renderPipeline);
     this.vertexData.forEach((vertexBuffer, idx) => {
@@ -154,7 +158,7 @@ export default class Pipeline {
     });
     passEncoder.setBindGroup(0, this.program.swapGroups[cur]);
     passEncoder.setBindGroup(1, this.customGroup);
-    passEncoder.draw(4);
+    passEncoder.draw(endVert - startVert, 1, startVert);
     passEncoder.end();
 
     commandEncoder.copyTextureToTexture(

@@ -116,8 +116,10 @@ export default class Program {
 
     this.globalUniforms = new UniformBuffer(this.device, {
       time: 0,
-      clock: 0,
       counter: 0,
+      clock: 0,
+      lastClock: 0,
+      index: 0,
       period: settings.period,
       cover: settings.cover,
       dim: settings.dim,
@@ -435,8 +437,10 @@ export default class Program {
 
   updateGlobalUniforms() {
     this.globalUniforms.set('time', (this.counter / this.settings.period) % 1);
-    this.globalUniforms.set('clock', Date.now());
     this.globalUniforms.set('counter', this.counter);
+    // This is independent of counter increment
+    this.globalUniforms.set('lastClock', this.globalUniforms.get('clock'));
+    this.globalUniforms.set('clock', Date.now());
     this.globalUniforms.update();
     this.cursorUniforms.update();
   }
@@ -449,8 +453,8 @@ export default class Program {
     await this.actions[action]?.(...args);
   }
 
-  render(pipelineName, txIdx) {
-    this.pipelines[pipelineName].render(txIdx);
+  render(pipelineName, txIdx, start, end) {
+    this.pipelines[pipelineName].render(txIdx, start, end);
   }
 
   draw(txIdx) {

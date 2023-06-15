@@ -118,6 +118,7 @@ export default class App {
   }
 
   handleKey(ev) {
+    if (ev.target instanceof HTMLInputElement) return;
     let key = ev.key.toLowerCase();
     if (ev.type == 'keydown') {
       if (ev.ctrlKey && !ev.shiftKey) {

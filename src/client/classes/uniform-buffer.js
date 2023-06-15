@@ -20,6 +20,7 @@ export default class UniformBuffer {
       this.idxMap[key] = idx;
       this.length = idx + val.length;
     });
+    this.length += (4 - this.length % 4) % 4;
 
     this.data = new Float32Array(this.length);
 
