@@ -19,3 +19,5 @@ I adapted this from my (fairly bare-bones) WebGL shader art stack to a) familiar
 In a nutshell, we load a "program" file specified in the `program` or `p` query parameter, which defines a set of WebGPU pipelines and logic to perform at ever step of the animation. The shaders are defined in separately files, using a fairly rudimentary `#include` system, according to a directory schema that made sense when I first started using it a few years ago. Unlike in my WebGL thing, which just used JSON, the program files here are full JavaScript files which include functions, etc., including access to a program object passed in from the player.
 
 There are separate directories for builtin programs and shaders (`lib`) and user-defined ones (`user`). The server process is required to both retrieve resources from both of these potential paths as well as perform recording operations via ffmpeg and simple frame saving.
+
+There is very little error handling being performed and the player is not in any way robust. It simply plays properly-formatted program and shader files for output or &mdash; within reason &mdash; interactive display. Probably.

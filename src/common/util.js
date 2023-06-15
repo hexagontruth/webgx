@@ -1,5 +1,13 @@
+function arrayWrap(v) {
+  return Array.isArray(v) ? v : [v];
+} 
+
 function indexMap(n) {
   return Array(n).fill().map((_, idx) => idx);
+}
+
+function objectMap(obj, fn) {
+  return Object.fromEntries(Object.entries(obj).map(fn));
 }
 
 merge.MERGE_ARRAYS = 2
@@ -64,6 +72,8 @@ function merge(...objs) {
 }
 
 module.exports = {
+  arrayWrap,
   indexMap,
+  objectMap,
   merge
 };

@@ -4,8 +4,13 @@ export default class UniformBuffer {
     this.dataMap = Object.assign({}, dataMap);
     this.opts = opts;
     this.flags = opts.flags ?? GPUBufferUsage.COPY_DST | GPUBufferUsage.UNIFORM;
+    this.allowEmpty = opts.allowEmpty ?? false;
     this.idxMap = {};
     this.length = 0;
+
+    if (!this.allowEmpty && Object.keys(this.dataMap).length == 0) {
+      dataMap = { 'null': 0 };
+    }
 
     Object.entries(dataMap).forEach(([key, val]) => {
       val = Array.isArray(val) ? val : [val];
@@ -58,5 +63,13 @@ export default class UniformBuffer {
       this.data.set(val, idx);
       this.dataMap[key] = val;
     }
+  }
+
+  setColor(key, val) {
+    // Assume six-digit hex string
+    const match = val.match(/^#(\w{2})(\w{2})(\w{2})$/);
+    const channels = match.slice(1, 4).map((e) => parseInt(e, 16) / 255);
+    channels.push(1);
+    this.set(key, channels);
   }
 }

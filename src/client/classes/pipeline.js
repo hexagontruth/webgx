@@ -36,9 +36,6 @@ export default class Pipeline {
 
   constructor(program, name, data) {
     this.data = merge({}, Pipeline.generateDefaults()(program), data);
-    if (Object.keys(this.data.customUniforms).length == 0) {
-      this.data.customUniforms = { 'null': 0 };
-    }
     this.program = program;
     this.name = name;
     this.device = program.device;
@@ -53,24 +50,19 @@ export default class Pipeline {
       code: this.shaderText,
     });
 
-    this.customUniforms = this.program.createUniformBuffer(this.data.customUniforms);
-
-    this.customGroupLayout = this.device.createBindGroupLayout({
-      entries: [
-        {
-          binding: 0,
-          visibility: GPUShaderStage.FRAGMENT,
-          buffer: {},
-        },
-      ],
-    });
+    this.pipelineUniforms = this.program.createUniformBuffer(this.data.uniforms);
+    this.pipelineUniforms.update();
 
     this.customGroup = this.device.createBindGroup({
-      layout: this.customGroupLayout,
+      layout: this.program.customGroupLayout,
       entries: [
         {
           binding: 0,
-          resource: { buffer: this.customUniforms.buffer },
+          resource: { buffer: this.program.programUniforms.buffer },
+        },
+        {
+          binding: 1,
+          resource: { buffer: this.pipelineUniforms.buffer },
         }
       ],
     });
@@ -105,7 +97,7 @@ export default class Pipeline {
       layout: this.device.createPipelineLayout({
           bindGroupLayouts: [
             this.program.swapGroupLayout,
-            this.customGroupLayout,
+            this.program.customGroupLayout,
           ],
       }),
     });
@@ -114,8 +106,6 @@ export default class Pipeline {
   render(txIdx) {
     const { device, program, settings } = this;
     const { counter, cur, next } = program;
-
-    this.customUniforms.update();
 
     const commandEncoder = device.createCommandEncoder();
     const clearColor = { r: 0.2, g: 0.5, b: 1.0, a: 1.0 };

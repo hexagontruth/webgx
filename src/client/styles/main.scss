@@ -440,8 +440,19 @@ canvas {
 }
 
 body.hidden {
-  .hideable {
+  .hideable, .dg.main {
     opacity: 0;
     pointer-events: none;
+  }
+}
+
+.dg.main {
+  position: absolute;
+  left: auto;
+  bottom: auto;
+  right: 0;
+  top: 0;
+  .cr, .close-button {
+    background: #000000bf !important;
   }
 }

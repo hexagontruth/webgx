@@ -1,3 +1,5 @@
+import * as dat from 'dat.gui';
+
 import { createElement } from '../util';
 import Hook from './hook';
 import Program from './program';
@@ -57,6 +59,24 @@ export default class Player {
     this.canvas.height = program.settings.dim.height;
     this.exportCanvas.width = program.settings.exportDim.width;
     this.exportCanvas.height = program.settings.exportDim.height;
+
+    if (this.program.hasControls) {
+      this.controls = new dat.GUI({ name: 'Controls', autoPlace: false});
+      document.body.appendChild(this.controls.domElement);
+      Object.entries(this.program.controlData).forEach(([key, val]) => {
+        let controller;
+        if (typeof this.program.controlData[key] == 'string') {
+          controller = this.controls.addColor(this.program.controlData, key);
+        }
+        else {
+          const args = this.program.controlDefs[key].slice(1);
+          controller = this.controls.add(this.program.controlData, key, ...args);
+        }
+        controller.onChange((e) => this.program.run('controlChange', key, e));
+      });
+    }
+
+    this.program.run('setup');
   }
 
   setTimer(cond) {
@@ -71,8 +91,9 @@ export default class Player {
   }
 
   async draw() {
-    // await this.program.updateStream();
     this.program.stepCounter();
+    this.program.updateGlobalUniforms();
+    await this.program.updateStreams();
     await this.program.run();
     requestAnimationFrame(() => this.endFrame(), 0);
   }

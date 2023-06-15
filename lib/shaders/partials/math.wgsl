@@ -234,6 +234,22 @@ fn prod4(p: vec4f) -> f32 {
   return p.x * p.y * p.z * p.w;
 }
 
+fn xsum1(s: f32, q: f32) -> f32 {
+  return s + q - 2. * s * q;
+}
+
+fn xsum2(s: vec2f, q: vec2f) -> vec2f {
+  return s + q - 2. * s * q;
+}
+
+fn xsum3(s: vec3f, q: vec3f) -> vec3f {
+  return s + q - 2. * s * q;
+}
+
+fn xsum4(s: vec4f, q: vec4f) -> vec4f {
+  return s + q - 2. * s * q;
+}
+
 fn project2(a: vec2f, b: vec2f) -> vec2f {
   return dot(a, b) / dot(b, b) * b;
 }

@@ -1,5 +1,5 @@
 import {
-  createElement, getText, importObject, indexMap, join, merge
+  arrayWrap, createElement, getText, importObject, indexMap, join, merge, objectMap,
 } from '../util';
 
 import Dim from './dim';
@@ -28,17 +28,19 @@ export default class Program {
       skip: 1,
       texturePairs: 3,
       output: {},
-      media: [],
-      params: {},
     },
-    customUniforms: {},
+    uniforms: {},
+    media: [],
+    controls: {},
     features: [
       'depth-clip-control',
       'shader-f16',
     ],
     actions: {
+      setup: () => null,
       draw: () => null,
       reset: () => null,
+      controlChange: () => null,
     },
     pipelines: {},
   };
@@ -66,11 +68,14 @@ export default class Program {
 
   async init() {
     const defFn = await importObject(join(PROGRAM_PATH, `${this.name}.js`));
-    merge(this, Program.programDefaults, defFn(this));
-    const { settings } = this;
+    const def = merge({}, Program.programDefaults, defFn(this));
+    this.settings = def.settings;
+    this.actions = def.actions;
+    const { settings } = def;
 
     let dim = settings.dim;
-    dim = Array.isArray(dim) ? dim : [dim, dim];
+    dim = arrayWrap(dim);
+    dim.length == 1 && dim.push(dim[0]);
     const maxVal = max(...dim);
     if (this.maxDim && maxVal > this.maxDim) {
       dim = dim.map((e) => e / maxVal * this.maxDim);
@@ -85,10 +90,14 @@ export default class Program {
       settings.stop = settings.start + settings.period;
     }
   
-    this.mediaCount = this.settings.media.length;
+    this.hasControls = Object.keys(def.controls).length > 0;
+    this.controlDefs = objectMap(def.controls, ([k, v]) => [k, arrayWrap(v)]);
+    this.controlData = objectMap(this.controlDefs, ([k, v]) => [k, v[0]]);
+
+    this.mediaCount = def.media.length;
 
     this.adapter = await navigator.gpu.requestAdapter();
-    this.features = this.features.filter((e) => this.adapter.features.has(e));
+    this.features = def.features.filter((e) => this.adapter.features.has(e));
     this.device = await this.adapter.requestDevice({
       requiredFeatures: this.features,
     });
@@ -102,13 +111,16 @@ export default class Program {
         GPUTextureUsage.RENDER_ATTACHMENT,
     });
 
+    this.programUniforms = this.createUniformBuffer(def.uniforms);
+    this.programUniforms.update();
+
     this.globalUniforms = new UniformBuffer(this.device, {
       time: 0,
       clock: 0,
       counter: 0,
-      period: this.settings.period,
-      cover: this.settings.cover,
-      dim: this.settings.dim,
+      period: settings.period,
+      cover: settings.cover,
+      dim: settings.dim,
     });
 
     this.cursorUniforms = new UniformBuffer(this.device, {
@@ -213,7 +225,7 @@ export default class Program {
         GPUTextureUsage.RENDER_ATTACHMENT,
     });
 
-    this.mediaTexBoxes = await Promise.all(settings.media.map(async (filename, idx) => {
+    this.media = await Promise.all(def.media.map(async (filename, idx) => {
       const ext = filename.match(/\.(\w+)$/)?.[1];
       const isImage = ['jpg', 'jpeg', 'gif', 'png', 'webp'].includes(ext);
       let el = isImage ? new Image() : createElement('video');
@@ -221,17 +233,32 @@ export default class Program {
           this.device,
           this.mediaTexture,
           el,
-          this.settings.mediaFit,
+          settings.mediaFit,
           idx,
         );
       el.src = join('/data/media', filename);
       return mediaTexture;
     }));
 
-    this.mediaTexBoxes.forEach((mediaTexture) => {
+    this.media.forEach((mediaTexture) => {
       if (mediaTexture.isVideo) {
         this.activeStreams.add(mediaTexture);
       }
+    });
+
+    this.customGroupLayout = this.device.createBindGroupLayout({
+      entries: [
+        {
+          binding: 0,
+          visibility: GPUShaderStage.FRAGMENT,
+          buffer: {},
+        },
+        {
+          binding: 1,
+          visibility: GPUShaderStage.FRAGMENT,
+          buffer: {},
+        },
+      ],
     });
 
     this.swapGroupLayout = this.device.createBindGroupLayout({
@@ -341,7 +368,7 @@ export default class Program {
       });
     });
 
-    this.pipelines = await Pipeline.buildAll(this, this.pipelines);
+    this.pipelines = await Pipeline.buildAll(this, def.pipelines);
   };
 
   frameCond(counter) {
@@ -406,14 +433,20 @@ export default class Program {
     this.hooks.call('afterCounter', this.counter, this.cur, this.next);
   }
 
-  async run(action='draw') {
+  updateGlobalUniforms() {
     this.globalUniforms.set('time', (this.counter / this.settings.period) % 1);
     this.globalUniforms.set('clock', Date.now());
     this.globalUniforms.set('counter', this.counter);
     this.globalUniforms.update();
     this.cursorUniforms.update();
+  }
+
+  async updateStreams() {
     await Promise.all(Array.from(this.activeStreams).map((e) => e.update()));
-    await this.actions[action]();
+  }
+
+  async run(action='draw', ...args) {
+    await this.actions[action]?.(...args);
   }
 
   render(pipelineName, txIdx) {
@@ -460,7 +493,7 @@ export default class Program {
 
   setMediaFit(fit) {
     this.settings.mediaFit = fit;
-    this.mediaTexBoxes.forEach((e) => {
+    this.media.forEach((e) => {
       e.setFitBox(fit);
       e.clearTexture();
     });
