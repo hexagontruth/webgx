@@ -1,69 +1,67 @@
 #include partials/std-header-vertex
-#include partials/complex
+
+struct ProgramUniforms {
+  bgColor : vec4f,
+  fgColor : vec4f,
+  res: f32,
+  animate: f32,
+  cover: f32,
+};
+
+@group(1) @binding(0) var<uniform> pu : ProgramUniforms;
 
 @fragment
 fn fragment_main(data: VertexData) -> @location(0) vec4f
 {
+  var fit = mix(1 / gu.cover.yx, gu.cover.xy, pu.cover);
+  var v = data.cv * fit;
+  var c : vec3f;
+  var hex : vec3f;
+  var a = 0.;
+  var b = 0.;
 
-  var c : vec4f;
-  var cv = data.cv;
-  var uv = data.uv;
+  var scale = 4.;
+  var res = pow(2., pu.res) / scale;
+  // res = pow(2., 2. + osc1(gu.counter / gu.period / 2) * 6) / scale;
+  v = v * scale;
+  hex = cart2hex(v);
+  var dist = interpolatedCubic(hex * res);
+  hex = dist[0].xyz /res;
+  v = hex2cart(hex);
 
-  // uv += csin(uv - gu.time);
-  // uv = csin(uv);
+  b = step(1, amax3(hex));
+  a = xsum1(a, b);
+  b = step(2, amax3(hex));
+  a = xsum1(a, b);
 
-  var hex = cart2hex(cv);
-  // hex = sin(abs(hex) - gu.time);
-  // hex = floor(hex* 10)/10.;
-  var bin = hexbin(hex2cart(hex), 2.);
-  c = bin;
-  // return vec4f(bin.xyz, 1);
-  var r = step(0.75, amax3(hex));
+  var t = select(0, gu.time, bool(pu.animate));
+  for (var i = 0; i < 6; i++) {
+    var u : vec2f;
+    u = trot2(unit.xy * 2., f32(i) / 6.);
+    hex = cart2hex(v + u);
+    b = step(t, amax3(hex));
+    a = xsum1(a, b);
 
-  var tv = uv;
+    u = trot2(unit.xy * 2., f32(i) / 6.);
+    hex = cart2hex(v + u);
+    b = step(1. + t, amax3(hex));
+    a = xsum1(a, b);
 
-  hex *= 60.;
-  var dist = interpolatedCubic(hex);
-  hex = dist[0].xyz /60.;
-  tv = hex2cart(hex);
-  tv = tv * 0.5 + 0.5;
-  // tv = tv * 2 + 1;
-  // tv = trot2(tv, gu.time);
-  // tv = tv * 0.5 + 0.5;
-  // if (uv.x > gu.time) {
-  //   tv.x = abs(fract(tv.x + 0.25));
-  // }
-  var flurg = (floor(tv.x * 6)/6. % 2);
-  tv.x = fract(tv.x + gu.time* 1. + flurg);
-  // tv.y = mix(tv.y, 1.-tv.y, flurg);
-  var s = texture(stream, scaleUv(tv, 1.5));
-  var t = textureRepeat(stream, scaleUv(tv, 1.5));
-  var u = textureMirror(stream, scaleUv(tv, 1.5));
-  if (uv.y > 2./3) {
-    s = t;
-  }
-  if (uv.y < 1./3) {
-    s = u;
+    u = trot2(unit.xy * 2., f32(i) / 6.);
+    hex = cart2hex(v + u);
+    b = step(t * 2., amax3(hex));
+    a = xsum1(a, b);
   }
 
-  // s = textureSample(resourceTextures, linearSampler, uv, 0);
-
-  // s += textureIdx(uv, 0);
-  s += texture(inputTexture, uv);
-  // s += texture(lastTexture, uv + vec2f(sin(gu.time * tau), cos(gu.time * tau)/4.));
-  s = s / 2.;
-
-  s += mediaIdx(uv, 1);
-  return s/2;
-
-  c = rgb2hsv(c);
-  c.r += floor((uv.y + gu.time) * 9.)/9. + r/2.;
-  c.r += rgb2hsv(s).x;
-  c.b += 1.- s.b;
-  c = hsv2rgb(c);
-
-  // c.b += 1. - smoothstep(1, 2, abs(data.position.x - 511.5));
-  // c.g += 1. - smoothstep(1, 2, abs(data.position.y - 511.5));
-
-  return vec4f(c.rgb, 1);
+  var bgColor = pu.bgColor;
+  var fgColor = pu.fgColor;
+  // bgColor = hsv2rgb(vec4f(gu.time, 1, 1./6, 1));
+  // fgColor = hsv2rgb(vec4f(gu.time + 0.5, 1, 1, 1));
+  c = mix(bgColor.rgb, fgColor.rgb, a);
+  var samp = texture(stream, v/scale / fit * 0.5 + 0.5);
+  c = xsum3(c, samp.rgb);
+  // c = rgb2hsv3(c);
+  // c.x += quantize1(fract(data.uv.y - gu.time), 8);
+  // c = hsv2rgb3(c);
+  return vec4f(c, 1);
 }

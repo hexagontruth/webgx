@@ -18,7 +18,6 @@ export default class Player {
     this.container = container;
     
     this.play = this.config.autoplay;
-    this.recording = false;
     this.cursorOut = true;
 
     this.canvas = createElement('canvas', { class: 'player-canvas' });
@@ -83,7 +82,7 @@ export default class Player {
     const { settings } = this.program;
     requestAnimationFrame(() => {
       let interval = settings.interval;
-      if (this.recording && cond) {
+      if (this.program.recording && cond) {
         interval = max(settings.interval, settings.recordingInterval || 0);
       }
       this.intervalTimer = setTimeout(() => this.draw(), interval);
@@ -101,7 +100,7 @@ export default class Player {
   endFrame() {
     const counter = this.program.counter;
     const cond = this.program.frameCond(counter);
-    if (this.recording && cond) {
+    if (this.program.recording && cond) {
       this.getDataUrl()
       .then((data) => this.postFrame(data, counter));
     }
@@ -141,8 +140,8 @@ export default class Player {
     return val;
   }
 
-  toggleRecord(val=!this.recording) {
-    this.recording = val;
+  toggleRecord(val=!this.program.recording) {
+    this.program.recording = val;
     val && this.program.resetCounter();
   }
 

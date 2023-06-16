@@ -250,6 +250,54 @@ fn xsum4(s: vec4f, q: vec4f) -> vec4f {
   return s + q - 2. * s * q;
 }
 
+fn tsin1(n: f32) -> f32 {
+  return sin(n * tau);
+}
+
+fn tsin2(n: vec2f) -> vec2f {
+  return sin(n * tau);
+}
+
+fn tsin3(n: vec3f) -> vec3f {
+  return sin(n * tau);
+}
+
+fn tsin4(n: vec4f) -> vec4f {
+  return sin(n * tau);
+}
+
+fn tcos1(n: f32) -> f32 {
+  return cos(n * tau);
+}
+
+fn tcos2(n: vec2f) -> vec2f {
+  return cos(n * tau);
+}
+
+fn tcos3(n: vec3f) -> vec3f {
+  return cos(n * tau);
+}
+
+fn tcos4(n: vec4f) -> vec4f {
+  return cos(n * tau);
+}
+
+fn osc1(n: f32) -> f32 {
+  return cos((n + 0.5) * tau) * 0.5 + 0.5;
+}
+
+fn osc2(n: vec2f) -> vec2f {
+  return cos((n + 0.5) * tau) * 0.5 + 0.5;
+}
+
+fn osc3(n: vec3f) -> vec3f {
+  return cos((n + 0.5) * tau) * 0.5 + 0.5;
+}
+
+fn osc4(n: vec4f) -> vec4f {
+  return cos((n + 0.5) * tau) * 0.5 + 0.5;
+}
+
 fn project2(a: vec2f, b: vec2f) -> vec2f {
   return dot(a, b) / dot(b, b) * b;
 }
@@ -320,4 +368,36 @@ fn clength(u: vec2f, v: vec2f, p: vec2f) -> f32 {
 
 fn gaussian2(v: vec2f, sd: f32) -> f32 {
   return 1./(tau * sd * sd) * exp(-(v.x * v.x + v.y * v.y) / (2. * sd * sd));
+}
+
+fn quantizeEp1(f: f32, n: f32, ep: f32) -> f32 {
+  return floor(clamp(f * n, 0., n - ep)) / n;
+}
+
+fn quantizeEp2(f: vec2f, n: f32, ep: f32) -> vec2f {
+  return floor(clamp2(f * n, 0., n - ep)) / n;
+}
+
+fn quantizeEp3(f: vec3f, n: f32, ep: f32) -> vec3f {
+  return floor(clamp3(f * n, 0., n - ep)) / n;
+}
+
+fn quantizeEp4(f: vec4f, n: f32, ep: f32) -> vec4f {
+  return floor(clamp4(f * n, 0., n - ep)) / n;
+}
+
+fn quantize1(f: f32, n: f32) -> f32 {
+  return quantizeEp1(f, n, 1./16384.);
+}
+
+fn quantize2(f: vec2f, n: f32) -> vec2f {
+  return quantizeEp2(f, n, 1./16384.);
+}
+
+fn quantize3(f: vec3f, n: f32) -> vec3f {
+  return quantizeEp3(f, n, 1./16384.);
+}
+
+fn quantize4(f: vec4f, n: f32) -> vec4f {
+  return quantizeEp4(f, n, 1./16384.);
 }

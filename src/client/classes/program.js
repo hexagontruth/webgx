@@ -1,5 +1,6 @@
 import {
-  arrayWrap, createElement, getText, importObject, indexMap, join, merge, objectMap,
+  arrayWrap, createElement, dirName, getText, importObject,
+  indexMap, join, merge, objectMap, rebaseJoin,
 } from '../util';
 
 import Dim from './dim';
@@ -10,8 +11,7 @@ import UniformBuffer from './uniform-buffer';
 import VertexBuffer from './vertex-buffer';
 import VertexSet from './vertex-set';
 
-const PROGRAM_PATH = '/data/programs';
-const SHADER_PATH = '/data/shaders';
+const DATA_PATH = '/data';
 
 const { max, min } = Math;
 
@@ -27,6 +27,7 @@ export default class Program {
         start: 0,
         stop: null,
         period: 360,
+        recordingPeriod: null,
         skip: 1,
         texturePairs: 3,
         output: {},
@@ -72,13 +73,16 @@ export default class Program {
     this.streamActive = false;
     this.streamType = null;
     this.stream = null;
+    this.recording = false;
     this.hooks = new Hook(this, ['afterCounter', 'onFit']);
     this.videoCapture = createElement('video', { autoplay: true });
     this.resetCounter();
   }
 
   async init() {
-    const defFn = await importObject(join(PROGRAM_PATH, `${this.name}.js`));
+    this.programPath = join(DATA_PATH, `${this.name}.js`);
+    this.programDir = dirName(this.programPath);
+    const defFn = await importObject(this.programPath);
     const def = merge({}, Program.generateDefaults(this), defFn(this));
     this.settings = def.settings;
     this.vertexData = def.vertexData;
@@ -97,6 +101,7 @@ export default class Program {
     settings.exportDim = new Dim(settings.exportDim ?? dim);
     const [w, h] = settings.dim;
     settings.cover = w > h ? [1, h / w] : [w / h, 1];
+    settings.recordingPeriod = settings.recordingPeriod ?? settings.period;
 
     if (settings.stop == true) {
       settings.stop = settings.start + settings.period;
@@ -254,7 +259,7 @@ export default class Program {
           settings.mediaFit,
           idx,
         );
-      el.src = join('/data/media', filename);
+      el.src = rebaseJoin(DATA_PATH, this.programDir, filename);
       return mediaTexture;
     }));
 
@@ -399,17 +404,15 @@ export default class Program {
 
   async loadShader(path, params) {
     params = merge({}, params, this.settings.params);
-    const rows = await this.loadShaderRows(SHADER_PATH, path, params);
+    const rows = await this.loadShaderRows(DATA_PATH, path, params);
     return rows.join('\n');
   }
 
   // TODO: jfc this is awful
   async loadShaderRows(basePath, path, paramValues) {
-    const segs = path.split('/');
-    const filename = segs.pop();
-    basePath = segs.length && segs[0].length == 0 ? SHADER_PATH : basePath;
-    const dir = join(basePath, ...segs);
-    const text = await getText(join(dir, filename));
+    const filename = rebaseJoin(DATA_PATH, basePath, path);
+    const dir = dirName(filename);
+    const text = await getText(join(filename));
     const sourceRows = text.split('\n');
     const params = {};
     let rows = [];
@@ -452,7 +455,9 @@ export default class Program {
   }
 
   updateGlobalUniforms() {
-    this.globalUniforms.set('time', (this.counter / this.settings.period) % 1);
+    const period = this.recording ? this.settings.recordingPeriod : this.settings.period;
+    this.globalUniforms.set('period', period);
+    this.globalUniforms.set('time', (this.counter / period) % 1);
     this.globalUniforms.set('counter', this.counter);
     // This is independent of counter increment
     this.globalUniforms.set('lastClock', this.globalUniforms.get('clock'));

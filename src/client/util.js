@@ -104,6 +104,20 @@ export function join(...args) {
   return path.join('/');
 }
 
+export function rebaseJoin(absBase, relBase, path) {
+  const segs = path.split('/');
+  const basePath = segs.length && segs[0].length == 0 ? absBase : relBase;
+  // console.log(absBase, relBase, path);
+  // console.log(basePath, segs);
+  // console.log(join(basePath, ...segs));
+  return join(basePath, ...segs);
+}
+
+export function dirName(path) {
+  const segs = path.split('/');
+  return segs.slice(0, -1).join('/');
+}
+
 export async function getText(path) {
   const result = await fetch(path);
   if (!result.ok) {
