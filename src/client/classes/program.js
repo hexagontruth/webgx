@@ -8,6 +8,7 @@ import Pipeline from './pipeline';
 import TexBox from './tex-box';
 import UniformBuffer from './uniform-buffer';
 import VertexBuffer from './vertex-buffer';
+import VertexSet from './vertex-set';
 
 const PROGRAM_PATH = '/data/programs';
 const SHADER_PATH = '/data/shaders';
@@ -15,34 +16,44 @@ const SHADER_PATH = '/data/shaders';
 const { max, min } = Math;
 
 export default class Program {
-  static programDefaults = {
-    settings: {
-      dim: 1024,
-      exportDim: null,
-      mediaFit: 'cover',
-      streamFit: 'cover',
-      interval: 30,
-      start: 0,
-      stop: null,
-      period: 360,
-      skip: 1,
-      texturePairs: 3,
-      output: {},
-    },
-    uniforms: {},
-    media: [],
-    controls: {},
-    features: [
-      'depth-clip-control',
-      'shader-f16',
-    ],
-    actions: {
-      setup: () => null,
-      draw: () => null,
-      reset: () => null,
-      controlChange: () => null,
-    },
-    pipelines: {},
+  static generateDefaults(p) {
+    return {
+      settings: {
+        dim: 1024,
+        exportDim: null,
+        mediaFit: 'cover',
+        streamFit: 'cover',
+        interval: 30,
+        start: 0,
+        stop: null,
+        period: 360,
+        skip: 1,
+        texturePairs: 3,
+        output: {},
+      },
+      vertexData: [
+        p.createVertexSet(4, [
+          -1, -1, 0, 1,
+          1, -1, 0, 1,
+          -1, 1, 0, 1,
+          1, 1, 0, 1,
+        ]),
+      ],
+      uniforms: {},
+      media: [],
+      controls: {},
+      features: [
+        'depth-clip-control',
+        'shader-f16',
+      ],
+      actions: {
+        setup: () => null,
+        draw: () => null,
+        reset: () => null,
+        controlChange: () => null,
+      },
+      pipelines: {},
+    };
   };
 
   static async build(name, maxDim, ctx) {
@@ -68,8 +79,9 @@ export default class Program {
 
   async init() {
     const defFn = await importObject(join(PROGRAM_PATH, `${this.name}.js`));
-    const def = merge({}, Program.programDefaults, defFn(this));
+    const def = merge({}, Program.generateDefaults(this), defFn(this));
     this.settings = def.settings;
+    this.vertexData = def.vertexData;
     this.actions = def.actions;
     const { settings } = def;
 
@@ -111,7 +123,11 @@ export default class Program {
         GPUTextureUsage.RENDER_ATTACHMENT,
     });
 
-    this.programUniforms = this.createUniformBuffer(def.uniforms);
+    this.vertexBuffers = this.vertexData.map((vertexSet) => {
+      return new VertexBuffer(this.device, vertexSet);
+    });
+
+    this.programUniforms = new UniformBuffer(this.device, def.uniforms);
     this.programUniforms.update();
 
     this.globalUniforms = new UniformBuffer(this.device, {
@@ -487,12 +503,8 @@ export default class Program {
     this.cursorUniforms.set(vals);
   }
 
-  createUniformBuffer(...args) {
-    return new UniformBuffer(this.device, ...args);
-  }
-
-  createVertexBuffer(...args) {
-    return new VertexBuffer(this.device, ...args);
+  createVertexSet(...args) {
+    return new VertexSet(...args);
   }
 
   setMediaFit(fit) {

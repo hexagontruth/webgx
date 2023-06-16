@@ -1,23 +1,14 @@
 import { merge } from '../util';
+import UniformBuffer from './uniform-buffer';
 
 export default class Pipeline {
-  static generateDefaults() {
-    return (p) => {
-      return {
-        shader: 'default.wgsl',
-        params: {},
-        vertexData: [
-          p.createVertexBuffer(4,
-            new Float32Array([
-              -1, -1, 0, 1,
-              1, -1, 0, 1,
-              -1, 1, 0, 1,
-              1, 1, 0, 1,
-            ]),
-          ),
-        ],
-        customUniforms: {},
-      };
+  static generateDefaults(p) {
+    return {
+      shader: 'default.wgsl',
+      vertexSets: [0],
+      topology: 'triangle-strip',
+      customUniforms: {},
+      params: {},
     };
   }
 
@@ -35,12 +26,13 @@ export default class Pipeline {
   }
 
   constructor(program, name, data) {
-    this.data = merge({}, Pipeline.generateDefaults()(program), data);
+    this.data = merge({}, Pipeline.generateDefaults(program), data);
     this.program = program;
     this.name = name;
     this.device = program.device;
     this.settings = program.settings;
-    this.vertexData = this.data.vertexData;
+    this.vertexBuffers = this.data.vertexSets.map((idx) => this.program.vertexBuffers[idx]);
+    this.numVerts = this.vertexBuffers[0].set.numVerts;
   }
 
   async init() {
@@ -50,7 +42,7 @@ export default class Pipeline {
       code: this.shaderText,
     });
 
-    this.pipelineUniforms = this.program.createUniformBuffer(this.data.uniforms);
+    this.pipelineUniforms = new UniformBuffer(this.device, this.data.uniforms);
     this.pipelineUniforms.update();
 
     this.customGroup = this.device.createBindGroup({
@@ -68,13 +60,12 @@ export default class Pipeline {
     });
 
     let locationIdx = 0;
-    const vertexBufferLayouts = this.vertexData.map((vertexBuffer) => {
+    const vertexBufferLayouts = this.vertexBuffers.map((vertexBuffer) => {
       vertexBuffer.update();
       const layout = vertexBuffer.getLayout(locationIdx);
       locationIdx += vertexBuffer.numParams;
       return layout;
     });
-    this.numVerts = this.vertexData[0].numVerts;
 
     this.renderPipeline = this.device.createRenderPipeline({
       vertex: {
@@ -92,7 +83,7 @@ export default class Pipeline {
         ],
       },
       primitive: {
-        topology: 'triangle-strip',
+        topology: this.data.topology,
         unclippedDepth: this.program.features.includes('depth-clip-control') ? true : undefined,
       },
       layout: this.device.createPipelineLayout({
@@ -104,7 +95,9 @@ export default class Pipeline {
     });
   }
 
-  render(txIdx, startVert=0, endVert=this.numVerts) {
+  render(txIdx, start=0, length) {
+    length = length ?? this.numVerts - start;
+
     const { device, program } = this;
     const { cur, next } = program;
 
@@ -149,16 +142,16 @@ export default class Pipeline {
     );
 
     this.program.globalUniforms.set('index', txIdx);
-    this.program.globalUniforms.update();
+    this.program.globalUniforms.update('index');
 
     const passEncoder = commandEncoder.beginRenderPass(renderPassDescriptor);
     passEncoder.setPipeline(this.renderPipeline);
-    this.vertexData.forEach((vertexBuffer, idx) => {
+    this.vertexBuffers.forEach((vertexBuffer, idx) => {
       passEncoder.setVertexBuffer(idx, vertexBuffer.buffer);
     });
     passEncoder.setBindGroup(0, this.program.swapGroups[cur]);
     passEncoder.setBindGroup(1, this.customGroup);
-    passEncoder.draw(endVert - startVert, 1, startVert);
+    passEncoder.draw(length, 1, start);
     passEncoder.end();
 
     commandEncoder.copyTextureToTexture(

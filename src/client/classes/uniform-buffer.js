@@ -35,11 +35,14 @@ export default class UniformBuffer {
     });
   }
 
-  update() {
+  update(key) {
+    const [start, length] = key ?
+      [this.idxMap[key], this.dataMap[key].length] :
+      [0, this.data.length];
     this.device.queue.writeBuffer(
-      this.buffer, 0,
-      this.data, 0,
-      this.data.length,
+      this.buffer, start * 4,
+      this.data, start,
+      length,
     );
   }
 
