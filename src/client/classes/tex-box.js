@@ -53,7 +53,7 @@ export default class TexBox {
   }
 
   clearTexture() {
-    this.device?.queue.writeTexture(
+    this.device.queue.writeTexture(
       {
         texture: this.texture,
         origin: this.textureOrigin,

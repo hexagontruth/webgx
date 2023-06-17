@@ -29,7 +29,7 @@ export default class Program {
         period: 360,
         recordingPeriod: null,
         skip: 1,
-        texturePairs: 3,
+        renderPairs: 3,
         output: {},
       },
       vertexData: [
@@ -209,7 +209,7 @@ export default class Program {
 
     this.renderTextures = indexMap(2).map(() => {
       return this.device.createTexture({
-        size: [...settings.dim, settings.texturePairs],
+        size: [...settings.dim, settings.renderPairs],
         format: 'bgra8unorm',
         usage:
           GPUTextureUsage.COPY_DST |
@@ -510,6 +510,18 @@ export default class Program {
 
   createVertexSet(...args) {
     return new VertexSet(...args);
+  }
+
+  clearRenderTextures() {
+    this.renderTextures.forEach((renderTexture) => {
+      const { width, height, depthOrArrayLayers } = renderTexture;
+      this.device.queue.writeTexture(
+        { texture: renderTexture },
+        new Uint8Array(width * height * depthOrArrayLayers * 4),
+        { bytesPerRow: 4 * width, rowsPerImage: height},
+        { width, height, depthOrArrayLayers },
+      );
+    });
   }
 
   setMediaFit(fit) {

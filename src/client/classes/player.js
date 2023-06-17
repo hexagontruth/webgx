@@ -151,6 +151,10 @@ export default class Player {
     this.play || this.draw();
   }
 
+  clearRenderTextures() {
+    this.program.clearRenderTextures();
+  }
+
   handleResize() {
     this.boundingRect = this.canvas.getBoundingClientRect();
   }

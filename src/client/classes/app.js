@@ -155,6 +155,9 @@ export default class App {
           this.config.toggle('fit');
         }
       }
+      else if (key == 'c') {
+        this.player.clearRenderTextures();
+      }
       else if (key == 'r') {
         this.player.resetCounter();
         return;
