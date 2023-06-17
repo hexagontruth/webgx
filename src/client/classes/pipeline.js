@@ -5,8 +5,10 @@ export default class Pipeline {
   static generateDefaults(p) {
     return {
       shader: 'default.wgsl',
-      vertexSets: [0],
+      vertexMain: 'vertex_main',
+      fragmentMain: 'fragment_main',
       topology: 'triangle-strip',
+      vertexSets: [0],
       customUniforms: {},
       params: {},
     };
@@ -70,12 +72,12 @@ export default class Pipeline {
     this.renderPipeline = this.device.createRenderPipeline({
       vertex: {
         module: this.shaderModule,
-        entryPoint: 'vertex_main',
+        entryPoint: this.data.vertexMain,
         buffers: vertexBufferLayouts,
       },
       fragment: {
         module: this.shaderModule,
-        entryPoint: 'fragment_main',
+        entryPoint: this.data.fragmentMain,
         targets: [
           {
             format: navigator.gpu.getPreferredCanvasFormat(),

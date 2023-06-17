@@ -33,7 +33,7 @@ export default class Player {
     this.canvas.addEventListener('pointerout', (ev) => this.handlePointer(ev));
     this.canvas.addEventListener('pointercancel', (ev) => this.handlePointer(ev));
     this.canvas.addEventListener('pointermove', (ev) => this.handlePointer(ev));
-    this.canvas.addEventListener('contextmenu', (ev) => ev.preventDefault());
+    this.canvas.addEventListener('contextmenu', (ev) => ev.shiftKey || ev.preventDefault());
 
     // this.init().then(() => this.render());
   }
@@ -60,23 +60,38 @@ export default class Player {
     this.exportCanvas.height = program.settings.exportDim.height;
 
     if (this.program.hasControls) {
-      this.controls = new dat.GUI({ name: 'Controls', autoPlace: false});
+      window.data = this.program.controlData;
+      window.defs = this.program.controlDefs;
+      this.controls = new dat.GUI({ name: 'main', autoPlace: false});
+      this.controllers = this.addControllers(
+        this.program.controlData,
+        this.program.controlDefs,
+        this.controls
+      );
       document.body.appendChild(this.controls.domElement);
-      Object.entries(this.program.controlData).forEach(([key, val]) => {
-        let controller;
-        if (typeof this.program.controlData[key] == 'string') {
-          controller = this.controls.addColor(this.program.controlData, key);
-        }
-        else {
-          const args = this.program.controlDefs[key].slice(1);
-          controller = this.controls.add(this.program.controlData, key, ...args);
-        }
-        controller.onChange((e) => this.program.run('controlChange', key, e));
-      });
     }
 
     this.program.run('setup');
   }
+
+  addControllers(data, defs, controlGroup) {
+    return Object.entries(data).map(([key, val]) => {
+      const def = defs[key];
+      let controller;
+      if (val.constructor === Object) {
+        const childGroup = controlGroup.addFolder(key);
+        return this.addControllers(val, def, childGroup);
+      } 
+      if (typeof val == 'string') {
+        controller = controlGroup.addColor(data, key);
+      }
+      else {
+        controller = controlGroup.add(data, key, ...def.slice(1));
+      }
+      controller.onChange((e) => this.program.run('controlChange', key, e));
+      return controller;
+    });
+  };
 
   setTimer(cond) {
     const { settings } = this.program;

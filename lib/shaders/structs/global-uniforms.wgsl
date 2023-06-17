@@ -4,7 +4,7 @@ struct GlobalUniforms {
   clock: f32,
   lastClock: f32,
   index: f32,
-  period: i32,
+  period: f32,
   cover: vec2f,
   size: vec2f,
 };

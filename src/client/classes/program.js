@@ -27,7 +27,6 @@ export default class Program {
         start: 0,
         stop: null,
         period: 360,
-        recordingPeriod: null,
         skip: 1,
         renderPairs: 3,
         output: {},
@@ -101,15 +100,30 @@ export default class Program {
     settings.exportDim = new Dim(settings.exportDim ?? dim);
     const [w, h] = settings.dim;
     settings.cover = w > h ? [1, h / w] : [w / h, 1];
-    settings.recordingPeriod = settings.recordingPeriod ?? settings.period;
 
     if (settings.stop == true) {
       settings.stop = settings.start + settings.period;
     }
   
     this.hasControls = Object.keys(def.controls).length > 0;
-    this.controlDefs = objectMap(def.controls, ([k, v]) => [k, arrayWrap(v)]);
-    this.controlData = objectMap(this.controlDefs, ([k, v]) => [k, v[0]]);
+
+    // This seems awkward
+    const buildControlData = (obj, defs, data) => {
+      Object.entries(obj).map(([key, val]) => {
+        if (val.constructor === Object) {
+          defs[key] = {};
+          data[key] = {};
+          buildControlData(val, defs[key], data[key]);
+        }
+        else {
+          defs[key] = arrayWrap(val);
+          data[key] = defs[key][0];
+        }
+      });
+    }
+    this.controlDefs = {};
+    this.controlData = {};
+    buildControlData(def.controls, this.controlDefs, this.controlData);
 
     this.mediaCount = def.media.length;
 
@@ -455,12 +469,12 @@ export default class Program {
   }
 
   updateGlobalUniforms() {
-    const period = this.recording ? this.settings.recordingPeriod : this.settings.period;
-    this.globalUniforms.set('period', period);
+    const period = this.globalUniforms.get('period');
+    const clock = this.globalUniforms.get('clock');
     this.globalUniforms.set('time', (this.counter / period) % 1);
     this.globalUniforms.set('counter', this.counter);
     // This is independent of counter increment
-    this.globalUniforms.set('lastClock', this.globalUniforms.get('clock'));
+    this.globalUniforms.set('lastClock', clock);
     this.globalUniforms.set('clock', Date.now());
     this.globalUniforms.update();
     this.cursorUniforms.update();
