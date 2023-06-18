@@ -34,9 +34,9 @@ fn gaussianBlur(range: i32, sd: f32, uv: vec2f) -> vec4f {
       ds += d;
       n = texture(inputTexture, uv + v / gu.size / 2.);
       s += n * d;
-      j ++;
+      j++;
     }
-    i ++;
+    i++;
   }
   s /= ds;
   return s;

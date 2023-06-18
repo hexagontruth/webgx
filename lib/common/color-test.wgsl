@@ -1,7 +1,7 @@
 #include partials/std-header
 
 @fragment
-fn fragment_main(data: VertexData) -> @location(0) vec4f
+fn fragmentMain(data: VertexData) -> @location(0) vec4f
 {
   var c : vec3f;
   c.r = floor((data.uv.y - gu.time) * 10)/10;

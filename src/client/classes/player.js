@@ -60,13 +60,13 @@ export default class Player {
     this.exportCanvas.height = program.settings.exportDim.height;
 
     if (this.program.hasControls) {
-      window.data = this.program.controlData;
-      window.defs = this.program.controlDefs;
       this.controls = new dat.GUI({ name: 'main', autoPlace: false});
-      this.controllers = this.addControllers(
+      this.controllers = {};
+      this.addControllers(
         this.program.controlData,
         this.program.controlDefs,
-        this.controls
+        this.controls,
+        this.controllers,
       );
       document.body.appendChild(this.controls.domElement);
     }
@@ -74,13 +74,15 @@ export default class Player {
     this.program.run('setup');
   }
 
-  addControllers(data, defs, controlGroup) {
-    return Object.entries(data).map(([key, val]) => {
+  addControllers(data, defs, controlGroup, controllers) {
+    Object.entries(data).forEach(([key, val]) => {
       const def = defs[key];
       let controller;
       if (val.constructor === Object) {
         const childGroup = controlGroup.addFolder(key);
-        return this.addControllers(val, def, childGroup);
+        controllers[key] = {};
+        this.addControllers(val, def, childGroup, controllers[key]);
+        return;
       } 
       if (typeof val == 'string') {
         controller = controlGroup.addColor(data, key);
@@ -88,8 +90,8 @@ export default class Player {
       else {
         controller = controlGroup.add(data, key, ...def.slice(1));
       }
+      controllers[key] = controller;
       controller.onChange((e) => this.program.run('controlChange', key, e));
-      return controller;
     });
   };
 

@@ -4,7 +4,7 @@
 #param mag 8.
 
 @fragment
-fn fragment_main(data: VertexData) -> @location(0) vec4f
+fn fragmentMain(data: VertexData) -> @location(0) vec4f
 {
   var samp = texture(inputTexture, data.uv);
   var g = gaussianBlur($range, $sd, data.uv);

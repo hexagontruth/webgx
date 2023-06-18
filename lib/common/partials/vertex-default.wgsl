@@ -1,5 +1,5 @@
 @vertex
-fn vertex_main(@location(0) position: vec4f) -> VertexData
+fn vertexMain(@location(0) position: vec4f) -> VertexData
 {
   var output : VertexData;
   output.position = position;

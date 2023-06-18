@@ -4,7 +4,7 @@
 #param hueShift 0.1
 
 @fragment
-fn fragment_main(data: VertexData) -> @location(0) vec4f
+fn fragmentMain(data: VertexData) -> @location(0) vec4f
 {
   var samp1 = texture(inputTexture, data.uv);
   var samp2 = texture(lastTexture, scaleUv(data.uv, $scale));

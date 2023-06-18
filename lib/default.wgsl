@@ -1,4 +1,4 @@
-#include partials/std-header-vertex
+#include /common/partials/std-header-vertex
 
 struct ProgramUniforms {
   bgColor : vec4f,
@@ -21,7 +21,7 @@ struct ProgramUniforms {
 @group(1) @binding(0) var<uniform> pu : ProgramUniforms;
 
 @fragment
-fn dog_filter(data: VertexData) -> @location(0) vec4f
+fn dogFilter(data: VertexData) -> @location(0) vec4f
 {
   var samp = texture(inputTexture, data.uv);
   var g = gaussianBlur(i32(pu.range), pu.sd, data.uv);
@@ -32,7 +32,7 @@ fn dog_filter(data: VertexData) -> @location(0) vec4f
 }
 
 @fragment
-fn trace_filter(data: VertexData) -> @location(0) vec4f
+fn traceFilter(data: VertexData) -> @location(0) vec4f
 {
   var samp1 = texture(inputTexture, data.uv);
   var samp2 = texture(lastTexture, scaleUv(data.uv, 1 / pu.scale));
@@ -45,7 +45,7 @@ fn trace_filter(data: VertexData) -> @location(0) vec4f
 }
 
 @fragment
-fn fragment_main(data: VertexData) -> @location(0) vec4f
+fn fragmentMain(data: VertexData) -> @location(0) vec4f
 {
   var fit = mix(1 / gu.cover.yx, gu.cover.xy, pu.cover);
   var v = data.cv * fit;

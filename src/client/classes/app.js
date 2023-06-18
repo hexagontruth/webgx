@@ -18,7 +18,6 @@ export default class App {
     recordImagesButton: 'record-images-button',
     recordVideoButton: 'record-video-button',
     counterField: 'counter-field',
-    messageField: 'message-field',
   };
 
   constructor() {

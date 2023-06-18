@@ -5,8 +5,8 @@ export default class Pipeline {
   static generateDefaults(p) {
     return {
       shader: 'default.wgsl',
-      vertexMain: 'vertex_main',
-      fragmentMain: 'fragment_main',
+      vertexMain: 'vertexMain',
+      fragmentMain: 'fragmentMain',
       topology: 'triangle-strip',
       vertexSets: [0],
       customUniforms: {},

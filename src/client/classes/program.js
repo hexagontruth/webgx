@@ -447,9 +447,11 @@ export default class Program {
         }
       }
       else {
-        Object.entries(params).forEach(([key, value]) => {
-          row = row.replaceAll(`$${key}`, value);
-        });
+        if (row.search('$') != -1) {
+          Object.entries(params).forEach(([key, value]) => {
+            row = row.replaceAll(`$${key}`, value);
+          });
+        }
         rows.push(row);
       }
     }
