@@ -193,6 +193,46 @@ fn amax4(v: vec4f) -> f32 {
   return max(max(max(a.x, a.y), a.z), a.w);
 }
 
+fn amin2(v: vec2f) -> f32 {
+  var a = abs(v);
+  return min(a.x, a.y);
+}
+
+fn amin3(v: vec3f) -> f32 {
+  var a = abs(v);
+  return min(min(a.x, a.y), a.z);
+}
+
+fn amin4(v: vec4f) -> f32 {
+  var a = abs(v);
+  return min(min(min(a.x, a.y), a.z), a.w);
+}
+
+
+fn max2(v: vec2f) -> f32 {
+  return max(v.x, v.y);
+}
+
+fn max3(v: vec3f) -> f32 {
+  return max(max(v.x, v.y), v.z);
+}
+
+fn max4(v: vec4f) -> f32 {
+  return max(max(max(v.x, v.y), v.z), v.w);
+}
+
+fn min2(v: vec2f) -> f32 {
+  return min(v.x, v.y);
+}
+
+fn min3(v: vec3f) -> f32 {
+  return min(min(v.x, v.y), v.z);
+}
+
+fn min4(v: vec4f) -> f32 {
+  return min(min(min(v.x, v.y), v.z), v.w);
+}
+
 fn m1(n: f32, m: f32) -> f32 {
   return fract(n / m) * m;
 }

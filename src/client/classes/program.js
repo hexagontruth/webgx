@@ -165,8 +165,10 @@ export default class Program {
       lastPos: [0, 0],
       leftDownPos: [0, 0],
       leftUpPos: [0, 0],
+      leftDelta: [0, 0],
       rightDownPos: [0, 0],
       rightUpPos: [0, 0],
+      rightDelta: [0, 0],
       leftDown: 0,
       leftDownAt: 0,
       leftUpAt: 0,
@@ -420,9 +422,9 @@ export default class Program {
     return skipCond && startCond && stopCond;
   }
 
-  async loadShader(path, params) {
+  async loadShader(basePath, path, params) {
     params = merge({}, params, this.settings.params);
-    const rows = await this.loadShaderRows(DATA_PATH, path, params);
+    const rows = await this.loadShaderRows(basePath, path, params);
     return rows.join('\n');
   }
 

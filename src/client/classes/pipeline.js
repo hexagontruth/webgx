@@ -38,7 +38,9 @@ export default class Pipeline {
   }
 
   async init() {
-    this.shaderText = await this.program.loadShader(this.data.shader, this.data.params);
+    this.shaderText = await this.program.loadShader(
+      this.program.programDir, this.data.shader, this.data.params
+    );
 
     this.shaderModule = this.device.createShaderModule({
       code: this.shaderText,

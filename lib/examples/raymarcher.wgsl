@@ -16,17 +16,22 @@ fn map3(p: vec3f) -> f32 {
   var b : f32;
   var v = trot3(p + unit.xxx * 0., unit.xyy, gu.time);
   a = sdBox(v + unit.xxx, vec3f(0.5, 0.5, 1));
-  b = sdTorus(v, vec2f(0.5, 0.125));
-  a = length(v) -0.1;
-  a = sdBox(v, unit.xxx*0.1);
-  a= min(a, b);
+  b = sdLongTorus(v, vec2f(0.5, 0.125), 0.707);
+  a = length(v) - 0.1;
+  a = sdHex(v, vec2f(1, 0.2));
+  a = max(a, -sdHex(v, vec2f(0.75, 1)));
+  a = sdLongSphere(v + unit.yxy*tsin1(0.125 + gu.time * 8) *1., vec2f(1.,0.1));
+  // a = min(a, length(v + unit.yxy*tsin1(gu.time*4)*3) - 0.2);
+  a = smin(a, b, 0.5);
+  b = sdBoxFrame(p, unit.xxx, 0.01);
+  a = min(a, b);
   // a = b;
   for (var i = 0; i < 3; i++) {
-    var u = trot2(unit.xy, gu.time + f32(i)/3.);
+    var u = trot2(unit.xy * 2., gu.time + f32(i)/3.);
     var v = unit.yyy;
     v[i] = u[0];
     v[(i + 1) % 3] = u[1];
-    b = length(p - v) - 0.1;
+    b = length(p - v) - 0.2;
     a = min(a, b);
   }
 
@@ -69,7 +74,8 @@ fn fragmentMain(data: VertexData) -> @location(0) vec4f
   var cv = data.cv * gu.cover;
   var c = unit.yyyx;
   var dist = 3.;
-  var origin = (vec4(cart2hex(cv) + dist, 0)) * (1 - gu.time) * 3;
+  var origin = (vec4(cart2hex(cv) + dist, 0)) * 2.3;
+  // origin *= (1 - gu.time);
   var dir = normalize(unit.zzzy);
   // origin = vec4(cv, (1 - gu.time) * 3, 0);
   // dir = normalize(unit.yyzy);
@@ -88,4 +94,9 @@ fn fragmentMain(data: VertexData) -> @location(0) vec4f
   c.z += dot(n, unit.yyxy);
   c = hsv2rgb(c);
   return vec4f(c.rgb, 1);
+}
+
+@fragment
+fn fragmentFilter(data: VertexData) -> @location(0) vec4f {
+  return medianFilter(data.uv);
 }

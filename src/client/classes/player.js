@@ -1,6 +1,6 @@
 import * as dat from 'dat.gui';
 
-import { createElement } from '../util';
+import { createElement, indexMap } from '../util';
 import Hook from './hook';
 import Program from './program';
 
@@ -215,10 +215,16 @@ export default class Player {
     else if (leftDown - data.leftDown == -1) {
       data.leftUpAt = Date.now();
       data.leftUpPos = [x, y];
+      data.leftDelta = indexMap(2).map((idx) => {
+        return data.leftDelta[idx] + data.leftUpPos[idx] - data.leftDownPos[idx]
+      });
     }
     if (rightDown - data.rightDown == 1) {
       data.rightDownAt = Date.now();
       data.rightDownPos = [x, y];
+      data.rightDelta = indexMap(2).map((idx) => {
+        return data.rightDelta[idx] + data.rightUpPos[idx] - data.rightDownPos[idx]
+      });
     }
     else if (rightDown - data.rightDown == -1) {
       data.rightUpAt = Date.now();
