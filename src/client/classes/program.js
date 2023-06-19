@@ -442,8 +442,8 @@ export default class Program {
           rows = rows.concat(includeRows);
         }
         else if (directive == 'param') {
-          const [key, value] = match[2].split(/\s+/);
-          params[key] = paramValues[key] ?? value;
+          const [key, ...value] = match[2].split(/\s+/);
+          params[key] = paramValues[key] ?? value.join(' ');
         }
       }
       else {

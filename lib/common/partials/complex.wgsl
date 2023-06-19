@@ -1,3 +1,6 @@
+// These are from some random Github gist I found years ago that now I can't find.
+// If anyone knows who wrote these plz let me know lol.
+
 fn cmul(a: vec2f, b: vec2f) -> vec2f {
   return vec2f(a.x * b.x - a.y * b.y, a.x * b.y + a.y * b.x);
 }
