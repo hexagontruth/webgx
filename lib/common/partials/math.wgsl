@@ -29,21 +29,21 @@ fn roundCubic(p: vec3f) -> vec3f {
   return r;
 }
 
-fn cart2hex(c: vec2f) -> vec3f {
-  var hex : vec3f;
-  hex.y = (c.x - c.y * 1. / sr3);
-  hex.z =  c.y * 2. / sr3;
-  hex.x = -hex.z - hex.y;
-  return hex;
-}
+// fn cart2hex(c: vec2f) -> vec3f {
+//   var hex : vec3f;
+//   hex.y = (c.x - c.y * 1. / sr3);
+//   hex.z =  c.y * 2. / sr3;
+//   hex.x = -hex.z - hex.y;
+//   return hex;
+// }
 
-fn hex2cart(c: vec3f) -> vec2f {
-  var cart = vec2f(
-    c.y + 0.5 * c.z,
-    sr3 / 2. * c.z
-  );
-  return cart;
-}
+// fn hex2cart(c: vec3f) -> vec2f {
+//   var cart = vec2f(
+//     c.y + 0.5 * c.z,
+//     sr3 / 2. * c.z
+//   );
+//   return cart;
+// }
 
 fn hexbin(base : vec2f, s : f32) -> vec4f {
   var res = s / 3.;
@@ -392,7 +392,7 @@ fn slength(u: vec2f, v: vec2f, p: vec2f) -> f32 {
 }
 
 fn slengthp(u: vec3f, v: vec3f, p: vec3f) -> f32 {
-  return slength(hex2cart(hexProject(u)), hex2cart(hexProject(v)), hex2cart(p));
+  return slength(h2c * hexProject(u), h2c * hexProject(v),h2c * p);
 }
 
 fn clength(u: vec2f, v: vec2f, p: vec2f) -> f32 {
@@ -403,7 +403,7 @@ fn clength(u: vec2f, v: vec2f, p: vec2f) -> f32 {
   x = p - v;
   z = project2(x, w);
   z = clamp(z, min(w, unit.yy), max(w, unit.yy));
-  return amax3(cart2hex(z) - cart2hex(x));
+  return amax3(c2h * z - c2h * x);
 }
 
 fn gaussian2(v: vec2f, sd: f32) -> f32 {

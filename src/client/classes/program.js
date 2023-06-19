@@ -466,6 +466,7 @@ export default class Program {
 
   resetCounter() {
     this.stepCounter(-1);
+    this.clockStart = Date.now();
   }
 
   stepCounter(n) {
@@ -483,7 +484,7 @@ export default class Program {
     this.globalUniforms.set('counter', this.counter);
     // This is independent of counter increment
     this.globalUniforms.set('lastClock', clock);
-    this.globalUniforms.set('clock', Date.now());
+    this.globalUniforms.set('clock', (Date.now() - this.clockStart) / 1000);
     this.globalUniforms.update();
     this.cursorUniforms.update();
   }

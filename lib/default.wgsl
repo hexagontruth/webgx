@@ -59,10 +59,10 @@ fn fragmentMain(data: VertexData) -> @location(0) vec4f
   var pulse = pow(2., 8 - pow(osc1(0.5 + gu.time), 4) * 6) / scale;
   res = mix(res, pulse, pu.pulse);
   v = v * scale;
-  hex = cart2hex(v);
+  hex = c2h * v;
   var dist = interpolatedCubic(hex * res);
   hex = dist[0].xyz /res;
-  v = hex2cart(hex);
+  v = h2c * hex;
 
   b = step(1, amax3(hex));
   a = xsum1(a, b);
@@ -73,17 +73,17 @@ fn fragmentMain(data: VertexData) -> @location(0) vec4f
   for (var i = 0; i < 6; i++) {
     var u : vec2f;
     u = trot2(unit.xy * 2., f32(i) / 6.);
-    hex = cart2hex(v + u);
+    hex = c2h * (v + u);
     b = step(t, amax3(hex));
     a = xsum1(a, b);
 
     u = trot2(unit.xy * 2., f32(i) / 6.);
-    hex = cart2hex(v + u);
+    hex = c2h * (v + u);
     b = step(1. + t, amax3(hex));
     a = xsum1(a, b);
 
     u = trot2(unit.xy * 2., f32(i) / 6.);
-    hex = cart2hex(v + u);
+    hex = c2h * (v + u);
     b = step(t * 2., amax3(hex));
     a = xsum1(a, b);
   }

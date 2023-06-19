@@ -74,7 +74,7 @@ fn fragmentMain(data: VertexData) -> @location(0) vec4f
   var cv = data.cv * gu.cover;
   var c = unit.yyyx;
   var dist = 3.;
-  var origin = (vec4(cart2hex(cv) + dist, 0)) * 2.3;
+  var origin = (vec4(c2h * cv + dist, 0)) * 2.3;
   // origin *= (1 - gu.time);
   var dir = normalize(unit.zzzy);
   // origin = vec4(cv, (1 - gu.time) * 3, 0);
