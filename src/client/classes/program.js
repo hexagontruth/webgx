@@ -163,14 +163,18 @@ export default class Program {
     this.cursorUniforms = new UniformBuffer(this.device, {
       pos: [0, 0],
       lastPos: [0, 0],
-      vel: [0, 0],
-      acc: [0, 0],
+      leftDownPos: [0, 0],
+      leftUpPos: [0, 0],
+      rightDownPos: [0, 0],
+      rightUpPos: [0, 0],
       leftDown: 0,
       leftDownAt: 0,
       leftUpAt: 0,
       rightDown: 0,
       rightDownAt: 0,
       rightUpAt: 0,
+      vel: [0, 0],
+      acc: [0, 0],
     });
 
     this.samplers ={

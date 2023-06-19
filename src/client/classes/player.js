@@ -210,15 +210,19 @@ export default class Player {
 
     if (leftDown - data.leftDown == 1) {
       data.leftDownAt = Date.now();
+      data.leftDownPos = [x, y];
     }
     else if (leftDown - data.leftDown == -1) {
       data.leftUpAt = Date.now();
+      data.leftUpPos = [x, y];
     }
     if (rightDown - data.rightDown == 1) {
       data.rightDownAt = Date.now();
+      data.rightDownPos = [x, y];
     }
     else if (rightDown - data.rightDown == -1) {
       data.rightUpAt = Date.now();
+      data.rightUpPos = [x, y];
     }
 
     data.leftDown = leftDown;
