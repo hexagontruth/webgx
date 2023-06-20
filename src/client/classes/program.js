@@ -166,15 +166,18 @@ export default class Program {
       leftDownPos: [0, 0],
       leftUpPos: [0, 0],
       leftDelta: [0, 0],
+      leftDeltaLast: [0, 0],
       rightDownPos: [0, 0],
       rightUpPos: [0, 0],
       rightDelta: [0, 0],
+      rightDeltaLast: [0, 0],
       leftDown: 0,
       leftDownAt: 0,
       leftUpAt: 0,
       rightDown: 0,
       rightDownAt: 0,
       rightUpAt: 0,
+      scrollDelta: 0,
       vel: [0, 0],
       acc: [0, 0],
     });
@@ -486,7 +489,6 @@ export default class Program {
     this.globalUniforms.set('lastClock', clock);
     this.globalUniforms.set('clock', (Date.now() - this.clockStart) / 1000);
     this.globalUniforms.update();
-    this.cursorUniforms.update();
   }
 
   async updateStreams() {
@@ -527,8 +529,18 @@ export default class Program {
     return this.cursorUniforms.getAll();
   }
 
+  getCursorUniform(key) {
+    return this.cursorUniforms.get(key);
+  }
+
   setCursorUniforms(vals) {
     this.cursorUniforms.set(vals);
+    this.cursorUniforms.update();
+  }
+
+  setCursorUniform(key, val) {
+    this.cursorUniforms.set(key, val);
+    this.cursorUniforms.update(key)
   }
 
   createVertexSet(...args) {

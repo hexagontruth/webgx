@@ -33,6 +33,7 @@ export default class Player {
     this.canvas.addEventListener('pointerout', (ev) => this.handlePointer(ev));
     this.canvas.addEventListener('pointercancel', (ev) => this.handlePointer(ev));
     this.canvas.addEventListener('pointermove', (ev) => this.handlePointer(ev));
+    this.canvas.addEventListener('wheel', (ev) => this.handleScroll(ev));
     this.canvas.addEventListener('contextmenu', (ev) => ev.shiftKey || ev.preventDefault());
 
     // this.init().then(() => this.render());
@@ -176,6 +177,12 @@ export default class Player {
     this.boundingRect = this.canvas.getBoundingClientRect();
   }
 
+  handleScroll(ev) {
+    const delta = ev.deltaY / this.boundingRect.height;
+    const cur = this.program.getCursorUniform('scrollDelta');
+    this.program.setCursorUniform('scrollDelta', cur + delta);
+  }
+
   handlePointer(ev) {
     if (!this.program) return;
     const cursorOut = this.cursorOut;
@@ -215,20 +222,32 @@ export default class Player {
     else if (leftDown - data.leftDown == -1) {
       data.leftUpAt = Date.now();
       data.leftUpPos = [x, y];
+      data.leftDeltaLast = indexMap(2).map((idx) => {
+        return data.leftDeltaLast[idx] + data.leftUpPos[idx] - data.leftDownPos[idx]
+      });
+      data.leftDelta = data.leftDeltaLast.slice();
+    }
+    else if (!!leftDown) {
       data.leftDelta = indexMap(2).map((idx) => {
-        return data.leftDelta[idx] + data.leftUpPos[idx] - data.leftDownPos[idx]
+        return data.leftDeltaLast[idx] + data.pos[idx] - data.leftDownPos[idx];
       });
     }
     if (rightDown - data.rightDown == 1) {
       data.rightDownAt = Date.now();
       data.rightDownPos = [x, y];
-      data.rightDelta = indexMap(2).map((idx) => {
+      data.rightDeltaLast = indexMap(2).map((idx) => {
         return data.rightDelta[idx] + data.rightUpPos[idx] - data.rightDownPos[idx]
       });
+      data.rightDelta = data.rightDeltaLast.slice();
     }
     else if (rightDown - data.rightDown == -1) {
       data.rightUpAt = Date.now();
       data.rightUpPos = [x, y];
+    }
+    else if (!!rightDown) {
+      data.rightDelta = indexMap(2).map((idx) => {
+        return data.rightDeltaLast[idx] + data.pos[idx] - data.rightDownPos[idx];
+      });
     }
 
     data.leftDown = leftDown;

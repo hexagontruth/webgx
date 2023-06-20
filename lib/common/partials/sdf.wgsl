@@ -6,6 +6,10 @@ fn sdBox(p: vec3f, b: vec3f) -> f32 {
   return length(max(q, unit.yyy)) + min(max3(q), 0);
 }
 
+fn sdCube(p: vec3f, s: f32) -> f32 {
+  return sdBox(p, vec3f(s));
+}
+
 fn sdBoxFrame(p: vec3f, b: vec3f, e: f32) -> f32 {
   var v = abs(p) - b;
   var q = abs(v + e) - e;
@@ -19,6 +23,10 @@ fn sdBoxFrame(p: vec3f, b: vec3f, e: f32) -> f32 {
     length(max(pq[1], unit.yyy)) + min(max3(pq[1]), 0),
     length(max(pq[2], unit.yyy)) + min(max3(pq[2]), 0),
   ));
+}
+
+fn sdCubeFrame(p: vec3f, s: f32, e: f32) -> f32 {
+  return sdBoxFrame(p, vec3f(s), e);
 }
 
 fn sdTorus(p: vec3f, t: vec2f) -> f32 {
@@ -46,6 +54,29 @@ fn sdHex(p: vec3f, h: vec2f) -> f32 {
     q.z - h.y
   );
   return min(max(d.x, d.y), 0) + length  (max(d, unit.yy));
+}
+
+fn sdOct(p: vec3f, s: f32) -> f32 {
+  var q = abs(p);
+  return (sum3(q) - s) * 1/sr3;
+}
+
+fn sdTet(p: vec3f, s: f32) -> f32 {
+  return length(max(
+    vec4f(
+      (p.x + p.z) - p.y - s,
+      -(p.x + p.z) - p.y - s,
+      (p.x - p.z) + p.y - s,
+      -(p.x - p.z) + p.y - s
+    ), unit.yyyy
+  )) * 1/sr3;
+}
+
+fn sdVe(p: vec3f, s: f32) -> f32 {
+  var oct = sdOct(p, s);
+  var cube = sdCube(p, s/2.);
+  var a = max(oct, cube);
+  return a;
 }
 
 fn smin(a: f32, b: f32, k: f32) -> f32 {
