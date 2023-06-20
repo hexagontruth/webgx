@@ -11,6 +11,7 @@ export default class Config {
     fit: 'fit',
     mediaFit: 'fit',
     streamFit: 'fit',
+    bgColor: 'string',
     controlsHidden: 'boolean',
     webcamEnabled: 'boolean',
     screenShareEnabled: 'boolean',
@@ -25,6 +26,7 @@ export default class Config {
     fit: 'contain',
     mediaFit: 'cover',
     streamFit: 'cover',
+    bgColor: '#000',
     controlsHidden: false,
     webcamEnabled: false,
     screenShareEnabled: false,
@@ -33,6 +35,7 @@ export default class Config {
   };
 
   static sessionFields = [
+    'bgColor',
     'controlsHidden',
     'fit',
     'recordImages',

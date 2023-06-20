@@ -61,18 +61,33 @@ export default class Player {
     this.exportCanvas.height = program.settings.exportDim.height;
 
     if (this.program.hasControls) {
-      this.controls = new dat.GUI({ name: 'main', autoPlace: false});
-      this.controllers = {};
-      this.addControllers(
-        this.program.controlData,
-        this.program.controlDefs,
-        this.controls,
-        this.controllers,
-      );
-      document.body.appendChild(this.controls.domElement);
+      this.addControls();
     }
 
     this.program.run('setup');
+  }
+
+  resetControls() {
+    this.controllerList?.forEach((controller) => {
+      controller.setValue(controller.initialValue);
+    });
+  }
+
+  addControls() {
+    if (this.controls) {
+      this.controls.domElement.remove();
+      this.controls.destroy(); // This doesn't seem to do anything?
+    }
+    this.controls = new dat.GUI({ name: 'main', autoPlace: false });
+    this.controllers = {};
+    this.controllerList = [];
+    this.addControllers(
+      this.program.controlData,
+      this.program.controlDefs,
+      this.controls,
+      this.controllers,
+    );
+    document.body.appendChild(this.controls.domElement);
   }
 
   addControllers(data, defs, controlGroup, controllers) {
@@ -81,6 +96,7 @@ export default class Player {
       let controller;
       if (val.constructor === Object) {
         const childGroup = controlGroup.addFolder(key);
+        // childGroup.open();
         controllers[key] = {};
         this.addControllers(val, def, childGroup, controllers[key]);
         return;
@@ -92,7 +108,8 @@ export default class Player {
         controller = controlGroup.add(data, key, ...def.slice(1));
       }
       controllers[key] = controller;
-      controller.onChange((e) => this.program.run('controlChange', key, e));
+      this.controllerList.push(controller);
+      controller.onChange((e) => this.program.run('onControlChange', key, e));
     });
   };
 
@@ -165,12 +182,19 @@ export default class Player {
 
   resetCounter() {
     this.program.resetCounter();
+    this.program.resetCursorDeltas();
     this.program.run('reset');
     this.play || this.draw();
   }
 
   clearRenderTextures() {
     this.program.clearRenderTextures();
+  }
+
+  moveArrow([x, y]) {
+    const cur = this.program.getCursorUniform('arrowDelta');
+    const next = [cur[0] + x, cur[1] + y];
+    this.program.setCursorUniform('arrowDelta', next);
   }
 
   handleResize() {
@@ -181,6 +205,7 @@ export default class Player {
     const delta = ev.deltaY / this.boundingRect.height;
     const cur = this.program.getCursorUniform('scrollDelta');
     this.program.setCursorUniform('scrollDelta', cur + delta);
+    this.program.run('onCursor');
   }
 
   handlePointer(ev) {
@@ -254,6 +279,7 @@ export default class Player {
     data.rightDown = rightDown;
 
     this.program.setCursorUniforms(data);
+    this.program.run('onCursor');
   }
 
   getDim() {

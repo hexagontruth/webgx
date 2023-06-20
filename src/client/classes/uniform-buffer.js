@@ -46,6 +46,10 @@ export default class UniformBuffer {
     );
   }
 
+  has(key) {
+    return this.dataMap[key] !== undefined;
+  }
+
   get(key) {
     const idx = this.idxMap[key];
     const length = this.dataMap[key].length; // Yes we could just get the value from here
@@ -61,19 +65,18 @@ export default class UniformBuffer {
     if (typeof key == 'object') {
       Object.entries(key).forEach(([k, v]) => this.set(k, v));
     }
+    else if (typeof val == 'string') {
+      // Assume six-digit hex string
+      const match = val.match(/^#(\w{2})(\w{2})(\w{2})$/);
+      const channels = match.slice(1, 4).map((e) => parseInt(e, 16) / 255);
+      channels.push(1);
+      this.set(key, channels);
+    }
     else {
       const idx = this.idxMap[key];
-      val = Array.isArray(val) ? val : [val];
+      val = Array.isArray(val) ? val : [Number(val)];
       this.data.set(val, idx);
       this.dataMap[key] = val;
     }
-  }
-
-  setColor(key, val) {
-    // Assume six-digit hex string
-    const match = val.match(/^#(\w{2})(\w{2})(\w{2})$/);
-    const channels = match.slice(1, 4).map((e) => parseInt(e, 16) / 255);
-    channels.push(1);
-    this.set(key, channels);
   }
 }

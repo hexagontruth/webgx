@@ -20,6 +20,13 @@ export default class App {
     counterField: 'counter-field',
   };
 
+  static arrowMap = {
+    ArrowLeft: [-1, 0],
+    ArrowRight: [1, 0],
+    ArrowUp: [0, 1],
+    ArrowDown: [0, -1],
+  }
+
   constructor() {
     this.shiftString = '';
     window.addEventListener('load', () => this.init());
@@ -42,6 +49,9 @@ export default class App {
     this.player.hooks.add('afterCounter', (val) => this.els.counterField.value = val);
 
     this.config.afterSet.add('fit', () => this.handleResize());
+    this.config.afterSet.add('bgColor', (val) => {
+      body.style.backgroundColor = val;
+    });
     this.config.afterSet.add('controlsHidden', (val) => {
       body.classList.toggle('hidden', val);
     });
@@ -158,7 +168,12 @@ export default class App {
         this.player.clearRenderTextures();
       }
       else if (key == 'r') {
-        this.player.resetCounter();
+        if (ev.shiftKey) {
+          this.player.resetControls();
+        }
+        else {
+          this.player.resetCounter();
+        }
         return;
       }
       else if (key == 's') {
@@ -176,17 +191,9 @@ export default class App {
         else
           this.player.draw();
       }
-      else if (ev.key == 'ArrowUp' || ev.key == 'ArrowDown') {
-        const dir = ev.key == 'ArrowUp' ? -1 : 1;
-        const activeControl = document.activeElement?.parentNode;
-        if (activeControl?.classList.contains('control')) {
-          const container = activeControl.parentNode;
-          const controls = Array.from(container.childNodes);
-          const curIdx = controls.indexOf(activeControl);
-          const nextIdx = (curIdx + dir + controls.length) % controls.length;
-          controls[nextIdx].tabIndex = 5;
-          controls[nextIdx].querySelector('.control-input').focus();
-        }
+      else if (ev.key.indexOf('Arrow') == 0) {
+        const delta = App.arrowMap[ev.key];
+        delta && this.player.moveArrow(delta);
       }
       else {
         return;
@@ -197,7 +204,7 @@ export default class App {
       if (ev.key == 'Control') {
         if (this.shiftString.length == 3 || this.shiftString.length == 6) {
           let code = '#' + this.shiftString;
-          body.style.backgroundColor = code;
+          this.config.set('bgColor', code);
         }
         this.shiftString = '';
       }

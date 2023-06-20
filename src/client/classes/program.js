@@ -50,7 +50,8 @@ export default class Program {
         setup: () => null,
         draw: () => null,
         reset: () => null,
-        controlChange: () => null,
+        onControlChange: () => null,
+        onCursor: () => null,
       },
       pipelines: {},
     };
@@ -163,6 +164,8 @@ export default class Program {
     this.cursorUniforms = new UniformBuffer(this.device, {
       pos: [0, 0],
       lastPos: [0, 0],
+      vel: [0, 0],
+      acc: [0, 0],
       leftDownPos: [0, 0],
       leftUpPos: [0, 0],
       leftDelta: [0, 0],
@@ -171,15 +174,14 @@ export default class Program {
       rightUpPos: [0, 0],
       rightDelta: [0, 0],
       rightDeltaLast: [0, 0],
+      arrowDelta: [0, 0],
+      scrollDelta: 0,
       leftDown: 0,
       leftDownAt: 0,
       leftUpAt: 0,
       rightDown: 0,
       rightDownAt: 0,
       rightUpAt: 0,
-      scrollDelta: 0,
-      vel: [0, 0],
-      acc: [0, 0],
     });
 
     this.samplers ={
@@ -467,19 +469,6 @@ export default class Program {
     return rows;
   }
 
-  resetCounter() {
-    this.stepCounter(-1);
-    this.clockStart = Date.now();
-  }
-
-  stepCounter(n) {
-    n = n ?? this.counter + 1;
-    this.counter = n;
-    this.cur = (this.counter + 2) % 2;
-    this.next = (this.counter + 1) % 2;
-    this.hooks.call('afterCounter', this.counter, this.cur, this.next);
-  }
-
   updateGlobalUniforms() {
     const period = this.globalUniforms.get('period');
     const clock = this.globalUniforms.get('clock');
@@ -523,6 +512,29 @@ export default class Program {
       },
     );
     this.device.queue.submit([commandEncoder.finish()]);
+  }
+
+  stepCounter(n) {
+    n = n ?? this.counter + 1;
+    this.counter = n;
+    this.cur = (this.counter + 2) % 2;
+    this.next = (this.counter + 1) % 2;
+    this.hooks.call('afterCounter', this.counter, this.cur, this.next);
+  }
+
+  resetCounter() {
+    this.stepCounter(-1);
+    this.clockStart = Date.now();
+  }
+
+  resetCursorDeltas() {
+    this.cursorUniforms.set('leftDelta', [0, 0]);
+    this.cursorUniforms.set('rightDelta', [0, 0]);
+    this.cursorUniforms.set('leftDeltaLast', [0, 0]);
+    this.cursorUniforms.set('rightDeltaLast', [0, 0]);
+    this.cursorUniforms.set('arrowDelta', [0, 0]);
+    this.cursorUniforms.set('scrollDelta', 0);
+    this.cursorUniforms.update();
   }
 
   getCursorUniforms() {
