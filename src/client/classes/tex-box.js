@@ -17,10 +17,11 @@ export default class TexBox {
           media.play();
         }
         resolve(new TexBox(device, texture, media, fit, idx));
-      }
+      };
       media.addEventListener(eventKey, fn);
     });
   }
+
   constructor(device, texture, media, fit='contain', idx=undefined) {
     this.device = device;
     this.texture = texture;
@@ -78,6 +79,7 @@ export default class TexBox {
         resizeHeight: this.fitBox.childScale.height,
       },
     );
+
     this.device.queue.copyExternalImageToTexture(
       {
         source: bitmap,

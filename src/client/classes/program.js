@@ -26,6 +26,7 @@ export default class Program {
         interval: 30,
         start: 0,
         stop: null,
+        autoplay: null,
         period: 360,
         skip: 1,
         renderPairs: 3,
@@ -73,6 +74,7 @@ export default class Program {
     this.streamActive = false;
     this.streamType = null;
     this.stream = null;
+    this.playing = false;
     this.recording = false;
     this.hooks = new Hook(this, ['afterCounter', 'onFit']);
     this.videoCapture = createElement('video', { autoplay: true });
@@ -105,7 +107,7 @@ export default class Program {
     if (settings.stop == true) {
       settings.stop = settings.start + settings.period;
     }
-  
+
     this.hasControls = Object.keys(def.controls).length > 0;
 
     // This seems awkward
@@ -576,6 +578,7 @@ export default class Program {
     this.media.forEach((e) => {
       e.setFitBox(fit);
       e.clearTexture();
+      e.update();
     });
   }
 

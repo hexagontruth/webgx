@@ -186,7 +186,7 @@ export default class App {
         body.classList.toggle('gray');
       }
       else if (ev.key == ' ') {
-        if (this.player.play)
+        if (this.player.program.playing)
           this.togglePlay(false);
         else
           this.player.draw();

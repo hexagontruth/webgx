@@ -16,8 +16,6 @@ export default class Player {
   constructor(config, container) {
     this.config = config;
     this.container = container;
-    
-    this.play = this.config.autoplay;
     this.cursorOut = true;
 
     this.canvas = createElement('canvas', { class: 'player-canvas' });
@@ -42,11 +40,10 @@ export default class Player {
   async init() {
     this.program = await Program.build(this.config.program, this.config.maxDim, this.ctx);
     this.device = this.program.device;
-
     const { program, config } = this;
 
-    config.put('mediaFit', this.program.settings.mediaFit);
-    config.put('streamFit', this.program.settings.streamFit);
+    config.put('mediaFit', program.settings.mediaFit);
+    config.put('streamFit', program.settings.streamFit);
 
     program.hooks.add('afterCounter', (...args) => this.hooks.call('afterCounter', ...args));
 
@@ -64,6 +61,7 @@ export default class Player {
       this.addControls();
     }
 
+    this.program.playing = program.settings.autoplay ?? config.autoplay;
     this.program.run('setup');
   }
 
@@ -129,17 +127,17 @@ export default class Player {
     this.program.updateGlobalUniforms();
     await this.program.updateStreams();
     await this.program.run();
-    requestAnimationFrame(() => this.endFrame(), 0);
-  }
 
-  endFrame() {
-    const counter = this.program.counter;
-    const cond = this.program.frameCond(counter);
-    if (this.program.recording && cond) {
-      this.getDataUrl()
-      .then((data) => this.postFrame(data, counter));
-    }
-    this.play && this.setTimer(cond);
+    // End frame
+    requestAnimationFrame(() => {
+      const counter = this.program.counter;
+      const cond = this.program.frameCond(counter);
+      if (this.program.recording && cond) {
+        this.getDataUrl()
+        .then((data) => this.postFrame(data, counter));
+      }
+      this.program.playing && this.setTimer(cond);
+    });
   }
 
   async getDataUrl() {
@@ -169,8 +167,8 @@ export default class Player {
     a.click();
   }
 
-  togglePlay(val=!this.play) {
-    this.play = val;
+  togglePlay(val=!this.program.playing) {
+    this.program.playing = val;
     val && this.draw();
     return val;
   }
@@ -184,7 +182,7 @@ export default class Player {
     this.program.resetCounter();
     this.program.resetCursorDeltas();
     this.program.run('reset');
-    this.play || this.draw();
+    this.program.playing || this.draw();
   }
 
   clearRenderTextures() {
