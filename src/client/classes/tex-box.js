@@ -29,7 +29,7 @@ export default class TexBox {
     this.idx = idx;
     this.isVideo = media instanceof HTMLVideoElement;
     this.setFitBox(fit);
-    this.isVideo || this.update();
+    // this.isVideo || this.update();
   }
 
   setFitBox(fit) {

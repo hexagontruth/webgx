@@ -159,6 +159,7 @@ export default class Program {
       lastClock: 0,
       index: 0,
       period: settings.period,
+      streamActive: 0,
       cover: settings.cover,
       dim: settings.dim,
     });
@@ -618,6 +619,7 @@ export default class Program {
         this.streamActive = true;
         this.streamTexBox.setFitBox();
         this.activeStreams.add(this.streamTexBox);
+        this.globalUniforms.update('streamActive', 1);
       }
       this.videoCapture.srcObject = this.stream;
     }
@@ -633,6 +635,7 @@ export default class Program {
       this.videoCapture.srcObject = null;
       this.activeStreams.delete(this.streamTexBox);
       this.streamTexBox.clearTexture();
+      this.globalUniforms.update('streamActive', 0);
     }
   }
 }

@@ -9,8 +9,7 @@
 #include /common/partials/vertex-default
 
 @fragment
-fn fragmentMain(data: VertexData) -> @location(0) vec4f
-{
+fn fragmentMain(data: VertexData) -> @location(0) vec4f {
   var v = data.cv / gu.cover.yx;
   var c : vec3f;
   var rad = amax3(c2h * v);

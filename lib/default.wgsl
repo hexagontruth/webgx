@@ -21,8 +21,7 @@ struct ProgramUniforms {
 @group(1) @binding(0) var<uniform> pu : ProgramUniforms;
 
 @fragment
-fn dogFilter(data: VertexData) -> @location(0) vec4f
-{
+fn dogFilter(data: VertexData) -> @location(0) vec4f {
   var samp = texture(inputTexture, data.uv);
   var g = gaussianBlur(i32(pu.range), pu.sd, data.uv);
   var d = abs(samp - g);
@@ -32,8 +31,7 @@ fn dogFilter(data: VertexData) -> @location(0) vec4f
 }
 
 @fragment
-fn traceFilter(data: VertexData) -> @location(0) vec4f
-{
+fn traceFilter(data: VertexData) -> @location(0) vec4f {
   var samp1 = texture(inputTexture, data.uv);
   var samp2 = texture(lastTexture, scaleUv(data.uv, 1 / pu.scale));
   samp2 = rgb2hsv(samp2);
@@ -45,8 +43,7 @@ fn traceFilter(data: VertexData) -> @location(0) vec4f
 }
 
 @fragment
-fn fragmentMain(data: VertexData) -> @location(0) vec4f
-{
+fn fragmentMain(data: VertexData) -> @location(0) vec4f {
   var fit = mix(1 / gu.cover.yx, gu.cover.xy, pu.cover);
   var v = data.cv * fit;
   var c : vec3f;

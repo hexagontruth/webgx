@@ -1,3 +1,27 @@
+fn step2(s: f32, v: vec2f) -> vec2f {
+  return step(vec2f(s), v);
+}
+
+fn step3(s: f32, v: vec3f) -> vec3f {
+  return step(vec3f(s), v);
+}
+
+fn step4(s: f32, v: vec4f) -> vec4f {
+  return step(vec4f(s), v);
+}
+
+fn smoothstep2(a: f32, b: f32, v: vec2f) -> vec2f {
+  return smoothstep(vec2f(a), vec2f(b), v);
+}
+
+fn smoothstep3(a: f32, b: f32, v: vec3f) -> vec3f {
+  return smoothstep(vec3f(a), vec3f(b), v);
+}
+
+fn smoothstep4(a: f32, b: f32, v: vec4f) -> vec4f {
+  return smoothstep(vec4f(a), vec4f(b), v);
+}
+
 fn clamp2(v : vec2f, a : f32, b : f32) -> vec2f {
   return clamp(v, vec2f(a), vec2f(b));
 }
@@ -378,6 +402,14 @@ fn areflect2(cv: vec2f, a: f32) -> vec2f {
 
 fn treflect2(cv: vec2f, a: f32) -> vec2f {
   return areflect2(cv, a * tau);
+}
+
+fn hexReflect(p: vec2f) -> vec2f {
+  var v = p;
+  v = treflect2(v, 0);
+  v = treflect2(v, -1/6.);
+  v = treflect2(v, 1/6.);
+  return v;
 }
 
 fn slength(u: vec2f, v: vec2f, p: vec2f) -> f32 {

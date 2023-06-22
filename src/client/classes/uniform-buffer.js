@@ -35,7 +35,10 @@ export default class UniformBuffer {
     });
   }
 
-  update(key) {
+  update(key, val) {
+    if (val !== undefined) {
+      this.set(key, val);
+    }
     const [start, length] = key ?
       [this.idxMap[key], this.dataMap[key].length] :
       [0, this.data.length];

@@ -1,10 +1,13 @@
 import * as dat from 'dat.gui';
 
 import { createElement, indexMap } from '../util';
+import TimerBuffer from './timer-buffer';
 import Hook from './hook';
 import Program from './program';
 
 const { max, min } = Math;
+
+const REDRAW_DELAY = 50;
 
 export default class Player {
   static async build(app, container) {
@@ -25,6 +28,7 @@ export default class Player {
     this.exportCtx = this.exportCanvas.getContext('2d');
 
     this.hooks = new Hook(this, ['afterCounter', 'onPointer']);
+    this.timerBuffer = new TimerBuffer();
 
     this.canvas.addEventListener('pointerdown', (ev) => this.handlePointer(ev));
     this.canvas.addEventListener('pointerup', (ev) => this.handlePointer(ev));
@@ -203,7 +207,7 @@ export default class Player {
     const delta = ev.deltaY / this.boundingRect.height;
     const cur = this.program.getCursorUniform('scrollDelta');
     this.program.setCursorUniform('scrollDelta', cur + delta);
-    this.program.run('onCursor');
+    this.timerBuffer.add('onCursor', () => this.program.run('onCursor'), REDRAW_DELAY);
   }
 
   handlePointer(ev) {
@@ -277,7 +281,13 @@ export default class Player {
     data.rightDown = rightDown;
 
     this.program.setCursorUniforms(data);
-    this.program.run('onCursor');
+
+    if (
+      leftDown || rightDown ||
+      ['pointerup', 'pointerout', 'pointercancel'].includes(ev.type)
+    ) {
+      this.timerBuffer.add('onCursor', () => this.program.run('onCursor'), REDRAW_DELAY);
+    }
   }
 
   getDim() {
