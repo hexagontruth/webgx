@@ -106,7 +106,7 @@ export default class Pipeline {
     const { cur, next } = program;
 
     const commandEncoder = device.createCommandEncoder();
-    const clearColor = { r: 0.2, g: 0.5, b: 1.0, a: 1.0 };
+    const clearColor = { r: 1, g: 0, b: 1, a: 1.0 };
     const renderPassDescriptor = {
       colorAttachments: [
         {

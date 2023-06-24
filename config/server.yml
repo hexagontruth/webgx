@@ -9,7 +9,7 @@ default:
     crf: 15
     inputDir: input
     outputDir: output
-    imageFilename: frame-#####.png
+    imageFilename: frame-#####
     videoFilename: video-###.mp4
 production:
   server:

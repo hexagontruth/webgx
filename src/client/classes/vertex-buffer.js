@@ -62,4 +62,12 @@ export default class VertexBuffer {
   updateVerts(start, length=1) {
     this.update(this.set.stride * start, this.set.stride * length);
   }
+
+  get numParams() {
+    return this.set.numParams;
+  }
+
+  get numVerts() {
+    return this.set.numVerts;
+  }
 }

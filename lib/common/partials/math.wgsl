@@ -69,6 +69,7 @@ fn roundCubic(p: vec3f) -> vec3f {
 //   return cart;
 // }
 
+// 
 fn hexbin(base : vec2f, s : f32) -> vec4f {
   var res = s / 3.;
   var cv : vec2f;
@@ -273,7 +274,6 @@ fn m4(n: vec4f, m: vec4f) -> vec4f {
   return fract(n / m) * m;
 }
 
-
 fn sum2(p: vec2f) -> f32 {
   return p.x + p.y;
 }
@@ -381,6 +381,14 @@ fn hexProject(p: vec3f) -> vec3f {
 
 fn angle2vec(a: f32) -> vec2f {
   return vec2f(cos(a), sin(a));
+}
+
+fn tangle2vec(a: f32) -> vec2f {
+  return angle2vec((a - 0.5) * tau);
+}
+
+fn tatan(v: vec2f) -> f32 {
+  return atan2(v.y, v.x) / tau + 0.5;
 }
 
 fn dreflect2(cv: vec2f, n: vec2f) -> vec2f {

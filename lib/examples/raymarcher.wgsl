@@ -30,6 +30,7 @@ fn map(p: vec3f) -> f32 {
   var a : f32;
   var b : f32;
   var u = p;
+  // TODO: Improve
   u = trot3(u, normalize(unit.yyx), -cu.leftDelta.x/4);
   u = trot3(u, normalize(unit.xzy), -cu.leftDelta.y/4);
 
@@ -96,13 +97,11 @@ fn phong(
 }
 
 @fragment
-fn fragmentMain(data: VertexData) -> @location(0) vec4f
-{
+fn fragmentMain(data: VertexData) -> @location(0) vec4f {
   var cv = data.cv * gu.cover;
   var c = unit.yyy;
   var offset = 5.;
   var dist = 2.5 + cu.scrollDelta;
-  var camPos = cu.leftDelta;
   var dir : vec3f;
   var or : vec3f;
 
@@ -115,8 +114,7 @@ fn fragmentMain(data: VertexData) -> @location(0) vec4f
   var n = getNormal(p);
 
   c = (n);
-  // c = vec4f(m);
-  // c = clamp(c, unit.yyyy, unit.xxxx);
+  // return vec4(vec3f(m/13), 1);
   c = rgb2hsv3(c);
   c.x += gu.time;
   c.y = min(c.y, 0.75);
@@ -127,8 +125,10 @@ fn fragmentMain(data: VertexData) -> @location(0) vec4f
   var diffuse = n * 0.75;
   var specFact = pow(2, pu.specular);
   var spec = mix(diffuse, unit.xxx, specFact/1024);
+
   c = phong(dir, p, unit.xxx , ambient, diffuse, spec, specFact);
   c = mix(c, unit.yyy, bg);
+
   return vec4f(c.rgb, 1);
 }
 

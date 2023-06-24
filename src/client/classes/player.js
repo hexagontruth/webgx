@@ -146,6 +146,7 @@ export default class Player {
 
   async getDataUrl() {
     const dim = this.program.settings.exportDim ?? this.program.settings.dim;
+    this.exportCtx.clearRect(0, 0, ...dim);
     this.exportCtx.drawImage(this.canvas, 0, 0, ...dim);
     return await this.exportCanvas.toDataURL('image/png', 1);
   }

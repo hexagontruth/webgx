@@ -212,6 +212,7 @@ export default class Program {
       size: settings.dim,
       format: 'bgra8unorm',
       usage:
+        GPUTextureUsage.COPY_DST |
         GPUTextureUsage.COPY_SRC |
         GPUTextureUsage.RENDER_ATTACHMENT |
         GPUTextureUsage.TEXTURE_BINDING,
@@ -564,14 +565,18 @@ export default class Program {
 
   clearRenderTextures() {
     this.renderTextures.forEach((renderTexture) => {
-      const { width, height, depthOrArrayLayers } = renderTexture;
-      this.device.queue.writeTexture(
-        { texture: renderTexture },
-        new Uint8Array(width * height * depthOrArrayLayers * 4),
-        { bytesPerRow: 4 * width, rowsPerImage: height},
-        { width, height, depthOrArrayLayers },
-      );
+      this.clearTexture(renderTexture);
     });
+  }
+
+  clearTexture(texture) {
+    const { width, height, depthOrArrayLayers } = texture;
+    this.device.queue.writeTexture(
+      { texture },
+      new Uint8Array(width * height * depthOrArrayLayers * 4),
+      { bytesPerRow: 4 * width, rowsPerImage: height},
+      { width, height, depthOrArrayLayers },
+    );
   }
 
   setMediaFit(fit) {
