@@ -106,3 +106,31 @@ body.hidden {
     background: #000000bf !important;
   }
 }
+
+.guide {
+  position: absolute;
+  pointer-events: none;
+  background-color: #f00;
+  width: 0;
+  height: 0;
+  z-index: 100;
+  &.hidden {
+    opacity: 0;
+  }
+  &.horizontal {
+    left: 0;
+    right: 0;
+    top: 50%;
+    width: 100%;
+    height: 1px;
+    transform: translateY(-50%);
+  }
+  &.vertical {
+    left: 50%;
+    top: 0%;
+    bottom: 0%;
+    width: 1px;
+    height: 100%;
+    transform: translateX(-50%);
+  }
+}

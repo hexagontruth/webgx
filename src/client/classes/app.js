@@ -18,6 +18,8 @@ export default class App {
     recordImagesButton: 'record-images-button',
     recordVideoButton: 'record-video-button',
     counterField: 'counter-field',
+    horizontalGuide: 'horizontal-guide',
+    verticalGuide: 'vertical-guide',
   };
 
   static arrowMap = {
@@ -28,7 +30,8 @@ export default class App {
   }
 
   constructor() {
-    this.shiftString = '';
+    this.ctrlString = '';
+    this.metaString = '';
     window.addEventListener('load', () => this.init());
   }
 
@@ -43,6 +46,8 @@ export default class App {
       return [k, el];
     }));
 
+    this.guides = [this.els.horizontalGuide, this.els.verticalGuide];
+
     this.config = new Config();
     this.player = await Player.build(this.config, this.els.playerContainer);
     
@@ -51,6 +56,12 @@ export default class App {
     this.config.afterSet.add('fit', () => this.handleResize());
     this.config.afterSet.add('bgColor', (val) => {
       body.style.backgroundColor = val;
+    });
+    this.config.afterSet.add('guideColor', (val) => {
+      this.guides.forEach((e) => e.style.backgroundColor = val);
+    });
+    this.config.afterSet.add('guidesHidden', (val) => {
+      this.guides.forEach((e) => e.classList.toggle('hidden', val));
     });
     this.config.afterSet.add('controlsHidden', (val) => {
       body.classList.toggle('hidden', val);
@@ -135,7 +146,12 @@ export default class App {
           this.player.promptDownload();
         }
         else if (ev.key.match(/^[0-9a-fA-F]$/)) {
-          this.shiftString += ev.key
+          if (ev.metaKey) {
+            this.metaString += ev.key;
+          }
+          else {
+            this.ctrlString += ev.key
+          }
         }
         else {
           return;
@@ -166,6 +182,9 @@ export default class App {
       }
       else if (key == 'c') {
         this.player.clearRenderTextures();
+      }
+      else if (key == 'g') {
+        this.config.toggle('guidesHidden');
       }
       else if (key == 'r') {
         if (ev.shiftKey) {
@@ -202,11 +221,22 @@ export default class App {
     }
     else {
       if (ev.key == 'Control') {
-        if (this.shiftString.length == 3 || this.shiftString.length == 6) {
-          let code = '#' + this.shiftString;
-          this.config.set('bgColor', code);
+        // This is getting weird
+        let strKey, key;
+
+        if ([3, 6].includes(this.ctrlString.length)) {
+          strKey = 'ctrlString';
+          key = 'bgColor';
         }
-        this.shiftString = '';
+        else if ([3, 6].includes(this.metaString.length)) {
+          strKey = 'metaString';
+          key = 'guideColor';
+        }
+        if (strKey) {
+          this.config.set(key, '#' + this[strKey]);
+        }
+        this.ctrlString = '';
+        this.metaString = '';
       }
     }
   }

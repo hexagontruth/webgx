@@ -53,49 +53,21 @@ fn roundCubic(p: vec3f) -> vec3f {
   return r;
 }
 
-// fn cart2hex(c: vec2f) -> vec3f {
-//   var hex : vec3f;
-//   hex.y = (c.x - c.y * 1. / sr3);
-//   hex.z =  c.y * 2. / sr3;
-//   hex.x = -hex.z - hex.y;
-//   return hex;
-// }
-
-// fn hex2cart(c: vec3f) -> vec2f {
-//   var cart = vec2f(
-//     c.y + 0.5 * c.z,
-//     sr3 / 2. * c.z
-//   );
-//   return cart;
-// }
-
-// 
 fn hexbin(base : vec2f, s : f32) -> vec4f {
-  var res = s / 3.;
-  var cv : vec2f;
+  var res = s / 3;
+  var cv = base * res;
   var dv : vec2f;
-  cv = base;
-  cv *= res;
+  var ev : vec2f;
 
-  var r = vec2f(1., 1. / sr3);
-  r = vec2f(r.y, r.x);
+  var r = vec2f(1/sr3, 1);
   var h = r * 0.5;
   
   var a = m2(cv, r) - h;
   var b = m2(cv - h, r) - h;
+  dv = select(b, a, length(a) < length(b));
+  ev = (cv - dv) / res;
 
-  var delta = length(a) - length(b);
-  // dv = delta < 0. ? a : b;
-  dv = select(b, a, delta < 0.);
-
-  a = m2(base, r) - h;
-  b = m2(base - h, r) - h;
-  var coord : vec2f;
-  // coord = length(a) < length(b) ? a : b;
-  coord = select(b, a, length(a) < length(b));
-  coord = (cv - dv) / res;
-  dv *= 3.;
-  return vec4f(dv, coord);
+  return vec4f(dv * 3, ev);
 }
 
 fn interpolatedCubic(p: vec3f) -> array<vec4f,3> {
@@ -432,7 +404,7 @@ fn slength(u: vec2f, v: vec2f, p: vec2f) -> f32 {
 }
 
 fn slengthp(u: vec3f, v: vec3f, p: vec3f) -> f32 {
-  return slength(h2c * hexProject(u), h2c * hexProject(v),h2c * p);
+  return slength(hex2cart * hexProject(u), hex2cart * hexProject(v),hex2cart * p);
 }
 
 fn clength(u: vec2f, v: vec2f, p: vec2f) -> f32 {
@@ -443,7 +415,7 @@ fn clength(u: vec2f, v: vec2f, p: vec2f) -> f32 {
   x = p - v;
   z = project2(x, w);
   z = clamp(z, min(w, unit.yy), max(w, unit.yy));
-  return amax3(c2h * z - c2h * x);
+  return amax3(cart2hex * z - cart2hex * x);
 }
 
 fn gaussian2(v: vec2f, sd: f32) -> f32 {

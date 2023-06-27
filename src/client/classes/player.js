@@ -1,5 +1,3 @@
-import * as dat from 'dat.gui';
-
 import { createElement, indexMap } from '../util';
 import TimerBuffer from './timer-buffer';
 import Hook from './hook';
@@ -62,58 +60,18 @@ export default class Player {
     this.exportCanvas.height = program.settings.exportDim.height;
 
     if (this.program.hasControls) {
-      this.addControls();
+      document.body.appendChild(this.program.controls.domElement);
     }
 
     this.program.playing = program.settings.autoplay ?? config.autoplay;
+
     this.program.run('setup');
+    this.program.run('reset');
   }
 
   resetControls() {
-    this.controllerList?.forEach((controller) => {
-      controller.setValue(controller.initialValue);
-    });
+    this.program.resetControls();
   }
-
-  addControls() {
-    if (this.controls) {
-      this.controls.domElement.remove();
-      this.controls.destroy(); // This doesn't seem to do anything?
-    }
-    this.controls = new dat.GUI({ name: 'main', autoPlace: false });
-    this.controllers = {};
-    this.controllerList = [];
-    this.addControllers(
-      this.program.controlData,
-      this.program.controlDefs,
-      this.controls,
-      this.controllers,
-    );
-    document.body.appendChild(this.controls.domElement);
-  }
-
-  addControllers(data, defs, controlGroup, controllers) {
-    Object.entries(data).forEach(([key, val]) => {
-      const def = defs[key];
-      let controller;
-      if (val.constructor === Object) {
-        const childGroup = controlGroup.addFolder(key);
-        // childGroup.open();
-        controllers[key] = {};
-        this.addControllers(val, def, childGroup, controllers[key]);
-        return;
-      } 
-      if (typeof val == 'string') {
-        controller = controlGroup.addColor(data, key);
-      }
-      else {
-        controller = controlGroup.add(data, key, ...def.slice(1));
-      }
-      controllers[key] = controller;
-      this.controllerList.push(controller);
-      controller.onChange((e) => this.program.run('onControlChange', key, e));
-    });
-  };
 
   setTimer(cond) {
     const { settings } = this.program;

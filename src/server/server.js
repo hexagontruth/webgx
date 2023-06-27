@@ -1,10 +1,13 @@
 const fs = require('fs').promises;
+const { existsSync } = require('fs');
 const { join } = require('path');
 const { spawn, execSync } = require('child_process');
 
 const express = require('express');
 
 const { baseJoin, merge } = require('./util');
+
+const baseDir = join(__dirname, '../..');
 
 // ---
 
@@ -65,6 +68,14 @@ class Server {
       this.processData(req);
       res.end('lgtm');
     });
+    this.app.get('/*', (req, res, next) => {
+      if (req.path.indexOf('.') == -1 && !existsSync(join(baseDir, 'public', req.path))) {
+        res.sendFile(join(baseDir, 'public/index.html'));
+      }
+      else {
+        next();
+      }
+    })
   }
 
   use(...args) {

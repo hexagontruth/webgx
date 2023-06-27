@@ -5,7 +5,6 @@ export env=${env:-development}
 dir=$(dirname $0)/..
 
 cd $dir
-echo `pwd`
 
 node src/server
 # if [[ $NODE_ENV == "production" ]]; then

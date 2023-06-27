@@ -12,6 +12,8 @@ export default class Config {
     mediaFit: 'fit',
     streamFit: 'fit',
     bgColor: 'string',
+    guideColor: 'string',
+    guidesHidden: 'boolean',
     controlsHidden: 'boolean',
     webcamEnabled: 'boolean',
     screenShareEnabled: 'boolean',
@@ -27,6 +29,8 @@ export default class Config {
     mediaFit: 'cover',
     streamFit: 'cover',
     bgColor: '#000',
+    guideColor: '#f00',
+    guidesHidden: true,
     controlsHidden: false,
     webcamEnabled: false,
     screenShareEnabled: false,
@@ -36,6 +40,8 @@ export default class Config {
 
   static sessionFields = [
     'bgColor',
+    'guideColor',
+    'guidesHidden',
     'controlsHidden',
     'fit',
     'recordImages',
@@ -111,6 +117,10 @@ export default class Config {
 
     if (queryObj.test) {
       queryObj.autoplay = false;
+    }
+
+    if (window.location.pathname.length > 1) {
+      queryObj.program = window.location.pathname;
     }
 
     return queryObj;

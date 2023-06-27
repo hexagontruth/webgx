@@ -1,3 +1,5 @@
+import * as dat from 'dat.gui';
+
 import {
   arrayWrap, createElement, dirName, getText, importObject,
   indexMap, join, merge, objectMap, rebaseJoin,
@@ -108,8 +110,6 @@ export default class Program {
       settings.stop = settings.start + settings.period;
     }
 
-    this.hasControls = Object.keys(def.controls).length > 0;
-
     // This seems awkward
     const buildControlData = (obj, defs, data) => {
       Object.entries(obj).map(([key, val]) => {
@@ -124,10 +124,54 @@ export default class Program {
         }
       });
     }
+
+    const addControllers = (data, defs, controlGroup, controllers) => {
+      Object.entries(data).forEach(([key, val]) => {
+        const def = defs[key];
+        let controller;
+        if (val.constructor === Object) {
+          const childGroup = controlGroup.addFolder(key);
+          // childGroup.open();
+          controllers[key] = {};
+          addControllers(val, def, childGroup, controllers[key]);
+          return;
+        } 
+        if (typeof val == 'string') {
+          controller = controlGroup.addColor(data, key);
+        }
+        else {
+          controller = controlGroup.add(data, key, ...def.slice(1));
+        }
+        controllers[key] = controller;
+        this.controllerList.push(controller);
+        controller.onChange((e) => this.run('onControlChange', key, e));
+      });
+    };
+
+    const addControls = () => {
+      if (this.controls) {
+        this.controls.domElement.remove();
+        this.controls.destroy(); // This doesn't seem to do anything?
+      }
+      this.controls = new dat.GUI({ name: 'main', autoPlace: false });
+      this.controllers = {};
+      this.controllerList = [];
+      addControllers(
+        this.controlData,
+        this.controlDefs,
+        this.controls,
+        this.controllers,
+      );
+    }
+
     this.controlDefs = {};
     this.controlData = {};
-    buildControlData(def.controls, this.controlDefs, this.controlData);
-
+    this.hasControls = Object.keys(def.controls).length > 0;
+    if (this.hasControls) {
+      buildControlData(def.controls, this.controlDefs, this.controlData);
+      addControls();
+    }
+    
     this.mediaCount = def.media.length;
 
     this.adapter = await navigator.gpu.requestAdapter();
@@ -539,6 +583,12 @@ export default class Program {
     this.cursorUniforms.set('arrowDelta', [0, 0]);
     this.cursorUniforms.set('scrollDelta', 0);
     this.cursorUniforms.update();
+  }
+
+  resetControls() {
+    this.controllerList?.forEach((controller) => {
+      controller.setValue(controller.initialValue);
+    });
   }
 
   getCursorUniforms() {

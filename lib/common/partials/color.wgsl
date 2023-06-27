@@ -11,7 +11,7 @@ fn rgb2hsv(c: vec4f) -> vec4f {
 fn hsv2rgb(c: vec4f) -> vec4f {
     var K = vec4f(1., 2. / 3., 1. / 3., 3.);
     var p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
-    return vec4f(c.z * mix(K.xxx, clamp(p - K.xxx, vec3f(0.0), vec3f(1.0)), c.y), c.w);
+    return vec4f(c.z * mix(K.xxx, clamp(p - K.xxx, unit.yyy, unit.xxx), c.y), c.w);
 }
 
 fn rgb2hsv3(c: vec3f) -> vec3f {

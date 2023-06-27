@@ -106,7 +106,7 @@ fn fragmentMain(data: VertexData) -> @location(0) vec4f {
   var or : vec3f;
 
   dir = normalize(unit.zzz);
-  or = (c2h * cv + offset) * -dir * dist;
+  or = (cart2hex * cv + offset) * -dir * dist;
 
   var m = march(or, dir);
   var bg = step(32, m);
