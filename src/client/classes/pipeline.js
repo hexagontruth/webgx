@@ -99,7 +99,7 @@ export default class Pipeline {
     });
   }
 
-  render(txIdx, start=0, length) {
+  draw(txIdx, start=0, length) {
     length = length ?? this.numVerts - start;
 
     const { device, program } = this;

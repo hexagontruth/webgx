@@ -536,11 +536,11 @@ export default class Program {
     await this.actions[action]?.(...args);
   }
 
-  render(pipelineName, txIdx, start, end) {
-    this.pipelines[pipelineName].render(txIdx, start, end);
+  draw(pipelineName, txIdx, start, end) {
+    this.pipelines[pipelineName].draw(txIdx, start, end);
   }
 
-  draw(txIdx) {
+  render(txIdx) {
     const commandEncoder = this.device.createCommandEncoder();
     commandEncoder.copyTextureToTexture(
       txIdx != null ? {
