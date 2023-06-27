@@ -1,5 +1,6 @@
 import { merge } from '../util';
 import UniformBuffer from './uniform-buffer';
+import WebgxError from './webgx-error';
 
 export default class Pipeline {
   static generateDefaults(p) {
@@ -34,7 +35,7 @@ export default class Pipeline {
     this.device = program.device;
     this.settings = program.settings;
     this.vertexBuffers = this.data.vertexSets.map((idx) => this.program.vertexBuffers[idx]);
-    this.numVerts = this.vertexBuffers[0].set.numVerts;
+    this.numVerts = this.vertexBuffers[0].numVerts;
   }
 
   async init() {
@@ -99,71 +100,67 @@ export default class Pipeline {
     });
   }
 
-  draw(txIdx, start=0, length) {
-    length = length ?? this.numVerts - start;
-
-    const { device, program } = this;
-    const { cur, next } = program;
-
-    const commandEncoder = device.createCommandEncoder();
-    const clearColor = { r: 1, g: 0, b: 1, a: 1.0 };
-    const renderPassDescriptor = {
+  // No idea whether this will ever be necessary but cheap enough to include as placeholder
+  createRenderPassDescriptor() {
+    return {
       colorAttachments: [
         {
-          clearValue: clearColor,
+          clearValue: { r: 1, g: 0, b: 1, a: 1.0 },
           loadOp: 'load',
           storeOp: 'store',
-          view: program.drawTexture.createView(),
+          view: this.program.drawTexture.createView(),
         },
       ],
     };
+  }
 
-    commandEncoder.copyTextureToTexture(
-      {
-        texture: program.drawTexture,
-      },
-      {
-        texture: program.inputTexture,
-      },
-      {
-        width: this.settings.dim.width,
-        height: this.settings.dim.height,
-      },
-    );
-    commandEncoder.copyTextureToTexture(
-      {
-        texture: program.renderTextures[cur],
-        origin: { x: 0, y: 0, z: txIdx },
-      },
-      {
-        texture: program.lastTexture,
-      },
-      {
-        width: this.settings.dim.width,
-        height: this.settings.dim.height,
-        depthOrArrayLayers: 1,
-      },
-    );
-
-    this.program.globalUniforms.set('index', txIdx);
-    this.program.globalUniforms.update('index');
-
-    const passEncoder = commandEncoder.beginRenderPass(renderPassDescriptor);
+  createRenderPassEncoder(commandEncoder) {
+    const passEncoder = commandEncoder.beginRenderPass(this.createRenderPassDescriptor());
     passEncoder.setPipeline(this.renderPipeline);
     this.vertexBuffers.forEach((vertexBuffer, idx) => {
       passEncoder.setVertexBuffer(idx, vertexBuffer.buffer);
     });
-    passEncoder.setBindGroup(0, this.program.swapGroups[cur]);
+    passEncoder.setBindGroup(0, this.program.swapGroups[this.program.cur]);
     passEncoder.setBindGroup(1, this.customGroup);
-    passEncoder.draw(length, 1, start);
-    passEncoder.end();
+    return passEncoder;
+  }
 
+  copyInputTextures(commandEncoder, txIdx) {
     commandEncoder.copyTextureToTexture(
       {
-        texture: program.drawTexture,
+        texture: this.program.drawTexture,
       },
       {
-        texture: program.renderTextures[next],
+        texture: this.program.inputTexture,
+      },
+      {
+        width: this.settings.dim.width,
+        height: this.settings.dim.height,
+      },
+    );
+    commandEncoder.copyTextureToTexture(
+      {
+        texture: this.program.renderTextures[this.program.cur],
+        origin: { x: 0, y: 0, z: txIdx },
+      },
+      {
+        texture: this.program.lastTexture,
+      },
+      {
+        width: this.settings.dim.width,
+        height: this.settings.dim.height,
+        depthOrArrayLayers: 1,
+      },
+    );
+  }
+
+  copyOutputTexures(commandEncoder, txIdx) {
+    commandEncoder.copyTextureToTexture(
+      {
+        texture: this.program.drawTexture,
+      },
+      {
+        texture: this.program.renderTextures[this.program.next],
         origin: { x: 0, y: 0, z: txIdx },
       },
       {
@@ -172,6 +169,45 @@ export default class Pipeline {
         depthOrArrayLayers: 1,
       },
     );
-    device.queue.submit([commandEncoder.finish()]);
+  }
+
+  draw(txIdx, start=0, length) {
+    length = length ?? this.numVerts - start;
+
+    const commandEncoder = this.device.createCommandEncoder();
+    this.copyInputTextures(commandEncoder, txIdx);
+    this.program.globalUniforms.update('index', txIdx);
+
+    const passEncoder = this.createRenderPassEncoder(commandEncoder);
+    passEncoder.draw(length, 1, start);
+    passEncoder.end();
+
+    this.copyOutputTexures(commandEncoder, txIdx);
+
+    this.device.queue.submit([commandEncoder.finish()]);
+  }
+
+  drawIndexed(txIdx, start=0, length, vertexStart) {
+    if (!this.program.indexData) {
+      throw new WebgxError('No index data defined');
+    }
+
+    length = length ?? this.program.indexData.length - start;
+
+    const commandEncoder = this.device.createCommandEncoder();
+    this.copyInputTextures(commandEncoder, txIdx);
+    this.program.globalUniforms.update('index', txIdx);
+
+    const passEncoder = this.createRenderPassEncoder(commandEncoder);
+    passEncoder.setIndexBuffer(
+      this.program.indexBuffer.buffer,
+      this.program.indexBuffer.type
+    );
+    passEncoder.drawIndexed(length, 1, start, vertexStart);
+    passEncoder.end();
+
+    this.copyOutputTexures(commandEncoder, txIdx);
+
+    this.device.queue.submit([commandEncoder.finish()]);
   }
 }

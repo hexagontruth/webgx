@@ -35,6 +35,6 @@ fn fragmentMain(data: CustomVertexData) -> @location(0) vec4f {
   c.y = 0.75;
   c.z = 5./6;
   c = hsv2rgb3(c);
-  c = mix(c, hsv2rgb3(data.color), 0.5);
+  c = mix(c, hsv2rgb3(data.color), 0.75);
   return vec4f(c, 1);
 }

@@ -91,5 +91,3 @@ export default class Hook {
     return this.queues[key];
   }
 }
-
-window.H = Hook;

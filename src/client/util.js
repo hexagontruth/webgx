@@ -107,9 +107,6 @@ export function join(...args) {
 export function rebaseJoin(absBase, relBase, path) {
   const segs = path.split('/');
   const basePath = segs.length && segs[0].length == 0 ? absBase : relBase;
-  // console.log(absBase, relBase, path);
-  // console.log(basePath, segs);
-  // console.log(join(basePath, ...segs));
   return join(basePath, ...segs);
 }
 

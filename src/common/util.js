@@ -32,16 +32,15 @@ function merge(...objs) {
     }
     for (let [key, val] of Object.entries(next)) {
       const baseVal = base[key];
+      const baseIsObject = typeof baseVal == 'object';
       const baseIsArray = Array.isArray(baseVal);
+      const valIsObject = typeof val == 'object';
       const valIsArray = Array.isArray(val);
       const valIsTyped = ArrayBuffer.isView(val);
       if (val === undefined || ignoreNull && val === null) {
         continue;
       }
-      else if (valIsTyped) {
-        base[key] = val.slice();
-      }
-      else if (typeof baseVal == 'object' && typeof val == 'object' && !baseIsArray) {
+      else if (baseIsObject && valIsObject && !baseIsArray && !valIsTyped) {
         base[key] = merge({}, base[key], val);
       }
       else {
@@ -61,7 +60,7 @@ function merge(...objs) {
             val = [...new Set(val)];
           }
         }
-        if (valObject === val && (valIsArray || valIsTyped)) {
+        if (valObject === val && valIsArray) {
           val = val.slice();
         }
         base[key] = val;

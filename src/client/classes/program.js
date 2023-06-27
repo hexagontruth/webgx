@@ -7,11 +7,13 @@ import {
 
 import Dim from './dim';
 import Hook from './hook';
+import IndexBuffer from './index-buffer';
 import Pipeline from './pipeline';
 import TexBox from './tex-box';
 import UniformBuffer from './uniform-buffer';
 import VertexBuffer from './vertex-buffer';
 import VertexSet from './vertex-set';
+import WebgxError from './webgx-error';
 
 const DATA_PATH = '/data';
 
@@ -42,6 +44,7 @@ export default class Program {
           1, 1, 0, 1,
         ]),
       ],
+      indexData: null, // new Uint16Array([0, 1, 2, 3]),
       uniforms: {},
       media: [],
       controls: {},
@@ -90,6 +93,7 @@ export default class Program {
     const def = merge({}, Program.generateDefaults(this), defFn(this));
     this.settings = def.settings;
     this.vertexData = def.vertexData;
+    this.indexData = def.indexData;
     this.actions = def.actions;
     const { settings } = def;
 
@@ -97,6 +101,7 @@ export default class Program {
     dim = arrayWrap(dim);
     dim.length == 1 && dim.push(dim[0]);
     const maxVal = max(...dim);
+
     if (this.maxDim && maxVal > this.maxDim) {
       dim = dim.map((e) => e / maxVal * this.maxDim);
     }
@@ -192,6 +197,13 @@ export default class Program {
     this.vertexBuffers = this.vertexData.map((vertexSet) => {
       return new VertexBuffer(this.device, vertexSet);
     });
+
+    this.hasIndexData = !!this.indexData;
+    if (this.hasIndexData) {
+      this.indexBuffer = new IndexBuffer(this.device, this.indexData);
+      this.indexBuffer.update();
+      this.indexCount = this.indexData.length;
+    }
 
     this.programUniforms = new UniformBuffer(this.device, def.uniforms);
     this.programUniforms.update();
@@ -536,8 +548,24 @@ export default class Program {
     await this.actions[action]?.(...args);
   }
 
-  draw(pipelineName, txIdx, start, end) {
-    this.pipelines[pipelineName].draw(txIdx, start, end);
+  draw(pipelineName, txIdx, start, length) {
+    const pipeline = this.pipelines[pipelineName];
+    if (pipeline) {
+      pipeline.draw(txIdx, start, length);
+    }
+    else {
+      throw new WebgxError(`Pipeline ${pipelineName} not defined`);
+    }
+  }
+
+  drawIndexed(pipelineName, txIdx, start, length, vertexStart) {
+    const pipeline = this.pipelines[pipelineName];
+    if (pipeline) {
+      pipeline.drawIndexed(txIdx, start, length, vertexStart);
+    }
+    else {
+      throw new WebgxError(`Pipeline ${pipelineName} not defined`);
+    }
   }
 
   render(txIdx) {
