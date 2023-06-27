@@ -33,6 +33,18 @@ fn clamp3(v : vec3f, a : f32, b : f32) -> vec3f {
 fn clamp4(v : vec4f, a : f32, b : f32) -> vec4f {
   return clamp(v, vec4f(a), vec4f(b));
 }
+
+fn mix2(a: vec2f, b: vec2f, r: f32) -> vec2f {
+  return mix(a, b, vec2f(r));
+}
+
+fn mix3(a: vec3f, b: vec3f, r: f32) -> vec3f {
+  return mix(a, b, vec3f(r));
+}
+
+fn mix4(a: vec4f, b: vec4f, r: f32) -> vec4f {
+  return mix(a, b, vec4f(r));
+}
   
 fn scaleUv(uv : vec2f, s : f32) -> vec2f {
   return (uv * 2 - 1) * s * 0.5 + 0.5;
