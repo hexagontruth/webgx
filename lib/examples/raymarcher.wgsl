@@ -1,4 +1,5 @@
 #include /common/partials/std-header-vertex
+#include /common/partials/filters
 #include /common/partials/sdf
 
 #param ITER 1024

@@ -171,7 +171,7 @@ export default class Pipeline {
     );
   }
 
-  draw(txIdx, start=0, length) {
+  draw(txIdx=0, start=0, length) {
     length = length ?? this.numVerts - start;
 
     const commandEncoder = this.device.createCommandEncoder();
@@ -187,7 +187,7 @@ export default class Pipeline {
     this.device.queue.submit([commandEncoder.finish()]);
   }
 
-  drawIndexed(txIdx, start=0, length, vertexStart) {
+  drawIndexed(txIdx=0, start=0, length, vertexStart) {
     if (!this.program.indexData) {
       throw new WebgxError('No index data defined');
     }

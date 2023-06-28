@@ -27,13 +27,13 @@ export default class Program {
         exportDim: null,
         mediaFit: 'cover',
         streamFit: 'cover',
-        interval: 30,
+        interval: 25,
         start: 0,
         stop: null,
         autoplay: null,
         period: 360,
         skip: 1,
-        renderPairs: 3,
+        renderPairs: 2,
         output: {},
       },
       vertexData: [
@@ -81,7 +81,7 @@ export default class Program {
     this.stream = null;
     this.playing = false;
     this.recording = false;
-    this.hooks = new Hook(this, ['afterCounter', 'onFit']);
+    this.hooks = new Hook(this, ['afterCounter', 'afterStep', 'onFit']);
     this.videoCapture = createElement('video', { autoplay: true });
     this.resetCounter();
   }
@@ -114,6 +114,8 @@ export default class Program {
     if (settings.stop == true) {
       settings.stop = settings.start + settings.period;
     }
+
+    settings.renderPairs = max(2, settings.renderPairs);
 
     // This seems awkward
     const buildControlData = (obj, defs, data) => {
@@ -548,6 +550,14 @@ export default class Program {
     await this.actions[action]?.(...args);
   }
 
+  async step(step=true) {
+    step && this.stepCounter();
+    this.updateGlobalUniforms();
+    await this.updateStreams();
+    await this.run();
+    this.hooks.call('afterStep', this.counter);
+  }
+
   draw(pipelineName, txIdx, start, length) {
     const pipeline = this.pipelines[pipelineName];
     if (pipeline) {
@@ -617,6 +627,17 @@ export default class Program {
     this.controllerList?.forEach((controller) => {
       controller.setValue(controller.initialValue);
     });
+  }
+
+  reset() {
+    this.resetCounter();
+    this.resetCursorDeltas();
+    this.run('reset');
+    this.refresh(true);
+  }
+
+  refresh(step=false) {
+    this.playing || this.step(step);
   }
 
   getCursorUniforms() {

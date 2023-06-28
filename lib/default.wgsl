@@ -1,4 +1,5 @@
 #include /common/partials/std-header-vertex
+#include /common/partials/filters
 
 struct ProgramUniforms {
   bgColor : vec4f,
@@ -21,17 +22,12 @@ struct ProgramUniforms {
 @group(1) @binding(0) var<uniform> pu : ProgramUniforms;
 
 @fragment
-fn dogFilter(data: VertexData) -> @location(0) vec4f {
-  var samp = texture(inputTexture, data.uv);
-  var g = gaussianBlur(i32(pu.range), pu.sd, data.uv);
-  var d = abs(samp - g);
-  var c = samp - d * pu.magnitude;
-  c = clamp(c, unit.yyyy, unit.xxxx);
-  return vec4f(c);
+fn dogFilterMain(data: VertexData) -> @location(0) vec4f {
+  return dogFilter(data.uv, pu.sd, i32(pu.range), pu.magnitude);
 }
 
 @fragment
-fn traceFilter(data: VertexData) -> @location(0) vec4f {
+fn traceFilterMain(data: VertexData) -> @location(0) vec4f {
   var samp1 = texture(inputTexture, data.uv);
   var samp2 = texture(lastTexture, scaleUv(data.uv, 1 / pu.scale));
   samp2 = rgb2hsv(samp2);

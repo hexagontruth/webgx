@@ -48,6 +48,7 @@ export default class Player {
     config.put('streamFit', program.settings.streamFit);
 
     program.hooks.add('afterCounter', (...args) => this.hooks.call('afterCounter', ...args));
+    program.hooks.add('afterStep', (...args) => this.afterStep(...args));
 
     config.testSet.add('screenShareEnabled', (v) => program.setStreamEnabled(v, 'screenShare'));
     config.testSet.add('webcamEnabled', (v) => program.setStreamEnabled(v, 'webcam'));
@@ -80,19 +81,16 @@ export default class Player {
       if (this.program.recording && cond) {
         interval = max(settings.interval, settings.recordingInterval || 0);
       }
-      this.intervalTimer = setTimeout(() => this.draw(), interval);
+      this.intervalTimer = setTimeout(() => this.step(), interval);
     });
   }
 
-  async draw() {
-    this.program.stepCounter();
-    this.program.updateGlobalUniforms();
-    await this.program.updateStreams();
-    await this.program.run();
+  async step() {
+    await this.program.step();
+  }
 
-    // End frame
+  afterStep(counter) {
     requestAnimationFrame(() => {
-      const counter = this.program.counter;
       const cond = this.program.frameCond(counter);
       if (this.program.recording && cond) {
         this.getDataUrl()
@@ -132,20 +130,17 @@ export default class Player {
 
   togglePlay(val=!this.program.playing) {
     this.program.playing = val;
-    val && this.draw();
+    val && this.step();
     return val;
   }
 
   toggleRecord(val=!this.program.recording) {
     this.program.recording = val;
-    val && this.program.resetCounter();
+    val && this.program.reset();
   }
 
-  resetCounter() {
-    this.program.resetCounter();
-    this.program.resetCursorDeltas();
-    this.program.run('reset');
-    this.program.playing || this.draw();
+  reset() {
+    this.program.reset();
   }
 
   clearRenderTextures() {

@@ -89,7 +89,7 @@ export default class App {
 
     await this.config.setAll();
 
-    await this.player.draw();
+    await this.player.step();
 
     window.addEventListener('resize', () => this.handleResize());
     window.addEventListener('keydown', (ev) => this.handleKey(ev));
@@ -191,7 +191,7 @@ export default class App {
           this.player.resetControls();
         }
         else {
-          this.player.resetCounter();
+          this.player.reset();
         }
         return;
       }
@@ -208,7 +208,7 @@ export default class App {
         if (this.player.program.playing)
           this.togglePlay(false);
         else
-          this.player.draw();
+          this.player.step();
       }
       else if (ev.key.indexOf('Arrow') == 0) {
         const delta = App.arrowMap[ev.key];
