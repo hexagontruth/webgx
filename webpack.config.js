@@ -2,7 +2,6 @@ const pth = require('path');
 const process = require('process');
 
 const PORT = process.env.PORT || 8080;
-const SERVER_PORT = process.env.SERVER_PORT || 8081;
 
 module.exports = {
   mode: process.env.NODE_ENV,
@@ -26,11 +25,6 @@ module.exports = {
     port: PORT,
     hot: true,
     historyApiFallback: true,
-    proxy: {
-      '/api/**': {
-        target: `http://localhost:${SERVER_PORT}`,
-      },
-    },
   },
   module: {
     rules: [

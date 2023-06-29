@@ -1,6 +1,6 @@
 {
   "name": "webgx",
-  "version": "0.0.1",
+  "version": "0.0.0",
   "description": "WebGPU thing",
   "main": "index.js",
   "directories": {
@@ -10,8 +10,7 @@
     "test": "echo \"lol\" && exit 1",
     "build": "webpack --mode production",
     "start": "bin/start.sh",
-    "clean": "bin/clean.sh",
-    "deploy": "bin/deploy.sh"
+    "clean": "bin/clean.sh"
   },
   "repository": {
     "type": "git",

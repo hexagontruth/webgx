@@ -3,7 +3,7 @@
 /user
 /input
 /output
-/public/build
+/public/dist
 /test
 /tmp
 *.log
