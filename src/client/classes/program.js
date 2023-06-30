@@ -2,17 +2,18 @@ import * as dat from 'dat.gui';
 
 import {
   arrayWrap, createElement, dirName, getText, importObject,
-  indexMap, join, merge, objectMap, rebaseJoin,
+  indexMap, join, merge, rebaseJoin,
 } from '../util';
 
+import ComputePipeline from './compute-pipeline';
+import DataBuffer from './data-buffer';
 import Dim from './dim';
 import Hook from './hook';
 import IndexBuffer from './index-buffer';
-import Pipeline from './pipeline';
+import RenderPipeline from './render-pipeline';
 import TexBox from './tex-box';
 import UniformBuffer from './uniform-buffer';
 import VertexBuffer from './vertex-buffer';
-import VertexSet from './vertex-set';
 import WebgxError from './webgx-error';
 
 const DATA_PATH = '/data';
@@ -20,6 +21,11 @@ const DATA_PATH = '/data';
 const { max, min } = Math;
 
 export default class Program {
+  static defaultFeatures = [
+    'depth-clip-control',
+    'shader-f16',
+  ];
+
   static generateDefaults(p) {
     return {
       settings: {
@@ -35,23 +41,14 @@ export default class Program {
         skip: 1,
         renderPairs: 2,
         output: {},
+        topology: 'triangle-strip',
       },
-      vertexData: [
-        p.createVertexSet(4, [
-          -1, -1, 0, 1,
-          1, -1, 0, 1,
-          -1, 1, 0, 1,
-          1, 1, 0, 1,
-        ]),
+      dataBuffers: [
+        p.createDefaultVertexBuffer(),
       ],
-      indexData: null, // new Uint16Array([0, 1, 2, 3]),
       uniforms: {},
       media: [],
       controls: {},
-      features: [
-        'depth-clip-control',
-        'shader-f16',
-      ],
       actions: {
         setup: () => null,
         draw: () => null,
@@ -68,6 +65,8 @@ export default class Program {
     await program.init();
     return program;
   }
+
+  DataBuffer = DataBuffer;
 
   constructor(name, maxDim, ctx) {
     this.name = name;
@@ -89,12 +88,37 @@ export default class Program {
   async init() {
     this.programPath = join(DATA_PATH, `${this.name}.js`);
     this.programDir = dirName(this.programPath);
-    const defFn = await importObject(this.programPath);
-    const def = merge({}, Program.generateDefaults(this), defFn(this));
+    const programObj = await importObject(this.programPath);
+
+    this.adapter = await navigator.gpu.requestAdapter();
+    this.requestedFeatures = programObj.features ?? Program.defaultFeatures;
+    this.features = this.requestedFeatures.filter((e) => this.adapter.features.has(e));
+    this.device = await this.adapter.requestDevice({
+      requiredFeatures: this.features,
+    });
+    this.ctx.configure({
+      device: this.device,
+      format: navigator.gpu.getPreferredCanvasFormat(),
+      alphaMode: 'premultiplied',
+      usage:
+        GPUTextureUsage.COPY_SRC |
+        GPUTextureUsage.COPY_DST |
+        GPUTextureUsage.RENDER_ATTACHMENT,
+    });
+
+    const def = merge({},
+      Program.generateDefaults(this),
+      programObj.default(this)
+    );
+
+    this.buildControls(def.controls);
+
     this.settings = def.settings;
-    this.vertexData = def.vertexData;
-    this.indexData = def.indexData;
+    this.dataBuffers = def.dataBuffers;
     this.actions = def.actions;
+    this.pipelines = def.pipelines;
+    this.mediaCount = def.media.length;
+
     const { settings } = def;
 
     let dim = settings.dim;
@@ -117,98 +141,8 @@ export default class Program {
 
     settings.renderPairs = max(2, settings.renderPairs);
 
-    // This seems awkward
-    const buildControlData = (obj, defs, data) => {
-      Object.entries(obj).map(([key, val]) => {
-        if (val.constructor === Object) {
-          defs[key] = {};
-          data[key] = {};
-          buildControlData(val, defs[key], data[key]);
-        }
-        else {
-          defs[key] = arrayWrap(val);
-          data[key] = defs[key][0];
-        }
-      });
-    }
-
-    const addControllers = (data, defs, controlGroup, controllers) => {
-      Object.entries(data).forEach(([key, val]) => {
-        const def = defs[key];
-        let controller;
-        if (val.constructor === Object) {
-          const childGroup = controlGroup.addFolder(key);
-          // childGroup.open();
-          controllers[key] = {};
-          addControllers(val, def, childGroup, controllers[key]);
-          return;
-        } 
-        if (typeof val == 'string') {
-          controller = controlGroup.addColor(data, key);
-        }
-        else {
-          controller = controlGroup.add(data, key, ...def.slice(1));
-        }
-        controllers[key] = controller;
-        this.controllerList.push(controller);
-        controller.onChange((e) => this.run('onControlChange', key, e));
-      });
-    };
-
-    const addControls = () => {
-      if (this.controls) {
-        this.controls.domElement.remove();
-        this.controls.destroy(); // This doesn't seem to do anything?
-      }
-      this.controls = new dat.GUI({ name: 'main', autoPlace: false });
-      this.controllers = {};
-      this.controllerList = [];
-      addControllers(
-        this.controlData,
-        this.controlDefs,
-        this.controls,
-        this.controllers,
-      );
-    }
-
-    this.controlDefs = {};
-    this.controlData = {};
-    this.hasControls = Object.keys(def.controls).length > 0;
-    if (this.hasControls) {
-      buildControlData(def.controls, this.controlDefs, this.controlData);
-      addControls();
-    }
-    
-    this.mediaCount = def.media.length;
-
-    this.adapter = await navigator.gpu.requestAdapter();
-    this.features = def.features.filter((e) => this.adapter.features.has(e));
-    this.device = await this.adapter.requestDevice({
-      requiredFeatures: this.features,
-    });
-    this.ctx.configure({
-      device: this.device,
-      format: navigator.gpu.getPreferredCanvasFormat(),
-      alphaMode: 'premultiplied',
-      usage:
-        GPUTextureUsage.COPY_SRC |
-        GPUTextureUsage.COPY_DST |
-        GPUTextureUsage.RENDER_ATTACHMENT,
-    });
-
-    this.vertexBuffers = this.vertexData.map((vertexSet) => {
-      return new VertexBuffer(this.device, vertexSet);
-    });
-
-    this.hasIndexData = !!this.indexData;
-    if (this.hasIndexData) {
-      this.indexBuffer = new IndexBuffer(this.device, this.indexData);
-      this.indexBuffer.update();
-      this.indexCount = this.indexData.length;
-    }
-
     this.programUniforms = new UniformBuffer(this.device, def.uniforms);
-    this.programUniforms.update();
+    this.programUniforms.write();
 
     this.globalUniforms = new UniformBuffer(this.device, {
       time: 0,
@@ -356,130 +290,107 @@ export default class Program {
       }
     });
 
-    this.customGroupLayout = this.device.createBindGroupLayout({
-      entries: [
-        {
-          binding: 0,
-          visibility: GPUShaderStage.FRAGMENT,
-          buffer: {},
-        },
-        {
-          binding: 1,
-          visibility: GPUShaderStage.FRAGMENT,
-          buffer: {},
-        },
-      ],
-    });
+    this.customGroupLayout = this.createBindGroupLayout(
+      ['buffer', 'buffer'],
+    );
 
-    this.swapGroupLayout = this.device.createBindGroupLayout({
-      entries: [
-        {
-          binding: 0,
-          visibility: GPUShaderStage.FRAGMENT,
-          buffer: {},
-        },
-        {
-          binding: 1,
-          visibility: GPUShaderStage.FRAGMENT,
-          buffer: {},
-        },
-        {
-          binding: 2,
-          visibility: GPUShaderStage.FRAGMENT,
-          sampler: {},
-        },
-        {
-          binding: 3,
-          visibility: GPUShaderStage.FRAGMENT,
-          sampler: {},
-        },
-        {
-          binding: 4,
-          visibility: GPUShaderStage.FRAGMENT,
-          sampler: {},
-        },
-        {
-          binding: 5,
-          visibility: GPUShaderStage.FRAGMENT,
-          texture: {},
-        },
-        {
-          binding: 6,
-          visibility: GPUShaderStage.FRAGMENT,
-          texture: {},
-        },
-        {
-          binding: 7,
-          visibility: GPUShaderStage.FRAGMENT,
-          texture: {},
-        },
-        {
-          binding: 8,
-          visibility: GPUShaderStage.FRAGMENT,
-          texture: {
-            viewDimension: '2d-array',
-          },
-        },
-        {
-          binding: 9,
-          visibility: GPUShaderStage.FRAGMENT,
-          texture: {
-            viewDimension: '2d-array',
-          },
-        },
+    this.swapGroupLayout = this.createBindGroupLayout(
+      [
+        'buffer',
+        'buffer',
+        'sampler',
+        'sampler',
+        'sampler',
+        'texture',
+        'texture',
+        'texture',
+        { texture: {viewDimension: '2d-array' } },
+        { texture: {viewDimension: '2d-array' } },
       ],
-    });
+    );
 
     this.swapGroups = indexMap(2).map((idx) => {
-      return this.device.createBindGroup({
-        layout: this.swapGroupLayout,
-        entries: [
-          {
-            binding: 0,
-            resource: { buffer: this.globalUniforms.buffer },
-          },
-          {
-            binding: 1,
-            resource: { buffer: this.cursorUniforms.buffer },
-          },
-          {
-            binding: 2,
-            resource: this.samplers.linear,
-          },
-          {
-            binding: 3,
-            resource: this.samplers.mirror,
-          },
-          {
-            binding: 4,
-            resource: this.samplers.repeat,
-          },
-          {
-             binding: 5,
-             resource: this.lastTexture.createView(),
-          },
-          {
-            binding: 6,
-            resource: this.inputTexture.createView(),
-          },
-          {
-            binding: 7,
-            resource: this.streamTexture.createView(),
-          },
-          {
-            binding: 8,
-            resource: this.mediaTexture.createView(),
-          },
-          {
-            binding: 9,
-            resource: this.renderTextures[idx].createView(),
-          },
-        ],
-      });
+      return this.createBindGroup(this.swapGroupLayout, [
+        { buffer: this.globalUniforms.buffer },
+        { buffer: this.cursorUniforms.buffer },
+        this.samplers.linear,
+        this.samplers.mirror,
+        this.samplers.repeat,
+        this.lastTexture.createView(),
+        this.inputTexture.createView(),
+        this.streamTexture.createView(),
+        this.mediaTexture.createView(),
+        this.renderTextures[idx].createView(),
+      ]);
     });
 
-    this.pipelines = await Pipeline.buildAll(this, def.pipelines);
+   await Promise.all(Object.values(this.pipelines).map((e) => e.init()));
   };
+
+  buildControls(controls) {
+    // This seems awkward
+    this.controlDefs = {};
+    this.controlData = {};
+    this.hasControls = Object.keys(controls).length > 0;
+
+    if (!this.hasControls) return;
+
+    const buildControlData = (obj, defs, data) => {
+      Object.entries(obj).map(([key, val]) => {
+        if (val.constructor === Object) {
+          defs[key] = {};
+          data[key] = {};
+          buildControlData(val, defs[key], data[key]);
+        }
+        else {
+          defs[key] = arrayWrap(val);
+          data[key] = defs[key][0];
+        }
+      });
+    }
+
+    const addControllers = (data, defs, controlGroup, controllers) => {
+      Object.entries(data).forEach(([key, val]) => {
+        const def = defs[key];
+        let controller;
+        if (val.constructor === Object) {
+          const childGroup = controlGroup.addFolder(key);
+          // childGroup.open();
+          controllers[key] = {};
+          addControllers(val, def, childGroup, controllers[key]);
+          return;
+        } 
+        if (typeof val == 'string') {
+          controller = controlGroup.addColor(data, key);
+        }
+        else {
+          controller = controlGroup.add(data, key, ...def.slice(1));
+        }
+        controllers[key] = controller;
+        this.controllerList.push(controller);
+        controller.onChange((e) => this.run('onControlChange', key, e));
+      });
+    };
+
+    const addControls = () => {
+      if (this.controls) {
+        this.controls.domElement.remove();
+        this.controls.destroy(); // This doesn't seem to do anything?
+      }
+      this.controls = new dat.GUI({ name: 'main', autoPlace: false });
+      this.controllers = {};
+      this.controllerList = [];
+      addControllers(
+        this.controlData,
+        this.controlDefs,
+        this.controls,
+        this.controllers,
+      );
+    }
+
+    buildControlData(controls, this.controlDefs, this.controlData);
+    addControls();
+  }
 
   frameCond(counter) {
     const { settings } = this;
@@ -539,7 +450,7 @@ export default class Program {
     // This is independent of counter increment
     this.globalUniforms.set('lastClock', clock);
     this.globalUniforms.set('clock', (Date.now() - this.clockStart) / 1000);
-    this.globalUniforms.update();
+    this.globalUniforms.write();
   }
 
   async updateStreams() {
@@ -559,27 +470,45 @@ export default class Program {
   }
 
   draw(pipelineName, txIdx, start, length) {
-    const pipeline = this.pipelines[pipelineName];
-    if (pipeline) {
-      pipeline.draw(txIdx, start, length);
-    }
-    else {
-      throw new WebgxError(`Pipeline ${pipelineName} not defined`);
-    }
+    const pipeline = this.getPipeline(pipelineName);
+    pipeline.draw(txIdx, start, length);
   }
 
   drawIndexed(pipelineName, txIdx, start, length, vertexStart) {
+    const pipeline = this.getPipeline(pipelineName);
+    pipeline.drawIndexed(txIdx, start, length, vertexStart);
+  }
+
+  compute(pipelineName, x, y, z) {
+    const pipeline = this.getPipeline(pipelineName);
+    pipeline.compute(x, y, z);
+  }
+
+  computeIndirect(pipelineName, buffer, offset) {
+    const pipeline = this.getPipeline(pipelineName);
+    pipeline.computeIndirect(buffer, offset);
+  }
+
+  getPipeline(pipelineName) {
     const pipeline = this.pipelines[pipelineName];
     if (pipeline) {
-      pipeline.drawIndexed(txIdx, start, length, vertexStart);
+      return pipeline;
     }
     else {
       throw new WebgxError(`Pipeline ${pipelineName} not defined`);
     }
   }
 
+  createCommandEncoder() {
+    return this.device.createCommandEncoder();
+  }
+
+  submitCommandEncoder(encoder) {
+    this.device.queue.submit([encoder.finish()]);
+  }
+
   render(txIdx) {
-    const commandEncoder = this.device.createCommandEncoder();
+    const commandEncoder = this.createCommandEncoder();
     commandEncoder.copyTextureToTexture(
       txIdx != null ? {
         // texture: this.alternatingTextures[this.next][0],
@@ -597,7 +526,7 @@ export default class Program {
         depthOrArrayLayers: 1,
       },
     );
-    this.device.queue.submit([commandEncoder.finish()]);
+    this.submitCommandEncoder(commandEncoder);
   }
 
   stepCounter(n) {
@@ -620,7 +549,7 @@ export default class Program {
     this.cursorUniforms.set('rightDeltaLast', [0, 0]);
     this.cursorUniforms.set('arrowDelta', [0, 0]);
     this.cursorUniforms.set('scrollDelta', 0);
-    this.cursorUniforms.update();
+    this.cursorUniforms.write();
   }
 
   resetControls() {
@@ -650,16 +579,85 @@ export default class Program {
 
   setCursorUniforms(vals) {
     this.cursorUniforms.set(vals);
-    this.cursorUniforms.update();
+    this.cursorUniforms.write();
   }
 
   setCursorUniform(key, val) {
     this.cursorUniforms.set(key, val);
-    this.cursorUniforms.update(key)
+    this.cursorUniforms.write(key)
   }
 
-  createVertexSet(...args) {
-    return new VertexSet(...args);
+  createDataBuffer(...args) {
+    return new DataBuffer(this.device, ...args);
+  }
+
+  createIndexBuffer(...args) {
+    return new IndexBuffer(this.device, ...args);
+  }
+
+  createVertexBuffer(...args) {
+    return new VertexBuffer(this.device, ...args);
+  }
+
+  createDefaultVertexBuffer() {
+    return this.createVertexBuffer(4, [
+      -1, -1, 0, 1,
+      1, -1, 0, 1,
+      -1, 1, 0, 1,
+      1, 1, 0, 1,
+    ]);
+  }
+
+  createBindGroupLayout(entries, flags) {
+    flags = flags ?? GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT | GPUShaderStage.COMPUTE;
+    return this.device.createBindGroupLayout({
+      entries: entries.map((val, idx) => {
+        const entry = {
+          binding: idx,
+          visibility: flags,
+        };
+        if (typeof val == 'string') {
+          entry[val] = {};
+        }
+        else {
+          Object.assign(entry, val);
+        }
+        return entry;
+      }),
+    });
+  }
+
+  createBindGroup(layout, entries) {
+    return this.device.createBindGroup({
+      layout,
+      entries: entries.map((resource, binding) => {
+        if (resource instanceof DataBuffer) {
+          resource = { buffer: resource.buffer };
+        }
+        return { binding, resource };
+      }),
+    });
+  }
+
+  createComputePipeline(shaderPath, settings) {
+    return new ComputePipeline(this, shaderPath, settings);
+  }
+
+  createRenderPipeline(shaderPath, settings) {
+    return new RenderPipeline(this, shaderPath, settings);
+  }
+
+  copyBufferToBuffer(source, dest, sourceOffset=0, destOffset=0, size) {
+    size = size ?? source.byteLength;
+    const commandEncoder = this.createCommandEncoder();
+    commandEncoder.copyBufferToBuffer(
+      source.buffer,
+      sourceOffset,
+      dest.buffer,
+      destOffset,
+      size,
+    );
+    this.submitCommandEncoder(commandEncoder);
   }
 
   clearRenderTextures() {
@@ -723,7 +721,7 @@ export default class Program {
         this.streamActive = true;
         this.streamTexBox.setFitBox();
         this.activeStreams.add(this.streamTexBox);
-        this.globalUniforms.update('streamActive', 1);
+        this.globalUniforms.write('streamActive', 1);
       }
       this.videoCapture.srcObject = this.stream;
     }
@@ -739,7 +737,7 @@ export default class Program {
       this.videoCapture.srcObject = null;
       this.activeStreams.delete(this.streamTexBox);
       this.streamTexBox.clearTexture();
-      this.globalUniforms.update('streamActive', 0);
+      this.globalUniforms.write('streamActive', 0);
     }
   }
 }

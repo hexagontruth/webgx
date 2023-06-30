@@ -1,73 +1,52 @@
-import { arrayWrap, indexMap, merge } from '../util';
+import { indexMap } from '../util';
+import DataBuffer from './data-buffer';
+import WebgxError from './webgx-error';
 
-export default class VertexBuffer {
-  static defaultOpts = {
-    flags: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
-  };
+export default class VertexBuffer extends DataBuffer {
+  static defaultFlags = DataBuffer.VERTEX;
 
-  static defaultTypeMap = {
-    Float32Array: 'float32',
-    Int32Array: 'int32',
-    Uint32Array: 'uint32',
-  };
+  constructor(device, stride, data, flags, type) {
+    super(device, data, flags, type);
 
-  static arrayTypeMap = {
-    float32: Float32Array,
-    int32: Int32Array,
-    uint32: Uint32Array,
-  };
+    if (stride.length) {
+      this.stride = stride.reduce((a, e) => a + e, 0);
+      this.lengthMap = stride.slice();
+    }
+    else {
+      this.stride = stride;
+      this.lengthMap = [this.stride];
+    }
 
-  static typeSizeMap = {
-    float32: 4,
-    int32: 4,
-    uint32: 4,
-  };
-
-  constructor(device, set, opts={}) {
-    this.device = device;
-    this.set = set;
-    opts = merge({}, VertexBuffer.defaultOpts, opts);
-    this.flags = opts.flags;
-    this.type = opts.type ?? VertexBuffer.defaultTypeMap[set.type.name];
-    this.typeSize = VertexBuffer.typeSizeMap[this.type];
-
-    this.buffer = this.device.createBuffer({
-      size: set.length * this.typeSize,
-      usage: this.flags,
+    let offset = 0;
+    this.offsetMap = this.lengthMap.map((length, idx) => {
+      const curOffset = offset;
+      offset += length;
+      return curOffset;
     });
+
+    this.numVerts = this.length / this.stride;
+    this.numParams = this.lengthMap.length;
+
+    if (this.numVerts % 1 > 0) {
+      throw new WebgxError(`VertexBuffer length ${this.length} does not match stride ${this.stride}`);
+    }
   }
 
-  getLayout(startLocation=0) {
+  getVertexLayout(startLocation=0) {
     return {
-      attributes: indexMap(this.set.numParams).map((idx) => {
+      attributes: indexMap(this.numParams).map((idx) => {
         return {
           shaderLocation: startLocation + idx,
-          offset: this.set.offsetMap[idx] * this.typeSize,
-          format: `${this.type}x${this.set.lengthMap[idx]}`,
+          offset: this.offsetMap[idx] * this.typeSize,
+          format: `${this.type}x${this.lengthMap[idx]}`,
         };
       }),
-      arrayStride: this.set.stride * this.typeSize,
+      arrayStride: this.stride * this.typeSize,
       stepMode: 'vertex',
     };
   }
 
-  update(start=0, length=this.set.data.length) {
-    this.device.queue.writeBuffer(
-      this.buffer, start * this.typeSize,
-      this.set.data, start,
-      length,
-    );
-  }
-
-  updateVerts(start, length=1) {
-    this.update(this.set.stride * start, this.set.stride * length);
-  }
-
-  get numParams() {
-    return this.set.numParams;
-  }
-
-  get numVerts() {
-    return this.set.numVerts;
+  writeVerts(start, length=1) {
+    this.write(this.stride * start, this.stride * length);
   }
 }
