@@ -1,40 +1,12 @@
-import { arrayWrap, indexMap, merge } from '../util';
+import { indexMap, merge } from '../util';
+import DataBuffer from './data-buffer';
 
-export default class VertexBuffer {
-  static defaultOpts = {
-    flags: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
-  };
+export default class VertexBuffer extends DataBuffer {
+  static defaultFlags = DataBuffer.VERTEX;
 
-  static defaultTypeMap = {
-    Float32Array: 'float32',
-    Int32Array: 'int32',
-    Uint32Array: 'uint32',
-  };
-
-  static arrayTypeMap = {
-    float32: Float32Array,
-    int32: Int32Array,
-    uint32: Uint32Array,
-  };
-
-  static typeSizeMap = {
-    float32: 4,
-    int32: 4,
-    uint32: 4,
-  };
-
-  constructor(device, set, opts={}) {
-    this.device = device;
+  constructor(device, set, flags, type) {
+    super(device, set.data, flags, type);
     this.set = set;
-    opts = merge({}, VertexBuffer.defaultOpts, opts);
-    this.flags = opts.flags;
-    this.type = opts.type ?? VertexBuffer.defaultTypeMap[set.type.name];
-    this.typeSize = VertexBuffer.typeSizeMap[this.type];
-
-    this.buffer = this.device.createBuffer({
-      size: set.length * this.typeSize,
-      usage: this.flags,
-    });
   }
 
   getLayout(startLocation=0) {

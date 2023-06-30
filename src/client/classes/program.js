@@ -5,10 +5,12 @@ import {
   indexMap, join, merge, objectMap, rebaseJoin,
 } from '../util';
 
+import ComputePipeline from './compute-pipeline';
+import DataBuffer from './data-buffer';
 import Dim from './dim';
 import Hook from './hook';
 import IndexBuffer from './index-buffer';
-import Pipeline from './pipeline';
+import RenderPipeline from './render-pipeline';
 import TexBox from './tex-box';
 import UniformBuffer from './uniform-buffer';
 import VertexBuffer from './vertex-buffer';
@@ -95,6 +97,8 @@ export default class Program {
     this.vertexData = def.vertexData;
     this.indexData = def.indexData;
     this.actions = def.actions;
+    this.pipelines = def.pipelines;
+    window.test = def;
     const { settings } = def;
 
     let dim = settings.dim;
@@ -360,12 +364,12 @@ export default class Program {
       entries: [
         {
           binding: 0,
-          visibility: GPUShaderStage.FRAGMENT,
+          visibility: GPUShaderStage.FRAGMENT | GPUShaderStage.COMPUTE,
           buffer: {},
         },
         {
           binding: 1,
-          visibility: GPUShaderStage.FRAGMENT,
+          visibility: GPUShaderStage.FRAGMENT | GPUShaderStage.COMPUTE,
           buffer: {},
         },
       ],
@@ -375,54 +379,54 @@ export default class Program {
       entries: [
         {
           binding: 0,
-          visibility: GPUShaderStage.FRAGMENT,
+          visibility: GPUShaderStage.FRAGMENT | GPUShaderStage.COMPUTE,
           buffer: {},
         },
         {
           binding: 1,
-          visibility: GPUShaderStage.FRAGMENT,
+          visibility: GPUShaderStage.FRAGMENT | GPUShaderStage.COMPUTE,
           buffer: {},
         },
         {
           binding: 2,
-          visibility: GPUShaderStage.FRAGMENT,
+          visibility: GPUShaderStage.FRAGMENT | GPUShaderStage.COMPUTE,
           sampler: {},
         },
         {
           binding: 3,
-          visibility: GPUShaderStage.FRAGMENT,
+          visibility: GPUShaderStage.FRAGMENT | GPUShaderStage.COMPUTE,
           sampler: {},
         },
         {
           binding: 4,
-          visibility: GPUShaderStage.FRAGMENT,
+          visibility: GPUShaderStage.FRAGMENT | GPUShaderStage.COMPUTE,
           sampler: {},
         },
         {
           binding: 5,
-          visibility: GPUShaderStage.FRAGMENT,
+          visibility: GPUShaderStage.FRAGMENT | GPUShaderStage.COMPUTE,
           texture: {},
         },
         {
           binding: 6,
-          visibility: GPUShaderStage.FRAGMENT,
+          visibility: GPUShaderStage.FRAGMENT | GPUShaderStage.COMPUTE,
           texture: {},
         },
         {
           binding: 7,
-          visibility: GPUShaderStage.FRAGMENT,
+          visibility: GPUShaderStage.FRAGMENT | GPUShaderStage.COMPUTE,
           texture: {},
         },
         {
           binding: 8,
-          visibility: GPUShaderStage.FRAGMENT,
+          visibility: GPUShaderStage.FRAGMENT | GPUShaderStage.COMPUTE,
           texture: {
             viewDimension: '2d-array',
           },
         },
         {
           binding: 9,
-          visibility: GPUShaderStage.FRAGMENT,
+          visibility: GPUShaderStage.FRAGMENT | GPUShaderStage.COMPUTE,
           texture: {
             viewDimension: '2d-array',
           },
@@ -478,7 +482,7 @@ export default class Program {
       });
     });
 
-    this.pipelines = await Pipeline.buildAll(this, def.pipelines);
+   await Promise.all(Object.values(this.pipelines).map((e) => e.init()));
   };
 
   frameCond(counter) {
@@ -660,6 +664,18 @@ export default class Program {
 
   createVertexSet(...args) {
     return new VertexSet(...args);
+  }
+
+  createDataBuffer(...args) {
+    return new DataBuffer(this.device, ...args);
+  }
+
+  createComputePipeline(shaderPath, settings) {
+    return new ComputePipeline(this, shaderPath, settings);
+  }
+
+  createRenderPipeline(shaderPath, settings) {
+    return new RenderPipeline(this, shaderPath, settings);
   }
 
   clearRenderTextures() {
