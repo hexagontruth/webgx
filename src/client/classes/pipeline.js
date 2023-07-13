@@ -3,7 +3,6 @@ import UniformBuffer from "./uniform-buffer";
 export default class Pipeline {
   static generateDefaults(p) {
     return {
-      shader: 'default.wgsl',
       vertexMain: 'vertexMain',
       fragmentMain: 'fragmentMain',
       computeMain: 'computeMain',
@@ -31,18 +30,12 @@ export default class Pipeline {
     this.pipelineUniforms = new UniformBuffer(this.device, this.settings.uniforms);
     this.pipelineUniforms.update();
 
-    this.customGroup = this.device.createBindGroup({
-      layout: this.program.customGroupLayout,
-      entries: [
-        {
-          binding: 0,
-          resource: { buffer: this.program.programUniforms.buffer },
-        },
-        {
-          binding: 1,
-          resource: { buffer: this.pipelineUniforms.buffer },
-        }
+    this.customGroup = this.program.createBindGroup(
+      this.program.customGroupLayout,
+      [
+        { buffer: this.program.programUniforms.buffer },
+        { buffer: this.pipelineUniforms.buffer },
       ],
-    });
+    );
   }
 }

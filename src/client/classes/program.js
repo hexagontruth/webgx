@@ -2,7 +2,7 @@ import * as dat from 'dat.gui';
 
 import {
   arrayWrap, createElement, dirName, getText, importObject,
-  indexMap, join, merge, objectMap, rebaseJoin,
+  indexMap, join, merge, rebaseJoin,
 } from '../util';
 
 import ComputePipeline from './compute-pipeline';
@@ -22,6 +22,11 @@ const DATA_PATH = '/data';
 const { max, min } = Math;
 
 export default class Program {
+  static defaultFeatures = [
+    'depth-clip-control',
+    'shader-f16',
+  ];
+
   static generateDefaults(p) {
     return {
       settings: {
@@ -50,10 +55,6 @@ export default class Program {
       uniforms: {},
       media: [],
       controls: {},
-      features: [
-        'depth-clip-control',
-        'shader-f16',
-      ],
       actions: {
         setup: () => null,
         draw: () => null,
@@ -91,14 +92,38 @@ export default class Program {
   async init() {
     this.programPath = join(DATA_PATH, `${this.name}.js`);
     this.programDir = dirName(this.programPath);
-    const defFn = await importObject(this.programPath);
-    const def = merge({}, Program.generateDefaults(this), defFn(this));
+    const programObj = await importObject(this.programPath);
+
+    this.adapter = await navigator.gpu.requestAdapter();
+    this.requestedFeatures = programObj.features ?? Program.defaultFeatures;
+    this.features = this.requestedFeatures.filter((e) => this.adapter.features.has(e));
+    this.device = await this.adapter.requestDevice({
+      requiredFeatures: this.features,
+    });
+    this.ctx.configure({
+      device: this.device,
+      format: navigator.gpu.getPreferredCanvasFormat(),
+      alphaMode: 'premultiplied',
+      usage:
+        GPUTextureUsage.COPY_SRC |
+        GPUTextureUsage.COPY_DST |
+        GPUTextureUsage.RENDER_ATTACHMENT,
+    });
+
+    const def = merge({},
+      Program.generateDefaults(this),
+      programObj.default(this)
+    );
+
+    this.buildControls(def.controls);
+
     this.settings = def.settings;
     this.vertexData = def.vertexData;
     this.indexData = def.indexData;
     this.actions = def.actions;
     this.pipelines = def.pipelines;
-    window.test = def;
+    this.mediaCount = def.media.length;
+
     const { settings } = def;
 
     let dim = settings.dim;
@@ -120,85 +145,6 @@ export default class Program {
     }
 
     settings.renderPairs = max(2, settings.renderPairs);
-
-    // This seems awkward
-    const buildControlData = (obj, defs, data) => {
-      Object.entries(obj).map(([key, val]) => {
-        if (val.constructor === Object) {
-          defs[key] = {};
-          data[key] = {};
-          buildControlData(val, defs[key], data[key]);
-        }
-        else {
-          defs[key] = arrayWrap(val);
-          data[key] = defs[key][0];
-        }
-      });
-    }
-
-    const addControllers = (data, defs, controlGroup, controllers) => {
-      Object.entries(data).forEach(([key, val]) => {
-        const def = defs[key];
-        let controller;
-        if (val.constructor === Object) {
-          const childGroup = controlGroup.addFolder(key);
-          // childGroup.open();
-          controllers[key] = {};
-          addControllers(val, def, childGroup, controllers[key]);
-          return;
-        } 
-        if (typeof val == 'string') {
-          controller = controlGroup.addColor(data, key);
-        }
-        else {
-          controller = controlGroup.add(data, key, ...def.slice(1));
-        }
-        controllers[key] = controller;
-        this.controllerList.push(controller);
-        controller.onChange((e) => this.run('onControlChange', key, e));
-      });
-    };
-
-    const addControls = () => {
-      if (this.controls) {
-        this.controls.domElement.remove();
-        this.controls.destroy(); // This doesn't seem to do anything?
-      }
-      this.controls = new dat.GUI({ name: 'main', autoPlace: false });
-      this.controllers = {};
-      this.controllerList = [];
-      addControllers(
-        this.controlData,
-        this.controlDefs,
-        this.controls,
-        this.controllers,
-      );
-    }
-
-    this.controlDefs = {};
-    this.controlData = {};
-    this.hasControls = Object.keys(def.controls).length > 0;
-    if (this.hasControls) {
-      buildControlData(def.controls, this.controlDefs, this.controlData);
-      addControls();
-    }
-    
-    this.mediaCount = def.media.length;
-
-    this.adapter = await navigator.gpu.requestAdapter();
-    this.features = def.features.filter((e) => this.adapter.features.has(e));
-    this.device = await this.adapter.requestDevice({
-      requiredFeatures: this.features,
-    });
-    this.ctx.configure({
-      device: this.device,
-      format: navigator.gpu.getPreferredCanvasFormat(),
-      alphaMode: 'premultiplied',
-      usage:
-        GPUTextureUsage.COPY_SRC |
-        GPUTextureUsage.COPY_DST |
-        GPUTextureUsage.RENDER_ATTACHMENT,
-    });
 
     this.vertexBuffers = this.vertexData.map((vertexSet) => {
       return new VertexBuffer(this.device, vertexSet);
@@ -360,130 +306,109 @@ export default class Program {
       }
     });
 
-    this.customGroupLayout = this.device.createBindGroupLayout({
-      entries: [
-        {
-          binding: 0,
-          visibility: GPUShaderStage.FRAGMENT | GPUShaderStage.COMPUTE,
-          buffer: {},
-        },
-        {
-          binding: 1,
-          visibility: GPUShaderStage.FRAGMENT | GPUShaderStage.COMPUTE,
-          buffer: {},
-        },
-      ],
-    });
+    this.customGroupLayout = this.createBindGroupLayout(
+      GPUShaderStage.FRAGMENT | GPUShaderStage.COMPUTE,
+      ['buffer', 'buffer'],
+    );
 
-    this.swapGroupLayout = this.device.createBindGroupLayout({
-      entries: [
-        {
-          binding: 0,
-          visibility: GPUShaderStage.FRAGMENT | GPUShaderStage.COMPUTE,
-          buffer: {},
-        },
-        {
-          binding: 1,
-          visibility: GPUShaderStage.FRAGMENT | GPUShaderStage.COMPUTE,
-          buffer: {},
-        },
-        {
-          binding: 2,
-          visibility: GPUShaderStage.FRAGMENT | GPUShaderStage.COMPUTE,
-          sampler: {},
-        },
-        {
-          binding: 3,
-          visibility: GPUShaderStage.FRAGMENT | GPUShaderStage.COMPUTE,
-          sampler: {},
-        },
-        {
-          binding: 4,
-          visibility: GPUShaderStage.FRAGMENT | GPUShaderStage.COMPUTE,
-          sampler: {},
-        },
-        {
-          binding: 5,
-          visibility: GPUShaderStage.FRAGMENT | GPUShaderStage.COMPUTE,
-          texture: {},
-        },
-        {
-          binding: 6,
-          visibility: GPUShaderStage.FRAGMENT | GPUShaderStage.COMPUTE,
-          texture: {},
-        },
-        {
-          binding: 7,
-          visibility: GPUShaderStage.FRAGMENT | GPUShaderStage.COMPUTE,
-          texture: {},
-        },
-        {
-          binding: 8,
-          visibility: GPUShaderStage.FRAGMENT | GPUShaderStage.COMPUTE,
-          texture: {
-            viewDimension: '2d-array',
-          },
-        },
-        {
-          binding: 9,
-          visibility: GPUShaderStage.FRAGMENT | GPUShaderStage.COMPUTE,
-          texture: {
-            viewDimension: '2d-array',
-          },
-        },
+    this.swapGroupLayout = this.createBindGroupLayout(
+      GPUShaderStage.FRAGMENT | GPUShaderStage.COMPUTE,
+      [
+        'buffer',
+        'buffer',
+        'sampler',
+        'sampler',
+        'sampler',
+        'texture',
+        'texture',
+        'texture',
+        { texture: {viewDimension: '2d-array' } },
+        { texture: {viewDimension: '2d-array' } },
       ],
-    });
+    );
 
     this.swapGroups = indexMap(2).map((idx) => {
-      return this.device.createBindGroup({
-        layout: this.swapGroupLayout,
-        entries: [
-          {
-            binding: 0,
-            resource: { buffer: this.globalUniforms.buffer },
-          },
-          {
-            binding: 1,
-            resource: { buffer: this.cursorUniforms.buffer },
-          },
-          {
-            binding: 2,
-            resource: this.samplers.linear,
-          },
-          {
-            binding: 3,
-            resource: this.samplers.mirror,
-          },
-          {
-            binding: 4,
-            resource: this.samplers.repeat,
-          },
-          {
-             binding: 5,
-             resource: this.lastTexture.createView(),
-          },
-          {
-            binding: 6,
-            resource: this.inputTexture.createView(),
-          },
-          {
-            binding: 7,
-            resource: this.streamTexture.createView(),
-          },
-          {
-            binding: 8,
-            resource: this.mediaTexture.createView(),
-          },
-          {
-            binding: 9,
-            resource: this.renderTextures[idx].createView(),
-          },
-        ],
-      });
+      return this.createBindGroup(this.swapGroupLayout, [
+        { buffer: this.globalUniforms.buffer },
+        { buffer: this.cursorUniforms.buffer },
+        this.samplers.linear,
+        this.samplers.mirror,
+        this.samplers.repeat,
+        this.lastTexture.createView(),
+        this.inputTexture.createView(),
+        this.streamTexture.createView(),
+        this.mediaTexture.createView(),
+        this.renderTextures[idx].createView(),
+      ]);
     });
 
    await Promise.all(Object.values(this.pipelines).map((e) => e.init()));
   };
+
+  buildControls(controls) {
+    // This seems awkward
+    this.controlDefs = {};
+    this.controlData = {};
+    this.hasControls = Object.keys(controls).length > 0;
+
+    if (!this.hasControls) return;
+
+    const buildControlData = (obj, defs, data) => {
+      Object.entries(obj).map(([key, val]) => {
+        if (val.constructor === Object) {
+          defs[key] = {};
+          data[key] = {};
+          buildControlData(val, defs[key], data[key]);
+        }
+        else {
+          defs[key] = arrayWrap(val);
+          data[key] = defs[key][0];
+        }
+      });
+    }
+
+    const addControllers = (data, defs, controlGroup, controllers) => {
+      Object.entries(data).forEach(([key, val]) => {
+        const def = defs[key];
+        let controller;
+        if (val.constructor === Object) {
+          const childGroup = controlGroup.addFolder(key);
+          // childGroup.open();
+          controllers[key] = {};
+          addControllers(val, def, childGroup, controllers[key]);
+          return;
+        } 
+        if (typeof val == 'string') {
+          controller = controlGroup.addColor(data, key);
+        }
+        else {
+          controller = controlGroup.add(data, key, ...def.slice(1));
+        }
+        controllers[key] = controller;
+        this.controllerList.push(controller);
+        controller.onChange((e) => this.run('onControlChange', key, e));
+      });
+    };
+
+    const addControls = () => {
+      if (this.controls) {
+        this.controls.domElement.remove();
+        this.controls.destroy(); // This doesn't seem to do anything?
+      }
+      this.controls = new dat.GUI({ name: 'main', autoPlace: false });
+      this.controllers = {};
+      this.controllerList = [];
+      addControllers(
+        this.controlData,
+        this.controlDefs,
+        this.controls,
+        this.controllers,
+      );
+    }
+
+    buildControlData(controls, this.controlDefs, this.controlData);
+    addControls();
+  }
 
   frameCond(counter) {
     const { settings } = this;
@@ -668,6 +593,33 @@ export default class Program {
 
   createDataBuffer(...args) {
     return new DataBuffer(this.device, ...args);
+  }
+
+  createBindGroupLayout(flags, entries) {
+    return this.device.createBindGroupLayout({
+      entries: entries.map((val, idx) => {
+        const entry = {
+          binding: idx,
+          visibility: flags,
+        };
+        if (typeof val == 'string') {
+          entry[val] = {};
+        }
+        else {
+          Object.assign(entry, val);
+        }
+        return entry;
+      }),
+    });
+  }
+
+  createBindGroup(layout, entries) {
+    return this.device.createBindGroup({
+      layout,
+      entries: entries.map((resource, binding) => {
+        return { binding, resource };
+      }),
+    });
   }
 
   createComputePipeline(shaderPath, settings) {

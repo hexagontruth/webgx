@@ -17,9 +17,9 @@ export function copyEntries(dest, src, keys) {
   return dest;
 }
 
-export async function importObject(path, name='default') {
+export async function importObject(path) {
   const result = await import(/*webpackIgnore: true*/path);
-  return result[name];
+  return result;
 }
 
 export function isNumber(n) {
