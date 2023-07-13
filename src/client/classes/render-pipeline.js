@@ -1,11 +1,10 @@
 import { merge } from '../util';
 import Pipeline from './pipeline';
-import WebgxError from './webgx-error';
 
 export default class RenderPipeline extends Pipeline {
   static generateDefaults(p) {
     return {
-      vertexSets: [0],
+      vertexBuffers: [0],
     };
   }
 
@@ -21,8 +20,7 @@ export default class RenderPipeline extends Pipeline {
 
   async init() {
     await super.init();
-
-    this.vertexBuffers = this.settings.vertexSets.map((idx) => this.program.vertexBuffers[idx]);
+    this.vertexBuffers = this.settings.vertexBuffers.map((idx) => this.program.dataBuffers[idx]);
     this.numVerts = this.vertexBuffers[0].numVerts;
 
     let locationIdx = 0;
@@ -49,7 +47,7 @@ export default class RenderPipeline extends Pipeline {
         ],
       },
       primitive: {
-        topology: this.settings.topology,
+        topology: this.settings.topology ?? this.program.settings.topology,
         unclippedDepth: this.program.features.includes('depth-clip-control') ? true : undefined,
       },
       layout: this.device.createPipelineLayout({
@@ -149,12 +147,9 @@ export default class RenderPipeline extends Pipeline {
     this.device.queue.submit([commandEncoder.finish()]);
   }
 
-  drawIndexed(txIdx=0, start=0, length, vertexStart) {
-    if (!this.program.indexData) {
-      throw new WebgxError('No index data defined');
-    }
-
-    length = length ?? this.program.indexData.length - start;
+  drawIndexed(bufferIdx, txIdx=0, start=0, length, vertexStart) {
+    const indexData = this.program.dataBuffers[bufferIdx];
+    length = length ?? indexData.length - start;
 
     const commandEncoder = this.device.createCommandEncoder();
     this.copyInputTextures(commandEncoder, txIdx);
@@ -162,8 +157,8 @@ export default class RenderPipeline extends Pipeline {
 
     const passEncoder = this.createPassEncoder(commandEncoder);
     passEncoder.setIndexBuffer(
-      this.program.indexBuffer.buffer,
-      this.program.indexBuffer.type
+      indexData.buffer,
+      indexData.type
     );
     passEncoder.drawIndexed(length, 1, start, vertexStart);
     passEncoder.end();

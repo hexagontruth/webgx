@@ -14,7 +14,6 @@ import RenderPipeline from './render-pipeline';
 import TexBox from './tex-box';
 import UniformBuffer from './uniform-buffer';
 import VertexBuffer from './vertex-buffer';
-import VertexSet from './vertex-set';
 import WebgxError from './webgx-error';
 
 const DATA_PATH = '/data';
@@ -42,16 +41,11 @@ export default class Program {
         skip: 1,
         renderPairs: 2,
         output: {},
+        topology: 'triangle-strip',
       },
-      vertexData: [
-        p.createVertexSet(4, [
-          -1, -1, 0, 1,
-          1, -1, 0, 1,
-          -1, 1, 0, 1,
-          1, 1, 0, 1,
-        ]),
+      dataBuffers: [
+        p.createDefaultVertexBuffer(),
       ],
-      indexData: null, // new Uint16Array([0, 1, 2, 3]),
       uniforms: {},
       media: [],
       controls: {},
@@ -118,8 +112,7 @@ export default class Program {
     this.buildControls(def.controls);
 
     this.settings = def.settings;
-    this.vertexData = def.vertexData;
-    this.indexData = def.indexData;
+    this.dataBuffers = def.dataBuffers;
     this.actions = def.actions;
     this.pipelines = def.pipelines;
     this.mediaCount = def.media.length;
@@ -145,17 +138,6 @@ export default class Program {
     }
 
     settings.renderPairs = max(2, settings.renderPairs);
-
-    this.vertexBuffers = this.vertexData.map((vertexSet) => {
-      return new VertexBuffer(this.device, vertexSet);
-    });
-
-    this.hasIndexData = !!this.indexData;
-    if (this.hasIndexData) {
-      this.indexBuffer = new IndexBuffer(this.device, this.indexData);
-      this.indexBuffer.update();
-      this.indexCount = this.indexData.length;
-    }
 
     this.programUniforms = new UniformBuffer(this.device, def.uniforms);
     this.programUniforms.update();
@@ -587,12 +569,25 @@ export default class Program {
     this.cursorUniforms.update(key)
   }
 
-  createVertexSet(...args) {
-    return new VertexSet(...args);
-  }
-
   createDataBuffer(...args) {
     return new DataBuffer(this.device, ...args);
+  }
+
+  createIndexBuffer(...args) {
+    return new IndexBuffer(this.device, ...args);
+  }
+
+  createVertexBuffer(...args) {
+    return new VertexBuffer(this.device, ...args);
+  }
+
+  createDefaultVertexBuffer() {
+    return this.createVertexBuffer(4, [
+      -1, -1, 0, 1,
+      1, -1, 0, 1,
+      -1, 1, 0, 1,
+      1, 1, 0, 1,
+    ]);
   }
 
   createBindGroupLayout(flags, entries) {

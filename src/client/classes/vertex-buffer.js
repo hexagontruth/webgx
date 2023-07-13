@@ -1,45 +1,52 @@
-import { indexMap, merge } from '../util';
+import { indexMap } from '../util';
 import DataBuffer from './data-buffer';
+import WebgxError from './webgx-error';
 
 export default class VertexBuffer extends DataBuffer {
   static defaultFlags = DataBuffer.VERTEX;
 
-  constructor(device, set, flags, type) {
-    super(device, set.data, flags, type);
-    this.set = set;
+  constructor(device, stride, data, flags, type) {
+    super(device, data, flags, type);
+
+    if (stride.length) {
+      this.stride = stride.reduce((a, e) => a + e, 0);
+      this.lengthMap = stride.slice();
+    }
+    else {
+      this.stride = stride;
+      this.lengthMap = [this.stride];
+    }
+
+    let offset = 0;
+    this.offsetMap = this.lengthMap.map((length, idx) => {
+      const curOffset = offset;
+      offset += length;
+      return curOffset;
+    });
+
+    this.numVerts = this.length / this.stride;
+    this.numParams = this.lengthMap.length;
+
+    if (this.numVerts % 1 > 0) {
+      throw new WebgxError(`VertexSet length ${this.length} does not match stride ${this.stride}`);
+    }
   }
 
   getLayout(startLocation=0) {
     return {
-      attributes: indexMap(this.set.numParams).map((idx) => {
+      attributes: indexMap(this.numParams).map((idx) => {
         return {
           shaderLocation: startLocation + idx,
-          offset: this.set.offsetMap[idx] * this.typeSize,
-          format: `${this.type}x${this.set.lengthMap[idx]}`,
+          offset: this.offsetMap[idx] * this.typeSize,
+          format: `${this.type}x${this.lengthMap[idx]}`,
         };
       }),
-      arrayStride: this.set.stride * this.typeSize,
+      arrayStride: this.stride * this.typeSize,
       stepMode: 'vertex',
     };
   }
 
-  update(start=0, length=this.set.data.length) {
-    this.device.queue.writeBuffer(
-      this.buffer, start * this.typeSize,
-      this.set.data, start,
-      length,
-    );
-  }
-
   updateVerts(start, length=1) {
-    this.update(this.set.stride * start, this.set.stride * length);
-  }
-
-  get numParams() {
-    return this.set.numParams;
-  }
-
-  get numVerts() {
-    return this.set.numVerts;
+    this.update(this.stride * start, this.stride * length);
   }
 }

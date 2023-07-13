@@ -6,7 +6,7 @@ export default class Pipeline {
       vertexMain: 'vertexMain',
       fragmentMain: 'fragmentMain',
       computeMain: 'computeMain',
-      topology: 'triangle-strip',
+      topology: null,
       uniforms: {},
       params: {},
     };
