@@ -28,7 +28,7 @@ export default class VertexBuffer extends DataBuffer {
     this.numParams = this.lengthMap.length;
 
     if (this.numVerts % 1 > 0) {
-      throw new WebgxError(`VertexSet length ${this.length} does not match stride ${this.stride}`);
+      throw new WebgxError(`VertexBuffer length ${this.length} does not match stride ${this.stride}`);
     }
   }
 

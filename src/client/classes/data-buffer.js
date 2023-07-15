@@ -35,6 +35,10 @@ export default class DataBuffer {
   constructor(device, data, flags, type) {
     this.device = device;
     this.flags = flags ?? this.constructor.defaultFlags;
+    data && this.setData(data, type);
+  }
+
+  setData(data, type) {
     if (ArrayBuffer.isView(data)) {
       this.data = data;
       this.type = type || this.constructor.defaultTypeMap[data.constructor.name];

@@ -1,38 +1,33 @@
-export default class UniformBuffer {
-  constructor(device, dataMap, opts={}) {
-    this.device = device;
-    this.dataMap = Object.assign({}, dataMap);
-    this.opts = opts;
-    this.flags = opts.flags ?? GPUBufferUsage.COPY_DST | GPUBufferUsage.UNIFORM;
-    this.allowEmpty = opts.allowEmpty ?? false;
-    this.idxMap = {};
-    this.length = 0;
+import DataBuffer from "./data-buffer";
 
-    if (!this.allowEmpty && Object.keys(this.dataMap).length == 0) {
+export default class UniformBuffer extends DataBuffer {
+  static defaultFlags = DataBuffer.UNIFORM;
+  static defaultType = 'float32';
+
+  constructor(device, dataMap, flags, type) {
+    super(device, null, flags);
+
+    if (Object.keys(dataMap).length == 0) {
       dataMap = { 'null': 0 };
     }
+    this.dataMap = Object.assign({}, dataMap);
+
+    this.idxMap = {};
+    let length = 0;
 
     Object.entries(dataMap).forEach(([key, val]) => {
       val = Array.isArray(val) ? val : [val];
       this.dataMap[key] = val;
-      const padding = (val.length - this.length % val.length) % val.length;
-      const idx = this.length + padding;
+      const padding = (val.length - length % val.length) % val.length;
+      const idx = length + padding;
       this.idxMap[key] = idx;
-      this.length = idx + val.length;
+      length = idx + val.length;
     });
-    this.length += (4 - this.length % 4) % 4;
+    length += (4 - length % 4) % 4;
 
-    this.data = new Float32Array(this.length);
+    this.setData(length, type);
 
-    Object.entries(this.dataMap).forEach(([key, val]) => {
-      const idx = this.idxMap[key];
-      this.data.set(val, idx);
-    });
-
-    this.buffer = this.device.createBuffer({
-      size: this.length * 4,
-      usage: this.flags,
-    });
+    this.set(this.dataMap);
   }
 
   update(key, val) {
@@ -42,11 +37,7 @@ export default class UniformBuffer {
     const [start, length] = key ?
       [this.idxMap[key], this.dataMap[key].length] :
       [0, this.data.length];
-    this.device.queue.writeBuffer(
-      this.buffer, start * 4,
-      this.data, start,
-      length,
-    );
+    super.update(start, length);
   }
 
   has(key) {
