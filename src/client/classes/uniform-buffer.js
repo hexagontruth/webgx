@@ -30,14 +30,14 @@ export default class UniformBuffer extends DataBuffer {
     this.set(this.dataMap);
   }
 
-  update(key, val) {
+  write(key, val) {
     if (val !== undefined) {
       this.set(key, val);
     }
     const [start, length] = key ?
       [this.idxMap[key], this.dataMap[key].length] :
       [0, this.data.length];
-    super.update(start, length);
+    super.write(start, length);
   }
 
   has(key) {

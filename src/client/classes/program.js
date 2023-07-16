@@ -142,7 +142,7 @@ export default class Program {
     settings.renderPairs = max(2, settings.renderPairs);
 
     this.programUniforms = new UniformBuffer(this.device, def.uniforms);
-    this.programUniforms.update();
+    this.programUniforms.write();
 
     this.globalUniforms = new UniformBuffer(this.device, {
       time: 0,
@@ -452,7 +452,7 @@ export default class Program {
     // This is independent of counter increment
     this.globalUniforms.set('lastClock', clock);
     this.globalUniforms.set('clock', (Date.now() - this.clockStart) / 1000);
-    this.globalUniforms.update();
+    this.globalUniforms.write();
   }
 
   async updateStreams() {
@@ -501,8 +501,16 @@ export default class Program {
     }
   }
 
+  createCommandEncoder() {
+    return this.device.createCommandEncoder();
+  }
+
+  submitCommandEncoder(encoder) {
+    this.device.queue.submit([encoder.finish()]);
+  }
+
   render(txIdx) {
-    const commandEncoder = this.device.createCommandEncoder();
+    const commandEncoder = this.createCommandEncoder();
     commandEncoder.copyTextureToTexture(
       txIdx != null ? {
         // texture: this.alternatingTextures[this.next][0],
@@ -520,7 +528,7 @@ export default class Program {
         depthOrArrayLayers: 1,
       },
     );
-    this.device.queue.submit([commandEncoder.finish()]);
+    this.submitCommandEncoder(commandEncoder);
   }
 
   stepCounter(n) {
@@ -543,7 +551,7 @@ export default class Program {
     this.cursorUniforms.set('rightDeltaLast', [0, 0]);
     this.cursorUniforms.set('arrowDelta', [0, 0]);
     this.cursorUniforms.set('scrollDelta', 0);
-    this.cursorUniforms.update();
+    this.cursorUniforms.write();
   }
 
   resetControls() {
@@ -573,12 +581,12 @@ export default class Program {
 
   setCursorUniforms(vals) {
     this.cursorUniforms.set(vals);
-    this.cursorUniforms.update();
+    this.cursorUniforms.write();
   }
 
   setCursorUniform(key, val) {
     this.cursorUniforms.set(key, val);
-    this.cursorUniforms.update(key)
+    this.cursorUniforms.write(key)
   }
 
   createDataBuffer(...args) {
@@ -638,6 +646,19 @@ export default class Program {
 
   createRenderPipeline(shaderPath, settings) {
     return new RenderPipeline(this, shaderPath, settings);
+  }
+
+  copyBufferToBuffer(source, dest, sourceOffset=0, destOffset=0, size) {
+    size = size ?? source.byteLength;
+    const commandEncoder = this.createCommandEncoder();
+    commandEncoder.copyBufferToBuffer(
+      source.buffer,
+      sourceOffset,
+      dest.buffer,
+      destOffset,
+      size,
+    );
+    this.submitCommandEncoder(commandEncoder);
   }
 
   clearRenderTextures() {
@@ -701,7 +722,7 @@ export default class Program {
         this.streamActive = true;
         this.streamTexBox.setFitBox();
         this.activeStreams.add(this.streamTexBox);
-        this.globalUniforms.update('streamActive', 1);
+        this.globalUniforms.write('streamActive', 1);
       }
       this.videoCapture.srcObject = this.stream;
     }
@@ -717,7 +738,7 @@ export default class Program {
       this.videoCapture.srcObject = null;
       this.activeStreams.delete(this.streamTexBox);
       this.streamTexBox.clearTexture();
-      this.globalUniforms.update('streamActive', 0);
+      this.globalUniforms.write('streamActive', 0);
     }
   }
 }

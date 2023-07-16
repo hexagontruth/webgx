@@ -10,7 +10,7 @@
 
 // @group(1) @binding(0) var<uniform> pu : ProgramUniforms;
 
-@group(2) @binding(0) var<storage, read_write> input: array<f32>;
+@group(2) @binding(0) var<storage, read> input: array<f32>;
 @group(2) @binding(1) var<storage, read_write> output: array<f32>;
 
 @fragment
@@ -21,7 +21,12 @@ fn fragmentMain(data: VertexData) -> @location(0) vec4f {
   return vec4f(c, 1);
 }
 
-@compute @workgroup_size(4,4,4)
-fn computeMain(@builtin(global_invocation_id) idx : vec3u) {
-
+@compute @workgroup_size(4, 4)
+fn computeMain(
+  @builtin(global_invocation_id) globalIdx : vec3u,
+  @builtin(local_invocation_id) localIdx : vec3u
+) {
+  var row = globalIdx.x * 4 + localIdx.y;
+  var col = globalIdx.y * 4 + localIdx.y;
+  output[row * 1024 + col] = 1;
 }

@@ -4,11 +4,12 @@ export default class DataBuffer {
   static INDEX = GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST;
   static MAP_READ = GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST;
   static MAP_WRITE = GPUBufferUsage.MAP_WRITE | GPUBufferUsage.COPY_SRC;
-  static STORAGE = GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC;
+  static STORAGE_WRITE = GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC;
+  static STORAGE_READ = GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST;
   static UNIFORM = GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST;
   static VERTEX = GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST;
 
-  static defaultFlags = DataBuffer.STORAGE;
+  static defaultFlags = DataBuffer.STORAGE_WRITE;
   static defaultType = 'float32';
 
   static defaultTypeMap = {
@@ -56,14 +57,22 @@ export default class DataBuffer {
       usage: this.flags,
     });
 
-    this.hasFlag(GPUBufferUsage.COPY_DST) && this.update();
+    this.hasFlag(GPUBufferUsage.COPY_DST) && this.write();
   }
 
   hasFlag(flag) {
     return !!(this.flags & flag);
   }
 
-  update(start=0, length=this.data.length) {
+  getLayout() {
+    let type = 'uniform';
+    if (this.hasFlag(GPUBufferUsage.STORAGE)) {
+      type = this.hasFlag(GPUBufferUsage.COPY_SRC) ? 'storage' : 'read-only-storage';
+    }
+    return { buffer: { type } };
+  }
+
+  write(start=0, length=this.data.length) {
     if (!this.hasFlag(GPUBufferUsage.COPY_DST)) {
       throw new WebgxError('Buffer usage does not include COPY_DST');
     }
@@ -72,5 +81,13 @@ export default class DataBuffer {
       this.data, start,
       length,
     );
+  }
+
+  async map() {
+
+  }
+
+  unmap() {
+
   }
 }

@@ -28,7 +28,7 @@ export default class Pipeline {
     });
 
     this.pipelineUniforms = new UniformBuffer(this.device, this.settings.uniforms);
-    this.pipelineUniforms.update();
+    this.pipelineUniforms.write();
 
     this.customGroup = this.program.createBindGroup(
       this.program.customGroupLayout,

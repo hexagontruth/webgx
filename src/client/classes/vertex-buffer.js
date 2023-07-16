@@ -32,7 +32,7 @@ export default class VertexBuffer extends DataBuffer {
     }
   }
 
-  getLayout(startLocation=0) {
+  getVertexLayout(startLocation=0) {
     return {
       attributes: indexMap(this.numParams).map((idx) => {
         return {
@@ -46,7 +46,7 @@ export default class VertexBuffer extends DataBuffer {
     };
   }
 
-  updateVerts(start, length=1) {
-    this.update(this.stride * start, this.stride * length);
+  writeVerts(start, length=1) {
+    this.write(this.stride * start, this.stride * length);
   }
 }

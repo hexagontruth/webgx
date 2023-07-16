@@ -24,7 +24,7 @@ export default class ComputePipeline extends Pipeline {
 
     this.dataGroupLayout = this.program.createBindGroupLayout(
       GPUShaderStage.COMPUTE,
-      Array(this.dataBuffers.length).fill({ buffer: { type: 'storage' } }),
+      this.dataBuffers.map((e) => e.getLayout()),
     );
 
     this.dataGroup = this.program.createBindGroup(
@@ -37,7 +37,13 @@ export default class ComputePipeline extends Pipeline {
         module: this.shaderModule,
         entryPoint: this.settings.computeMain,
       },
-      layout: 'auto',
+      layout: this.device.createPipelineLayout({
+        bindGroupLayouts: [
+          this.program.swapGroupLayout,
+          this.program.customGroupLayout,
+          this.dataGroupLayout,
+        ],
+      }),
     });
   }
 
@@ -56,10 +62,11 @@ export default class ComputePipeline extends Pipeline {
     return passEncoder;
   }
 
-
   compute(x, y, z) {
-    const commandEncoder = this.device.createCommandEncoder();
+    const commandEncoder = this.program.createCommandEncoder();
     const passEncoder = this.createPassEncoder(commandEncoder);
     passEncoder.dispatchWorkgroups(x, y, z);
+    passEncoder.end();
+    this.program.submitCommandEncoder(commandEncoder);
   }
 }

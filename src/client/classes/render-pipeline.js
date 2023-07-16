@@ -25,8 +25,7 @@ export default class RenderPipeline extends Pipeline {
 
     let locationIdx = 0;
     const vertexBufferLayouts = this.vertexBuffers.map((vertexBuffer) => {
-      vertexBuffer.update();
-      const layout = vertexBuffer.getLayout(locationIdx);
+      const layout = vertexBuffer.getVertexLayout(locationIdx);
       locationIdx += vertexBuffer.numParams;
       return layout;
     });
@@ -134,9 +133,9 @@ export default class RenderPipeline extends Pipeline {
   draw(txIdx=0, start=0, length) {
     length = length ?? this.numVerts - start;
 
-    const commandEncoder = this.device.createCommandEncoder();
+    const commandEncoder = this.program.createCommandEncoder();
     this.copyInputTextures(commandEncoder, txIdx);
-    this.program.globalUniforms.update('index', txIdx);
+    this.program.globalUniforms.write('index', txIdx);
 
     const passEncoder = this.createPassEncoder(commandEncoder);
     passEncoder.draw(length, 1, start);
@@ -144,16 +143,16 @@ export default class RenderPipeline extends Pipeline {
 
     this.copyOutputTexures(commandEncoder, txIdx);
 
-    this.device.queue.submit([commandEncoder.finish()]);
+    this.program.submitCommandEncoder(commandEncoder);
   }
 
   drawIndexed(bufferIdx, txIdx=0, start=0, length, vertexStart) {
     const indexData = this.program.dataBuffers[bufferIdx];
     length = length ?? indexData.length - start;
 
-    const commandEncoder = this.device.createCommandEncoder();
+    const commandEncoder = this.program.createCommandEncoder();
     this.copyInputTextures(commandEncoder, txIdx);
-    this.program.globalUniforms.update('index', txIdx);
+    this.program.globalUniforms.write('index', txIdx);
 
     const passEncoder = this.createPassEncoder(commandEncoder);
     passEncoder.setIndexBuffer(
@@ -165,6 +164,6 @@ export default class RenderPipeline extends Pipeline {
 
     this.copyOutputTexures(commandEncoder, txIdx);
 
-    this.device.queue.submit([commandEncoder.finish()]);
+    this.program.submitCommandEncoder(commandEncoder);
   }
 }
