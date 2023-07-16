@@ -10,8 +10,8 @@
 
 // @group(1) @binding(0) var<uniform> pu : ProgramUniforms;
 
-@group(2) @binding(0)
-var<storage, read_write> output: array<f32>;
+@group(2) @binding(0) var<storage, read_write> input: array<f32>;
+@group(2) @binding(1) var<storage, read_write> output: array<f32>;
 
 @fragment
 fn fragmentMain(data: VertexData) -> @location(0) vec4f {

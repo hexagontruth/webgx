@@ -4,7 +4,7 @@ import Pipeline from './pipeline';
 export default class ComputePipeline extends Pipeline {
   static generateDefaults(p) {
     return {
-      buffers: [],
+      dataBuffers: [],
     };
   }
 
@@ -20,6 +20,17 @@ export default class ComputePipeline extends Pipeline {
 
   async init() {
     await super.init();
+    this.dataBuffers = this.settings.dataBuffers.map((idx) => this.program.dataBuffers[idx]);
+
+    this.dataGroupLayout = this.program.createBindGroupLayout(
+      GPUShaderStage.COMPUTE,
+      Array(this.dataBuffers.length).fill({ buffer: { type: 'storage' } }),
+    );
+
+    this.dataGroup = this.program.createBindGroup(
+      this.dataGroupLayout,
+      this.dataBuffers,
+    );
 
     this.pipeline = this.device.createComputePipeline({
       compute: {
@@ -39,6 +50,9 @@ export default class ComputePipeline extends Pipeline {
   createPassEncoder(commandEncoder) {
     const passEncoder = commandEncoder.beginComputePass(this.createPassDescriptor());
     passEncoder.setPipeline(this.pipeline);
+    passEncoder.setBindGroup(0, this.program.swapGroups[this.program.cur]);
+    passEncoder.setBindGroup(1, this.customGroup);
+    passEncoder.setBindGroup(2, this.dataGroup);
     return passEncoder;
   }
 

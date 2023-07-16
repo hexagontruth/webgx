@@ -66,6 +66,8 @@ export default class Program {
     return program;
   }
 
+  DataBuffer = DataBuffer;
+
   constructor(name, maxDim, ctx) {
     this.name = name;
     this.ctx = ctx;
@@ -470,19 +472,29 @@ export default class Program {
   }
 
   draw(pipelineName, txIdx, start, length) {
-    const pipeline = this.pipelines[pipelineName];
-    if (pipeline) {
-      pipeline.draw(txIdx, start, length);
-    }
-    else {
-      throw new WebgxError(`Pipeline ${pipelineName} not defined`);
-    }
+    const pipeline = this.getPipeline(pipelineName);
+    pipeline.draw(txIdx, start, length);
   }
 
   drawIndexed(pipelineName, txIdx, start, length, vertexStart) {
+    const pipeline = this.getPipeline(pipelineName);
+    pipeline.drawIndexed(txIdx, start, length, vertexStart);
+  }
+
+  compute(pipelineName, x, y, z) {
+    const pipeline = this.getPipeline(pipelineName);
+    pipeline.compute(x, y, z);
+  }
+
+  computeIndirect(pipelineName, buffer, offset) {
+    const pipeline = this.getPipeline(pipelineName);
+    pipeline.computeIndirect(buffer, offset);
+  }
+
+  getPipeline(pipelineName) {
     const pipeline = this.pipelines[pipelineName];
     if (pipeline) {
-      pipeline.drawIndexed(txIdx, start, length, vertexStart);
+      return pipeline;
     }
     else {
       throw new WebgxError(`Pipeline ${pipelineName} not defined`);
@@ -612,6 +624,9 @@ export default class Program {
     return this.device.createBindGroup({
       layout,
       entries: entries.map((resource, binding) => {
+        if (resource instanceof DataBuffer) {
+          resource = { buffer: resource.buffer };
+        }
         return { binding, resource };
       }),
     });
