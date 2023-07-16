@@ -4,6 +4,7 @@
 
 struct ProgramUniforms {
   size: f32,
+  showTest: f32,
 };
 
 @group(1) @binding(0) var<uniform> pu : ProgramUniforms;
@@ -17,11 +18,12 @@ fn sampleCell(p: vec2u) -> f32 {
 
 @fragment
 fn fragmentMain(data: VertexData) -> @location(0) vec4f {
-  var s = testPattern(data.uv).rgb;
-  var v = sampleCell(vec2u(data.uv * pu.size));
+  var p = vec2u((data.cv * gu.cover * 0.5 + 0.5) * pu.size);
+  var s = mix(unit.yyy, testPattern(data.uv).rgb, pu.showTest);
+  var v = sampleCell(p);
   var c = xsum3(s, vec3f(v));
 
-  return vec4f(vec3f(v), 1);
+  return vec4f(c, 1);
 }
 
 @compute @workgroup_size(16, 16)
