@@ -1,4 +1,5 @@
-import UniformBuffer from "./uniform-buffer";
+import { merge } from '../util';
+import UniformBuffer from './uniform-buffer';
 
 export default class Pipeline {
   static generateDefaults(p) {
@@ -7,6 +8,7 @@ export default class Pipeline {
       fragmentMain: 'fragmentMain',
       computeMain: 'computeMain',
       topology: null,
+      dataBuffers: [],
       uniforms: {},
       params: {},
     };
@@ -15,6 +17,12 @@ export default class Pipeline {
   constructor(program, shaderPath, settings={}) {
     this.program = program;
     this.shaderPath = shaderPath;
+    this.settings = merge(
+      {},
+      Pipeline.generateDefaults(program),
+      this.constructor.generateDefaults(program),
+      settings,
+    );
   }
 
   async init() {
@@ -37,5 +45,23 @@ export default class Pipeline {
         { buffer: this.pipelineUniforms.buffer },
       ],
     );
+
+    this.dataBuffers = this.settings.dataBuffers.map((idx) => this.program.dataBuffers[idx]);
+
+    this.dataGroupLayout = this.program.createBindGroupLayout(
+      this.dataBuffers.map((e) => e.getLayout()),
+      GPUShaderStage.FRAGMENT | GPUShaderStage.COMPUTE,
+    );
+
+    this.dataGroup = this.program.createBindGroup(
+      this.dataGroupLayout,
+      this.dataBuffers,
+    );
+  }
+
+  createPassDescriptor() {
+    return {
+      // TBD
+    };
   }
 }

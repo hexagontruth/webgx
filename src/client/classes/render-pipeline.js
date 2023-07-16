@@ -1,4 +1,3 @@
-import { merge } from '../util';
 import Pipeline from './pipeline';
 
 export default class RenderPipeline extends Pipeline {
@@ -6,16 +5,6 @@ export default class RenderPipeline extends Pipeline {
     return {
       vertexBuffers: [0],
     };
-  }
-
-  constructor(program, shaderPath, settings) {
-    super(program, shaderPath, settings);
-    this.settings = merge(
-      {},
-      Pipeline.generateDefaults(program),
-      RenderPipeline.generateDefaults(program),
-      settings,
-    );
   }
 
   async init() {
@@ -53,6 +42,7 @@ export default class RenderPipeline extends Pipeline {
           bindGroupLayouts: [
             this.program.swapGroupLayout,
             this.program.customGroupLayout,
+            this.dataGroupLayout,
           ],
       }),
     });
@@ -122,11 +112,12 @@ export default class RenderPipeline extends Pipeline {
   createPassEncoder(commandEncoder) {
     const passEncoder = commandEncoder.beginRenderPass(this.createPassDescriptor());
     passEncoder.setPipeline(this.pipeline);
+    passEncoder.setBindGroup(0, this.program.swapGroups[this.program.cur]);
+    passEncoder.setBindGroup(1, this.customGroup);
+    passEncoder.setBindGroup(2, this.dataGroup);
     this.vertexBuffers.forEach((vertexBuffer, idx) => {
       passEncoder.setVertexBuffer(idx, vertexBuffer.buffer);
     });
-    passEncoder.setBindGroup(0, this.program.swapGroups[this.program.cur]);
-    passEncoder.setBindGroup(1, this.customGroup);
     return passEncoder;
   }
 

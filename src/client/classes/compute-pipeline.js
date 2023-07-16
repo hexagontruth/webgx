@@ -1,36 +1,8 @@
-import { merge } from '../util';
 import Pipeline from './pipeline';
 
 export default class ComputePipeline extends Pipeline {
-  static generateDefaults(p) {
-    return {
-      dataBuffers: [],
-    };
-  }
-
-  constructor(program, shaderPath, settings) {
-    super(program, shaderPath, settings);
-    this.settings = merge(
-      {},
-      Pipeline.generateDefaults(program),
-      ComputePipeline.generateDefaults(program),
-      settings,
-    );
-  }
-
   async init() {
     await super.init();
-    this.dataBuffers = this.settings.dataBuffers.map((idx) => this.program.dataBuffers[idx]);
-
-    this.dataGroupLayout = this.program.createBindGroupLayout(
-      GPUShaderStage.COMPUTE,
-      this.dataBuffers.map((e) => e.getLayout()),
-    );
-
-    this.dataGroup = this.program.createBindGroup(
-      this.dataGroupLayout,
-      this.dataBuffers,
-    );
 
     this.pipeline = this.device.createComputePipeline({
       compute: {
@@ -45,12 +17,6 @@ export default class ComputePipeline extends Pipeline {
         ],
       }),
     });
-  }
-
-  createPassDescriptor() {
-    return {
-      // TBD
-    };
   }
 
   createPassEncoder(commandEncoder) {

@@ -291,12 +291,10 @@ export default class Program {
     });
 
     this.customGroupLayout = this.createBindGroupLayout(
-      GPUShaderStage.FRAGMENT | GPUShaderStage.COMPUTE,
       ['buffer', 'buffer'],
     );
 
     this.swapGroupLayout = this.createBindGroupLayout(
-      GPUShaderStage.FRAGMENT | GPUShaderStage.COMPUTE,
       [
         'buffer',
         'buffer',
@@ -610,7 +608,8 @@ export default class Program {
     ]);
   }
 
-  createBindGroupLayout(flags, entries) {
+  createBindGroupLayout(entries, flags) {
+    flags = flags ?? GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT | GPUShaderStage.COMPUTE;
     return this.device.createBindGroupLayout({
       entries: entries.map((val, idx) => {
         const entry = {

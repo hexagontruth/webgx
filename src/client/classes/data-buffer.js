@@ -9,7 +9,7 @@ export default class DataBuffer {
   static UNIFORM = GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST;
   static VERTEX = GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST;
 
-  static defaultFlags = DataBuffer.STORAGE_WRITE;
+  static defaultFlags = DataBuffer.STORAGE_READ;
   static defaultType = 'float32';
 
   static defaultTypeMap = {
