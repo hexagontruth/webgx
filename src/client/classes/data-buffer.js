@@ -36,6 +36,7 @@ export default class DataBuffer {
   constructor(device, data, flags, type) {
     this.device = device;
     this.flags = flags ?? this.constructor.defaultFlags;
+    this.flagSet = Object.entries(GPUBufferUsage).filter((e) => e[1] & this.flags).map((e) => e[0]);
     data && this.setData(data, type);
   }
 
@@ -83,11 +84,31 @@ export default class DataBuffer {
     );
   }
 
-  async map() {
+  map(offset=0, size) {
+    size = size ?? this.byteLength - offset;
+    let mode;
+    if (this.flags & GPUBufferUsage.MAP_READ) {
+      mode = GPUMapMode.READ;
+    }
+    else if (this.flags & GPUBufferUsage.MAP_WRITE) {
+      mode = GPUMapMode.WRITE;
+    }
+    else {
+      throw new WebgxError('Buffer does not have map usage');
+    }
+    return this.buffer.mapAsync(mode, offset, size);
+  }
 
+  getMappedRange(offset=0, size) {
+    size = size ?? this.byteLength - offset;
+    return this.buffer.getMappedRange(offset, size);
   }
 
   unmap() {
+    this.buffer.unmap();
+  }
 
+  get mapState() {
+    return this.buffer.mapState;
   }
 }
