@@ -45,11 +45,11 @@ fn mix3(a: vec3f, b: vec3f, r: f32) -> vec3f {
 fn mix4(a: vec4f, b: vec4f, r: f32) -> vec4f {
   return mix(a, b, vec4f(r));
 }
-  
+
 fn scaleUv(uv : vec2f, s : f32) -> vec2f {
   return (uv * 2 - 1) * s * 0.5 + 0.5;
 }
-  
+
 fn roundCubic(p: vec3f) -> vec3f {
   var r = round(p);
   var d = abs(r - p);
@@ -65,6 +65,10 @@ fn roundCubic(p: vec3f) -> vec3f {
   return r;
 }
 
+fn getCubic(p: vec3f) -> vec3f {
+  return p - roundCubic(p);
+}
+
 fn hexbin(base : vec2f, s : f32) -> vec4f {
   var res = s / 3;
   var cv = base * res;
@@ -73,7 +77,7 @@ fn hexbin(base : vec2f, s : f32) -> vec4f {
 
   var r = vec2f(1/sr3, 1);
   var h = r * 0.5;
-  
+
   var a = m2(cv, r) - h;
   var b = m2(cv - h, r) - h;
   dv = select(b, a, length(a) < length(b));
@@ -187,6 +191,14 @@ fn trot3(p: vec3f, u: vec3f, a: f32) -> vec3f {
   return rot3(p, u, a * tau);
 }
 
+fn rotHex(p: vec3f, a: f32) -> vec3f {
+  return rot3(p, normalize(unit.xxx), a);
+}
+
+fn trotHex(p: vec3f, a: f32) -> vec3f {
+  return rot3(p, normalize(unit.xxx), a * tau);
+}
+
 fn amax2(v: vec2f) -> f32 {
   var a = abs(v);
   return max(a.x, a.y);
@@ -198,6 +210,36 @@ fn amax3(v: vec3f) -> f32 {
 }
 
 fn amax4(v: vec4f) -> f32 {
+  var a = abs(v);
+  return max(max(max(a.x, a.y), a.z), a.w);
+}
+
+fn amax2u(v: vec2u) -> u32 {
+  var a = abs(v);
+  return max(a.x, a.y);
+}
+
+fn amax3u(v: vec3u) -> u32 {
+  var a = abs(v);
+  return max(max(a.x, a.y), a.z);
+}
+
+fn amax4u(v: vec4u) -> u32 {
+  var a = abs(v);
+  return max(max(max(a.x, a.y), a.z), a.w);
+}
+
+fn amax2i(v: vec2i) -> i32 {
+  var a = abs(v);
+  return max(a.x, a.y);
+}
+
+fn amax3i(v: vec3i) -> i32 {
+  var a = abs(v);
+  return max(max(a.x, a.y), a.z);
+}
+
+fn amax4i(v: vec4i) -> i32 {
   var a = abs(v);
   return max(max(max(a.x, a.y), a.z), a.w);
 }
@@ -216,7 +258,6 @@ fn amin4(v: vec4f) -> f32 {
   var a = abs(v);
   return min(min(min(a.x, a.y), a.z), a.w);
 }
-
 
 fn max2(v: vec2f) -> f32 {
   return max(v.x, v.y);
