@@ -11,6 +11,7 @@ export default class UniformBuffer extends DataBuffer {
       dataMap = { 'null': 0 };
     }
     this.dataMap = Object.assign({}, dataMap);
+    this.dataKeys = Object.keys(this.dataMap);
 
     this.idxMap = {};
     let length = 0;

@@ -84,6 +84,11 @@ export default class DataBuffer {
     );
   }
 
+  view(start=0, length) {
+    const end = length ? start + length : this.length;
+    return this.data.subarray(start, end);
+  }
+
   map(offset=0, size) {
     size = size ?? this.byteLength - offset;
     let mode;
