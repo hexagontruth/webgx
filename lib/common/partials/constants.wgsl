@@ -6,6 +6,8 @@ const sr3 = pow(3, 0.5);
 const ap = sr3/2;
 const unit = vec3f(1, 0, -1);
 
+const htWhite = 1. - vec3f(1./36., 1./24., 1./12.);
+
 const hex2cart = mat3x2(
   0,   0,
   1,   0,

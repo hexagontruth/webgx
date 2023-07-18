@@ -396,7 +396,7 @@ export default class Program {
     const { settings } = this;
     const skipCond = counter % settings.skip == 0;
     const startCond = counter >= settings.start;
-    const stopCond = settings.stop == null || counter < settings.stop;
+    const stopCond = !settings.stop || counter < settings.stop;
     return skipCond && startCond && stopCond;
   }
 
