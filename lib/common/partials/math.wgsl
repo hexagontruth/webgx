@@ -506,3 +506,23 @@ fn quantize3(f: vec3f, n: f32) -> vec3f {
 fn quantize4(f: vec4f, n: f32) -> vec4f {
   return quantizeEp4(f, n, 1./16384.);
 }
+
+fn qw1(n: f32, q: f32, w: f32) -> f32 {
+  return smoothstep(w/2. + q/2., w/2. - q/2., abs(n));
+}
+
+fn qw2(n: vec2f, q: f32, w: f32) -> vec2f {
+  return smoothstep(vec2f(w/2. + q/2.), vec2f(w/2. - q/2.), abs(n));
+}
+
+fn qw3(n: vec3f, q: f32, w: f32) -> vec3f {
+  return smoothstep(vec3f(w/2. + q/2.), vec3f(w/2. - q/2.), abs(n));
+}
+
+fn qw4(n: vec4f, q: f32, w: f32) -> vec4f {
+  return smoothstep(vec4f(w/2. + q/2.), vec4f(w/2. - q/2.), abs(n));
+}
+
+fn qwp(n: f32, q: f32, w: f32) -> f32 {
+  return qw1(abs(fract(n + 0.5) - 0.5), q, w);
+}

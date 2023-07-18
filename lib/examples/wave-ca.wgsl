@@ -6,7 +6,11 @@ struct ProgramUniforms {
   bufferSize: f32,
   gridSize: f32,
   innerRadius: f32,
+  scale: f32,
   wrap: f32,
+  pulse: f32,
+  pulseInterval: f32,
+  pulseMagnitudeFactor: f32,
   coef: vec3f,
   innerCoef: vec3f,
 };
@@ -70,9 +74,27 @@ fn writeCell(h: vec3i, v: vec2f) {
 @fragment
 fn fragmentMain(data: VertexData) -> @location(0) vec4f {
   var hex = cart2hex * (data.cv * gu.cover);
-  var h = vec3i(roundCubic(hex * pu.gridSize));
-  var s= sampleCell(h);
-  var c = vec3f(abs(s.x)/16, s);
+  var h = hex * pu.gridSize * pu.scale;
+  var p = interpolatedCubic(h);
+  var c = unit.yyy;
+  var v = 0.;
+  for (var i = 0; i < 3; i++) {
+    var u = p[i].xyz;
+    var dist = p[i].w;
+    var s = sampleCell(vec3i(u));
+    c += hsv2rgb3(vec3f(
+      s.x * 1,
+      1 - abs(s.y) * 2,
+      1,
+    )) * dist;
+    v += amax2(s) * 1 * dist;
+  }
+  c /= 3;
+  c = rgb2hsv3(c);
+  c.z = v;
+  c = hsv2rgb3(c);
+  c *= vec3f(63/64., 31/32., 15/16.);
+  // c = max(c, vec3f(qw1(amax3(hex) - 1, 1/pu.gridSize/16, 1/pu.gridSize/2)));
   return vec4f(c, 1);
 }
 
@@ -81,7 +103,7 @@ fn fragmentTest(data: VertexData) -> @location(0) vec4f {
   var p = vec2u((data.cv * gu.cover * 0.5 + 0.5) * pu.bufferSize);
   var h = toHex(p);
   var s = sampleCell(h);
-  var c = vec3f(abs(s.x)/16, s);
+  var c = vec3f(abs(s.x), s);
   return vec4f(c, 1);
 }
 
@@ -94,6 +116,7 @@ fn computeMain(
   var size = i32(pu.bufferSize);
   var p = globalIdx.xy;
   var h = toHex(p);
+  var outer = amax3i(h) > i32(pu.innerRadius);
   var cur = sampleCell(h);
   var next = unit.yy;
   var n = unit.yy;
@@ -103,11 +126,16 @@ fn computeMain(
     n += samp * step(1, pu.wrap + 1 - step(pu.gridSize, amax3(vec3f(u))));
   }
 
-  var coef = select(pu.innerCoef, pu.coef, amax3i(h) > i32(pu.innerRadius));
+  var coef = select(pu.innerCoef, pu.coef, outer);
   var a = (n.x - cur.x * 6) * coef.x;
   var v = (cur.y + a) * coef.y;
   var s = (cur.x + v) * coef.z;
 
+  s = select(
+    s + tsin1(gu.counter / pu.pulseInterval) / pow(2., pu.pulseMagnitudeFactor) * pu.pulse,
+    s,
+    outer
+  );
   next = vec2f(s, v);
   next = select(next, cur, gu.time == 0);
   writeCell(h, next);
