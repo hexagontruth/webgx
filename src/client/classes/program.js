@@ -359,7 +359,7 @@ export default class Program {
           controllers[key] = {};
           addControllers(val, def, childGroup, controllers[key]);
           return;
-        } 
+        }
         if (typeof val == 'string') {
           controller = controlGroup.addColor(data, key);
         }
