@@ -6,7 +6,7 @@ struct ProgramUniforms {
   bufferSize: f32,
   gridSize: f32,
   numStates: f32,
-  color: f32,
+  colorDisplay: f32,
 };
 
 @group(1) @binding(0) var<uniform> pu : ProgramUniforms;
@@ -15,21 +15,13 @@ struct ProgramUniforms {
 @group(2) @binding(1) var<storage, read_write> output: array<f32>;
 
 const nbrs = array(
-  vec3i(-1, 0, 1),
-  vec3i(-1, 1, 0),
-  vec3i(0, 1, -1),
-  vec3i(1, 0, -1),
-  vec3i(1, -1, 0),
-  vec3i(0, -1, 1),
+  vec3i( 1,  0, -1),
+  vec3i( 0,  1, -1),
+  vec3i(-1,  1,  0),
+  vec3i(-1,  0,  1),
+  vec3i( 0, -1,  1),
+  vec3i( 1, -1,  0),
 );
-
-fn wrapGridOld(p: vec3i) -> vec3i {
-  var gridSize = i32(pu.gridSize);
-  var u = p;
-  u = u % (gridSize + 1);
-  u = select(u, -gridSize * sign(u) + u, amax2i(u.xy) > gridSize);
-  return u;
-}
 
 fn wrapGrid(p: vec3i) -> vec3i {
   var u = vec3f(p);
@@ -63,26 +55,33 @@ fn sampleCell(h: vec3i) -> f32 {
   return input[p.x * u32(pu.bufferSize) + p.y];
 }
 
+fn colorMix(s: f32) -> vec3f {
+  return mix(
+    vec3f(s / pu.numStates),
+    hsv2rgb3(vec3f(
+      (s - 1) / pu.numStates,
+      0.75,
+      1 - step(1, 1 - s),
+    )),
+    pu.colorDisplay
+  );
+}
+
 @fragment
 fn fragmentMain(data: VertexData) -> @location(0) vec4f {
-  // TBD
-  return vec4f(unit.yyy, 1);
+  var hex = cart2hex * (data.cv * gu.cover);
+  var h = vec3i(roundCubic(hex * pu.gridSize));
+  var s= sampleCell(h);
+  var c = colorMix(s);
+  return vec4f(c, 1);
 }
 
 @fragment
 fn fragmentTest(data: VertexData) -> @location(0) vec4f {
   var p = vec2u((data.cv * gu.cover * 0.5 + 0.5) * pu.bufferSize);
   var h = toHex(p);
-  var s = sampleCell(h) / pu.numStates;
-  var c = mix(
-    vec3f(s),
-    hsv2rgb3(vec3f(
-      s - 1 / pu.numStates,
-      0.75,
-      1 - step(1, 1 - s)
-    )),
-    pu.color
-  );
+  var s = sampleCell(h);
+  var c = colorMix(s);
   return vec4f(c, 1);
 }
 
