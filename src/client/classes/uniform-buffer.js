@@ -19,7 +19,8 @@ export default class UniformBuffer extends DataBuffer {
     Object.entries(dataMap).forEach(([key, val]) => {
       val = Array.isArray(val) ? val : [val];
       this.dataMap[key] = val;
-      const padding = (val.length - length % val.length) % val.length;
+      let alignment = 2 ** Math.ceil(Math.log2(val.length));
+      const padding = (alignment - length % alignment) % alignment;
       const idx = length + padding;
       this.idxMap[key] = idx;
       length = idx + val.length;
