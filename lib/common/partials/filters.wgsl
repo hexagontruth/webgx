@@ -3,20 +3,14 @@ fn gaussianBlur(range: i32, sd: f32, uv: vec2f) -> vec4f {
   var n : vec4f;
   var d : f32;
   var ds : f32;
-  var i : i32;
-  var j : i32;
-  i = -range;
-  j = -range;
-  while (i <= range) {
-    while (j <= range) {
+  for (var i = -range; i <= range; i++) {
+    for (var j = -range; j <= range; j++) {
       var v = vec2f(f32(i), f32(j));
       d = gaussian2(v, sd);
       ds += d;
       n = texture(inputTexture, uv + v / gu.size);
       s += n * d;
-      j++;
     }
-    i++;
   }
   s /= ds;
   return s;

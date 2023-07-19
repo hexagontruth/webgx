@@ -33,14 +33,14 @@ export default class Program {
         exportDim: null,
         mediaFit: 'cover',
         streamFit: 'cover',
-        interval: 25,
+        interval: 0,
+        period: 360,
         start: 0,
         stop: null,
         autoplay: null,
-        period: 360,
         skip: 1,
         renderPairs: 2,
-        output: {},
+        output: {}, // Recording parameters can be overriden in dev console
         topology: 'triangle-strip',
       },
       dataBuffers: [
@@ -72,8 +72,6 @@ export default class Program {
     this.name = name;
     this.ctx = ctx;
     this.maxDim = maxDim;
-    this.shaderTextRequests = {};
-    this.shaderTexts = {};
     this.activeStreams = new Set();
     this.streamActive = false;
     this.streamType = null;

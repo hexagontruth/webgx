@@ -77,15 +77,18 @@ export default class Player {
   setTimer(cond) {
     const { settings } = this.program;
     requestAnimationFrame(() => {
+      const timeDelta = Date.now() - this.stepTime;
       let interval = settings.interval;
       if (this.program.recording && cond) {
         interval = max(settings.interval, settings.recordingInterval || 0);
       }
+      interval = max(0, interval - timeDelta);
       this.intervalTimer = setTimeout(() => this.step(), interval);
     });
   }
 
   async step() {
+    this.stepTime = Date.now();
     await this.program.step();
   }
 

@@ -40,13 +40,12 @@ fn computeMain(
   var s = 0.;
   for (var i = -1; i < 2; i++) {
     for (var j = -1; j < 2; j++) {
-      // if (amax2(vec2f(vec2i(i, j))) == 0) { continue; }
       var u = vec2i(p) + vec2i(i, j);
       u = (u + size) % size;
       s += sampleCell(vec2u(u));
     }
   }
-  s = s - cur;
+  s -= cur;
   var v = select(0., 1., s == 3. || (s == 2. && cur == 1.));
   output[p.x * u32(size) + p.y] = v;
 }

@@ -126,7 +126,7 @@ fn computeMain(
 
   v = max(0, v);
   v = m1(v, pu.numStates);
-  v = select(v, cur, gu.time == 0);
+  v = select(v, cur, gu.counter == 0);
   // v = cur;
   output[p.x * u32(size) + p.y] = v;
 }
