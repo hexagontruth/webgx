@@ -1,8 +1,8 @@
 #include /common/partials/std-header-vertex
 
 struct ProgramUniforms {
-  bufferSize: f32,
-  gridSize: f32,
+  bufferDim: f32,
+  gridRadius: f32,
   numStates: f32,
   colorDisplay: f32,
 };
@@ -24,31 +24,31 @@ const nbrs = array(
 fn wrapGrid(p: vec3i) -> vec3i {
   var u = vec3f(p);
   u = hex2hex * u;
-  u = u / pu.gridSize / sr3;
+  u = u / pu.gridRadius / sr3;
   u = getCubic(u);
-  u = u * pu.gridSize * sr3;
+  u = u * pu.gridRadius * sr3;
   u = transpose(hex2hex) * u;
   u = roundCubic(u);
   return vec3i(u);
 }
 
 fn toHex(p: vec2u) -> vec3i {
-  var bufferSize = i32(pu.bufferSize);
-  var pi = vec2i(p) - bufferSize / 2;
+  var bufferDim = i32(pu.bufferDim);
+  var pi = vec2i(p) - bufferDim / 2;
   var u = vec3i(pi, -pi.x - pi.y);
   return u;
 }
 
 fn fromHex(p: vec3i) -> vec2u {
-  var bufferSize = i32(pu.bufferSize);
+  var bufferDim = i32(pu.bufferDim);
   var u = p;
-  u = u + bufferSize / 2;
+  u = u + bufferDim / 2;
   return vec2u(u.xy);
 }
 
 fn sampleCell(h: vec3i) -> f32 {
   var p = fromHex(h);
-  return input[p.x * u32(pu.bufferSize) + p.y];
+  return input[p.x * u32(pu.bufferDim) + p.y];
 }
 
 fn colorMix(s: f32) -> vec3f {
@@ -71,7 +71,7 @@ fn colorMix(s: f32) -> vec3f {
 fn fragmentMain(data: VertexData) -> @location(0) vec4f {
   var hex = cart2hex * (data.cv * gu.cover);
   var h = wrapCubic(hex);
-  h = roundCubic(h * pu.gridSize);
+  h = roundCubic(h * pu.gridRadius);
   var s = sampleCell(vec3i(h));
   var c = colorMix(s);
   return vec4f(c, 1);
@@ -79,8 +79,8 @@ fn fragmentMain(data: VertexData) -> @location(0) vec4f {
 
 @fragment
 fn fragmentTest(data: VertexData) -> @location(0) vec4f {
-  var p = vec2u((data.cv * gu.cover * 0.5 + 0.5) * pu.bufferSize);
-  var offset = p.x * u32(pu.bufferSize) + p.y;
+  var p = vec2u((data.cv * gu.cover * 0.5 + 0.5) * pu.bufferDim);
+  var offset = p.x * u32(pu.bufferDim) + p.y;
   var s = input[offset];
   var c = colorMix(s);
   return vec4f(c, 1);
@@ -92,7 +92,7 @@ fn computeMain(
   // @builtin(workgroup_id) workgroupIdx : vec3u,
   // @builtin(local_invocation_id) localIdx : vec3u
 ) {
-  var size = i32(pu.bufferSize);
+  var size = i32(pu.bufferDim);
   var p = globalIdx.xy;
   var h = toHex(p);
   h = wrapGrid(h);
