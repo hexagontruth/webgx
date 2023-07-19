@@ -38,14 +38,12 @@ fn toHex(p: vec2u) -> vec3i {
   var bufferSize = i32(pu.bufferSize);
   var pi = vec2i(p) - bufferSize / 2;
   var u = vec3i(pi, -pi.x - pi.y);
-  u = wrapGrid(u);
   return u;
 }
 
 fn fromHex(p: vec3i) -> vec2u {
   var bufferSize = i32(pu.bufferSize);
   var u = p;
-  u = wrapGrid(u);
   u = u + bufferSize / 2;
   return vec2u(u.xy);
 }
@@ -59,7 +57,7 @@ fn colorMix(s: f32) -> vec3f {
   return mix(
     vec3f(s / pu.numStates),
     hsv2rgb3(vec3f(
-      (s - 1) / pu.numStates,
+      (s - 1) * 2 / pu.numStates,
       0.75,
       1 - step(1, 1 - s),
     )),
@@ -70,8 +68,9 @@ fn colorMix(s: f32) -> vec3f {
 @fragment
 fn fragmentMain(data: VertexData) -> @location(0) vec4f {
   var hex = cart2hex * (data.cv * gu.cover);
-  var h = vec3i(roundCubic(hex * pu.gridSize));
-  var s= sampleCell(h);
+  var h = wrapCubic(hex);
+  h = roundCubic(h * pu.gridSize);
+  var s = sampleCell(vec3i(h));
   var c = colorMix(s);
   return vec4f(c, 1);
 }
@@ -79,8 +78,8 @@ fn fragmentMain(data: VertexData) -> @location(0) vec4f {
 @fragment
 fn fragmentTest(data: VertexData) -> @location(0) vec4f {
   var p = vec2u((data.cv * gu.cover * 0.5 + 0.5) * pu.bufferSize);
-  var h = toHex(p);
-  var s = sampleCell(h);
+  var offset = p.x * u32(pu.bufferSize) + p.y;
+  var s = input[offset];
   var c = colorMix(s);
   return vec4f(c, 1);
 }
@@ -94,6 +93,7 @@ fn computeMain(
   var size = i32(pu.bufferSize);
   var p = globalIdx.xy;
   var h = toHex(p);
+  h = wrapGrid(h);
   var cur = sampleCell(h);
   var s = 0;
   for (var i = 0; i < 6; i++) {

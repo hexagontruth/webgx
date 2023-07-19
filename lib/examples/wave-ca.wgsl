@@ -44,14 +44,12 @@ fn toHex(p: vec2u) -> vec3i {
   var bufferSize = i32(pu.bufferSize);
   var pi = vec2i(p) - bufferSize / 2;
   var u = vec3i(pi, -pi.x - pi.y);
-  u = wrapGrid(u);
   return u;
 }
 
 fn fromHex(p: vec3i) -> vec2u {
   var bufferSize = i32(pu.bufferSize);
   var u = p;
-  u = wrapGrid(u);
   u = u + bufferSize / 2;
   return vec2u(u.xy);
 }
@@ -64,8 +62,7 @@ fn sampleCell(h: vec3i) -> vec2f {
   );
 }
 
-fn writeCell(h: vec3i, v: vec2f) {
-  var p = fromHex(h);
+fn writeCell(p: vec2u, v: vec2f) {
   var offset = (p.x * u32(pu.bufferSize) + p.y) * 2;
   output[offset] = v.x;
   output[offset + 1] = v.y;
@@ -74,7 +71,9 @@ fn writeCell(h: vec3i, v: vec2f) {
 @fragment
 fn fragmentMain(data: VertexData) -> @location(0) vec4f {
   var hex = cart2hex * (data.cv * gu.cover);
-  var h = hex * pu.gridSize * pu.scale;
+  var h = hex * pu.scale;
+  h = wrapCubic(h);
+  h = h * pu.gridSize;
   var p = interpolatedCubic(h);
   var c = unit.yyy;
   var v = 0.;
@@ -100,10 +99,10 @@ fn fragmentMain(data: VertexData) -> @location(0) vec4f {
 
 @fragment
 fn fragmentTest(data: VertexData) -> @location(0) vec4f {
-  var p = vec2u((data.cv * gu.cover * 0.5 + 0.5) * pu.bufferSize);
-  var h = toHex(p);
-  var s = sampleCell(h);
-  var c = vec3f(abs(s.x), s);
+  var p = vec2u(round((data.cv * gu.cover * 0.5 + 0.5) * pu.bufferSize));
+  var offset = (p.x * u32(pu.bufferSize) + p.y) * 2;
+  var s = vec2f(input[offset], input[offset + 1]);
+  var c = vec3f(abs(s), s.x);
   return vec4f(c, 1);
 }
 
@@ -116,6 +115,11 @@ fn computeMain(
   var size = i32(pu.bufferSize);
   var p = globalIdx.xy;
   var h = toHex(p);
+  if (amax3i(h) > i32(pu.gridSize)) {
+    writeCell(p, unit.yy);
+    return;
+  }
+  h = wrapGrid(h);
   var outer = amax3i(h) > i32(pu.innerRadius);
   var cur = sampleCell(h);
   var next = unit.yy;
@@ -138,5 +142,5 @@ fn computeMain(
   );
   next = vec2f(s, v);
   next = select(next, cur, gu.time == 0);
-  writeCell(h, next);
+  writeCell(p, next);
 }

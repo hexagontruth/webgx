@@ -69,6 +69,14 @@ fn getCubic(p: vec3f) -> vec3f {
   return p - roundCubic(p);
 }
 
+fn wrapCubic(p: vec3f) -> vec3f {
+  var u = p;
+  u = hex2hex * u;
+  u = getCubic(u / sr3) * sr3;
+  u = transpose(hex2hex) * u;
+  return u;
+}
+
 fn hexbin(base : vec2f, s : f32) -> vec4f {
   var res = s / 3;
   var cv = base * res;
