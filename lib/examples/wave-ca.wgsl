@@ -9,8 +9,14 @@ struct ProgramUniforms {
   scale: f32,
   wrap: f32,
   pulse: f32,
+  centerSeed: f32,
+  edgeSeed: f32,
   pulseInterval: f32,
-  pulseMagnitudeFactor: f32,
+  pulseMagnitude: f32,
+  centerRadius: f32,
+  centerMagnitude: f32,
+  edgeRadius: f32,
+  edgeMagnitude: f32,
   coef: vec3f,
   innerCoef: vec3f,
 };
@@ -115,15 +121,29 @@ fn computeMain(
   var size = i32(pu.bufferSize);
   var p = globalIdx.xy;
   var h = toHex(p);
-  if (amax3i(h) > i32(pu.gridSize)) {
-    writeCell(p, unit.yy);
-    return;
-  }
   h = wrapGrid(h);
   var outer = amax3i(h) > i32(pu.innerRadius);
   var cur = sampleCell(h);
+  var radius = amax3i(h);
   var next = unit.yy;
   var n = unit.yy;
+
+  if (radius > i32(pu.gridSize)) {
+    writeCell(p, unit.yy);
+    return;
+  }
+  else if (gu.counter == 0) {
+    next = cur;
+    if (pu.centerSeed > 0 && radius <= i32(pu.centerRadius)) {
+      next = unit.xx * pow(2, pu.centerMagnitude);
+    }
+    if (pu.edgeSeed > 0 && radius > i32(pu.gridSize - pu.edgeRadius)) {
+      next = unit.xx * pow(2, pu.edgeMagnitude);
+    }
+    writeCell(p, next);
+    return;
+  }
+
   for (var i = 0; i < 6; i++) {
     var u = wrapGrid(h + nbrs[i]);
     var samp = sampleCell(u);
@@ -136,11 +156,10 @@ fn computeMain(
   var s = (cur.x + v) * coef.z;
 
   s = select(
-    s + tsin1(gu.counter / pu.pulseInterval) / pow(2., pu.pulseMagnitudeFactor) * pu.pulse,
+    s + tsin1(gu.counter / pu.pulseInterval) * pow(2., pu.pulseMagnitude) * pu.pulse,
     s,
     outer
   );
   next = vec2f(s, v);
-  next = select(next, cur, gu.time == 0);
   writeCell(p, next);
 }
