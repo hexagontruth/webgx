@@ -1,6 +1,4 @@
 #include /common/partials/std-header-vertex
-#include /common/partials/filters
-#include /common/partials/test
 
 struct ProgramUniforms {
   bufferSize: f32,
@@ -54,15 +52,19 @@ fn sampleCell(h: vec3i) -> f32 {
 }
 
 fn colorMix(s: f32) -> vec3f {
-  return mix(
-    vec3f(s / pu.numStates),
+  var c = mix(
+    vec3f(
+      2 / (1 + pow(e, -s / min(pu.numStates, 16) * 4)) - 1
+    ),
     hsv2rgb3(vec3f(
-      (s - 1) * 2 / pu.numStates,
+      (s - 1) / pu.numStates,
       0.75,
       1 - step(1, 1 - s),
     )),
     pu.colorDisplay
   );
+  c *= htWhite;
+  return c;
 }
 
 @fragment

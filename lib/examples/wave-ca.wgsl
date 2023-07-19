@@ -1,6 +1,4 @@
 #include /common/partials/std-header-vertex
-#include /common/partials/filters
-#include /common/partials/test
 
 struct ProgramUniforms {
   bufferSize: f32,
@@ -98,7 +96,7 @@ fn fragmentMain(data: VertexData) -> @location(0) vec4f {
   c = rgb2hsv3(c);
   c.z = v;
   c = hsv2rgb3(c);
-  c *= vec3f(63/64., 31/32., 15/16.);
+  c *= htWhite;
   // c = max(c, vec3f(qw1(amax3(hex) - 1, 1/pu.gridSize/16, 1/pu.gridSize/2)));
   return vec4f(c, 1);
 }
