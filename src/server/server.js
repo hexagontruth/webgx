@@ -21,23 +21,16 @@ class Server {
     this.imagesEnabled = false;
     this.recordingVideo = false;
 
-    execSync(`mkdir -p ${this.config.media.outputDir} ${this.config.media.inputDir}`);
+    execSync(`mkdir -p ${this.config.media.outputDir}`);
 
     this.app = express();
 
-    this.app.use(express.json());
+    this.app.use(express.json()); 
     this.app.use(express.static('./public'));
     this.app.use('/data', express.static('./lib'));
     this.app.use('/data', express.static('./user'));
+    // this.app.use('/api/frame', express.raw({ type: '*/*', limit: '32mb' }));
 
-    this.app.get('/api/input', async (req, res) => {
-      let inputFiles = await fs.readdir(baseJoin(this.config.input));
-      res.end(JSON.stringify(inputFiles));
-    });
-    this.app.get('/api/input/:inputFile', async (req, res) => {
-      let file = await fs.readFile(baseJoin(this.config.input, req.params.inputFile));
-      res.end(file);
-    });
     this.app.post('/api/video', async (req, res) => {
       const result = {};
 
@@ -59,13 +52,13 @@ class Server {
         result.set = req.body.set;
         console.log(`Image saving ${this.imagesEnabled ? 'enabled' : 'disabled'}`);
       }
-      
+
       result.status = this.imagesEnabled;
       res.json(result);
       res.end();
     });
     this.app.post('/api/frame/:frameIdx', (req, res) => {
-      this.processData(req);
+      this.processFrame(req);
       res.end('lgtm');
     });
     this.app.get('/*', (req, res, next) => {
@@ -92,9 +85,11 @@ class Server {
     });
   }
 
-  startVideo(settings) {
+  async startVideo(settings) {
     const config = merge({}, this.config.media, settings);
-    if (this.recordingVideo) return;
+    if (this.recordingVideo) {
+      await this.endVideo();
+    }
     this.recordingVideo = true;
     let filepath = join(config.outputDir, config.videoFilename);
     filepath = this.generateFilepath(filepath, this.videoIdxChars, this.videoIdx++);
@@ -135,7 +130,7 @@ class Server {
     });
   }
 
-  async processData(req) {
+  async processFrame(req) {
     const { config } = this;
     let data = '';
     req.on('data', (chunk) => data += chunk);
@@ -143,20 +138,19 @@ class Server {
       let match = data.match(/:([\w\/]+);/);
       let ext = config.mimeTypes[match[1]];
       let base64 = data.slice(data.indexOf(',') + 1);
-      let buf = Buffer.from(base64, 'base64');
+      let buffer = Buffer.from(base64, 'base64');
       if (this.imagesEnabled) {
         let idx = parseInt(req.params.frameIdx);
         let filepath = join(config.media.outputDir, config.media.imageFilename + ext);
         filepath = this.generateFilepath(filepath, this.imageIdxChars, idx);
         console.log(`Writing "${filepath}"...`)
-        fs.writeFile(filepath, buf);
+        fs.writeFile(filepath, buffer);
       }
       if (this.recordingVideo) {
-        this.child?.stdin.write(buf);
+        this.child?.stdin.write(buffer);
       }
     });
   }
-
   generateFilepath(path, idxChars, idx) {
     let idxString = ('0'.repeat(idxChars) + (idx)).slice(-idxChars);
     path = path.replace(/\#+/, idxString);

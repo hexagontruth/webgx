@@ -50,8 +50,12 @@ export default class App {
 
     this.config = new Config();
     this.player = await Player.build(this.config, this.els.playerContainer);
-    
+
     this.player.hooks.add('afterCounter', (val) => this.els.counterField.value = val);
+    this.player.hooks.add('beforePlayingStart', () => this.togglePlay(true));
+    this.player.hooks.add('afterPlayingStop', () => this.togglePlay(false));
+    this.player.hooks.add('beforeRecordingStart', () => this.toggleRecord(true));
+    this.player.hooks.add('afterRecordingStop', () => this.toggleRecord(false));
 
     this.config.afterSet.add('fit', () => this.handleResize());
     this.config.afterSet.add('bgColor', (val) => {
@@ -74,17 +78,12 @@ export default class App {
     });
     this.config.afterSet.add('recordImages', (val) => {
       this.els.recordImagesButton.classList.toggle('active', val);
+      this.els.recordButton.disabled = !val && !this.config.recordVideo;
       postJson('/api/images', { set: val });
     });
     this.config.afterSet.add('recordVideo', (val) => {
       this.els.recordVideoButton.classList.toggle('active', val);
-      const data = {
-        set: val,
-      };
-      if (val && this.player) {
-        data.settings = this.player.program.settings.output;
-      }
-      postJson('/api/video', data);
+      this.els.recordButton.disabled = !val && !this.config.recordImages;
     });
 
     await this.config.setAll();
@@ -98,16 +97,23 @@ export default class App {
   }
 
   togglePlay(val) {
-    const playing = this.player.togglePlay(val);
-    this.els.playButton.classList.toggle('icon-play', !playing);
-    this.els.playButton.classList.toggle('icon-stop', playing);
+    this.els.playButton.classList.toggle('icon-play', !val);
+    this.els.playButton.classList.toggle('icon-stop', val);
   }
 
-  toggleRecord(val) {
-    const recording = this.player.toggleRecord(val);
-    this.els.recordButton.classList.toggle('active', recording);
-    this.els.recordButton.classList.toggle('icon-record', !recording);
-    this.els.recordButton.classList.toggle('icon-stop', recording);
+  async toggleRecord(val) {
+    if (this.config.recordVideo) {
+      const data = {
+        set: val,
+      };
+      if (val && this.player) {
+        data.settings = this.player.outputSettings;
+      }
+      await postJson('/api/video', data);
+    }
+    this.els.recordButton.classList.toggle('active', val);
+    this.els.recordButton.classList.toggle('icon-record', !val);
+    this.els.recordButton.classList.toggle('icon-stop', val);
     this.els.recordVideoButton.disabled = val;
   }
 
@@ -115,10 +121,10 @@ export default class App {
     const button = ev.target;
     const { els } = this;
     if (button == els.playButton) {
-      this.togglePlay();
+      this.player.togglePlay();
     }
     else if (button == els.recordButton) {
-      this.toggleRecord();
+      this.player.toggleRecord();
     }
     else if (button == els.loadImagesButton) {
       /*todo*/
@@ -163,9 +169,9 @@ export default class App {
       }
       else if (ev.key == 'Tab') {
         if (ev.shiftKey)
-          this.toggleRecord();
+          this.player.toggleRecord();
         else
-          this.togglePlay();
+          this.player.togglePlay();
       }
       else if (key == 'f') {
         if (ev.shiftKey) {
@@ -205,8 +211,8 @@ export default class App {
         body.classList.toggle('gray');
       }
       else if (ev.key == ' ') {
-        if (this.player.program.playing)
-          this.togglePlay(false);
+        if (this.player.playing)
+          this.player.togglePlay(false);
         else
           this.player.step();
       }
@@ -242,8 +248,7 @@ export default class App {
   }
 
   handleResize() {
-    if (!this.player.program) return;
-    const fitBox = new FitBox(...new Dim(window), ...this.player.getDim(), this.config.fit);
+    const fitBox = new FitBox(...new Dim(window), ...this.player.dim, this.config.fit);
     this.fitBox = fitBox;
     this.els.mainContainer.style.inset = fitBox.inset;
     this.player.handleResize();

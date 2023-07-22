@@ -129,7 +129,15 @@ export default class Program {
     }
 
     settings.dim = new Dim(dim);
-    settings.exportDim = new Dim(settings.exportDim ?? dim);
+    if (settings.exportDim) {
+      settings.exportDim = new Dim(settings.exportDim);
+      const exportWidth = settings.exportDim.width;
+      settings.output.width = settings.output.width ?
+        min(exportWidth, settings.output.width) : exportWidth;
+    }
+    else {
+      settings.exportDim = new Dim(dim);
+    }
     const [w, h] = settings.dim;
     settings.cover = w > h ? [1, h / w] : [w / h, 1];
 
@@ -396,6 +404,11 @@ export default class Program {
     const startCond = counter >= settings.start;
     const stopCond = !settings.stop || counter < settings.stop;
     return skipCond && startCond && stopCond;
+  }
+
+  stopCond(counter) {
+    const { settings } = this;
+    return settings.stop && settings.stop - 1 <= counter;
   }
 
   async loadShader(basePath, path, params) {

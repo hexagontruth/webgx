@@ -24,8 +24,17 @@ export default class Player {
     this.ctx = this.canvas.getContext('webgpu');
     this.exportCanvas = createElement('canvas');
     this.exportCtx = this.exportCanvas.getContext('2d');
+    this.encoder = new TextEncoder();
+    this.recordingStart = null;
 
-    this.hooks = new Hook(this, ['afterCounter', 'onPointer']);
+    this.hooks = new Hook(this, [
+      'afterCounter',
+      'onPointer',
+      'beforePlayingStart',
+      'afterPlayingStop',
+      'beforeRecordingStart',
+      'afterRecordingStop'
+    ]);
     this.timerBuffer = new TimerBuffer();
 
     this.canvas.addEventListener('pointerdown', (ev) => this.handlePointer(ev));
@@ -93,21 +102,29 @@ export default class Player {
   }
 
   afterStep(counter) {
-    requestAnimationFrame(() => {
-      const cond = this.program.frameCond(counter);
-      if (this.program.recording && cond) {
-        this.getDataUrl()
-        .then((data) => this.postFrame(data, counter));
+    requestAnimationFrame(async() => {
+      const frameCond = this.program.frameCond(counter);
+      if (this.recording) {
+        const stopCond = this.program.stopCond(counter);
+        if (frameCond) {
+          const url = this.getDataUrl();
+          await this.postFrame(url, counter);
+        }
+        if (this.recording && stopCond) {
+          await this.toggleRecord(false);
+        }
       }
-      this.program.playing && this.setTimer(cond);
+      this.playing && this.setTimer(frameCond);
     });
   }
 
-  async getDataUrl() {
-    const dim = this.program.settings.exportDim ?? this.program.settings.dim;
+  getDataUrl() {
+    const dim = this.program.settings.exportDim;
     this.exportCtx.clearRect(0, 0, ...dim);
     this.exportCtx.drawImage(this.canvas, 0, 0, ...dim);
-    return await this.exportCanvas.toDataURL('image/png', 1);
+    const url = this.exportCanvas.toDataURL('image/png', 1);
+    // const buffer =
+    return url;
   }
 
   async postFrame(dataUrl, frameIdx) {
@@ -124,22 +141,41 @@ export default class Player {
   }
 
   async promptDownload() {
-    let uri = await this.getDataUrl();
-    let a = document.createElement('a');
-    a.href = uri;
+    const url = this.getDataUrl();
+    const a = document.createElement('a');
+    a.href = url;
     a.download = `frame-${('0000' + this.program.counter).slice(-4)}.png`;
     a.click();
   }
 
-  togglePlay(val=!this.program.playing) {
-    this.program.playing = val;
-    val && this.step();
-    return val;
+  async togglePlay(val=!this.playing) {
+    const dif = val - this.playing;
+    if (dif == 1) {
+      await Promise.all(this.hooks.map('beforePlayingStart'));
+      this.program.playing = true;
+      this.step();
+    }
+    else {
+      this.program.playing = false;
+      await Promise.all(this.hooks.map('afterPlayingStop'));
+    }
   }
 
-  toggleRecord(val=!this.program.recording) {
-    this.program.recording = val;
-    val && this.program.reset();
+  async toggleRecord(val=!this.recording) {
+    const dif = val - this.recording;
+    if (dif == 1) {
+      await Promise.all(this.hooks.map('beforeRecordingStart'));
+      this.program.recording = true;
+      this.recordingStart = Date.now();
+      this.program.reset();
+    }
+    else if (dif == -1) {
+      const t = Date.now() - this.recordingStart;
+      console.log(`Recorded ${this.program.counter + 1} frames for ${t / 1000} seconds`)
+      this.recordingStart = null;
+      this.program.recording = false;
+      await Promise.all(this.hooks.map('afterRecordingStop'));
+    }
   }
 
   reset() {
@@ -247,7 +283,19 @@ export default class Player {
     }
   }
 
-  getDim() {
+  get dim() {
     return this.program.settings.dim;
+  }
+
+  get outputSettings() {
+    return this.program.settings.output;
+  }
+
+  get playing() {
+    return this.program.playing;
+  }
+
+  get recording() {
+    return this.program.recording;
   }
 }

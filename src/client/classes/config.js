@@ -34,7 +34,7 @@ export default class Config {
     controlsHidden: false,
     webcamEnabled: false,
     screenShareEnabled: false,
-    recordVideo: false,
+    recordVideo: true,
     recordImages: false,
   };
 
@@ -125,7 +125,7 @@ export default class Config {
 
     return queryObj;
   }
-  
+
   toggle(field) {
     const fn = Config.toggleFns[Config.schema[field]];
     const cur = this[field];

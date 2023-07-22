@@ -26,13 +26,6 @@ export default class DataBuffer {
     uint32: Uint32Array,
   };
 
-  static typeSizeMap = {
-    float32: 4,
-    int32: 4,
-    uint16: 2,
-    uint32: 4,
-  };
-
   constructor(device, data, flags, type) {
     this.device = device;
     this.flags = flags ?? this.constructor.defaultFlags;
@@ -49,9 +42,9 @@ export default class DataBuffer {
       this.type = type || this.constructor.defaultType;
       this.data = new DataBuffer.arrayTypeMap[this.type](data);
     }
-    this.typeSize = DataBuffer.typeSizeMap[this.type];
     this.length = this.data.length;
     this.byteLength = this.data.byteLength;
+    this.typeSize = this.byteLength / this.length;
 
     this.buffer = this.device.createBuffer({
       size: this.byteLength,

@@ -7,7 +7,6 @@ default:
     fps: 30
     codec: libx264
     crf: 15
-    inputDir: input
     outputDir: output
     imageFilename: frame-#####
     videoFilename: video-###.mp4
