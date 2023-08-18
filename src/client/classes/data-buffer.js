@@ -19,12 +19,25 @@ export default class DataBuffer {
     Uint32Array: 'uint32',
   };
 
-  static arrayTypeMap = {
-    float32: Float32Array,
-    int32: Int32Array,
-    uint16: Uint16Array,
-    uint32: Uint32Array,
-  };
+  static parseTypeData(str) {
+    // Assuming Float16Array will be added at some point?
+    // Length property isn't doing anything at the moment
+    const match = str.match(/^(u|s)?([a-z]+)(\d{1,2})(x(\d))?$/);
+    if (!match) {
+      throw new WebgxError(`Invalid type string: ${str}`);
+    }
+    const signed = match[1] != 'u';
+    const type = match[2];
+    const size = Number(match[3]);
+    const length = Number(match[5]) || 1;
+    let constructorName = signed == 'u' ? 'u' : '';
+    constructorName += type == 'int' ? 'int' : 'float';
+    constructorName = constructorName[0].toUpperCase() + constructorName.slice(1);
+    constructorName += size;
+    constructorName += 'Array';
+    const constructor = window[constructorName];
+    return { signed, type, size, length, constructor };
+  }
 
   constructor(device, data, flags, type) {
     this.device = device;
@@ -37,10 +50,12 @@ export default class DataBuffer {
     if (ArrayBuffer.isView(data)) {
       this.data = data;
       this.type = type || this.constructor.defaultTypeMap[data.constructor.name];
+      this.typeData = DataBuffer.parseTypeData(this.type);
     }
     else {
       this.type = type || this.constructor.defaultType;
-      this.data = new DataBuffer.arrayTypeMap[this.type](data);
+      this.typeData = DataBuffer.parseTypeData(this.type);
+      this.data = new this.typeData.constructor(data);
     }
     this.length = this.data.length;
     this.byteLength = this.data.byteLength;
