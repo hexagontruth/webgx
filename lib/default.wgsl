@@ -8,11 +8,12 @@ struct ProgramUniforms {
   res: f32,
   pulse: f32,
   animate: f32,
+  scale: f32,
   cover: f32,
   sd: f32,
   range: f32,
   magnitude: f32,
-  scale: f32,
+  filterScale: f32,
   rows: f32,
   cols: f32,
   cycleX: f32,
@@ -29,7 +30,7 @@ fn dogFilterMain(data: VertexData) -> @location(0) vec4f {
 @fragment
 fn traceFilterMain(data: VertexData) -> @location(0) vec4f {
   var samp1 = texture(inputTexture, data.uv);
-  var samp2 = texture(lastTexture, scaleUv(data.uv, 1 / pu.scale));
+  var samp2 = texture(lastTexture, scaleUv(data.uv, 1 / pu.filterScale));
   samp2 = rgb2hsv(samp2);
   samp2.x += 0.1;
   samp2 = hsv2rgb(samp2);
@@ -47,7 +48,7 @@ fn fragmentMain(data: VertexData) -> @location(0) vec4f {
   var a = 0.;
   var b = 0.;
 
-  var scale = 4.;
+  var scale = pu.scale;
   var res = pow(2., pu.res) / scale;
   var pulse = pow(2., 8 - pow(osc1(0.5 + gu.time), 4) * 6) / scale;
   res = mix(res, pulse, pu.pulse);
