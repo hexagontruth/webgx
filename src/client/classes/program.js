@@ -42,6 +42,7 @@ export default class Program {
         renderPairs: 2,
         output: {}, // Recording parameters can be overriden in dev console
         topology: 'triangle-strip',
+        defaultNumVerts: 4,
       },
       dataBuffers: [
         p.createDefaultVertexBuffer(),

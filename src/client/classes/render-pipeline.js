@@ -1,16 +1,20 @@
 import Pipeline from './pipeline';
 
 export default class RenderPipeline extends Pipeline {
-  static generateDefaults(p) {
+  static generateDefaults() {
     return {
-      vertexBuffers: [0],
+      vertexBuffers: [],
+      numVerts: null,
     };
   }
 
   async init() {
     await super.init();
     this.vertexBuffers = this.settings.vertexBuffers.map((idx) => this.program.dataBuffers[idx]);
-    this.numVerts = this.vertexBuffers[0].numVerts;
+    this.numVerts =
+      this.vertexBuffers[0]?.numVerts ||
+      this.settings.numVerts ||
+      this.program.settings.defaultNumVerts;
 
     let locationIdx = 0;
     const vertexBufferLayouts = this.vertexBuffers.map((vertexBuffer) => {
@@ -23,7 +27,7 @@ export default class RenderPipeline extends Pipeline {
       vertex: {
         module: this.shaderModule,
         entryPoint: this.settings.vertexMain,
-        buffers: vertexBufferLayouts,
+        buffers: vertexBufferLayouts.length ? vertexBufferLayouts : undefined,
       },
       fragment: {
         module: this.shaderModule,

@@ -2,7 +2,7 @@ import { merge } from '../util';
 import UniformBuffer from './uniform-buffer';
 
 export default class Pipeline {
-  static generateDefaults(p) {
+  static generateDefaults() {
     return {
       vertexMain: 'vertexMain',
       fragmentMain: 'fragmentMain',
@@ -19,8 +19,8 @@ export default class Pipeline {
     this.shaderPath = shaderPath;
     this.settings = merge(
       {},
-      Pipeline.generateDefaults(program),
-      this.constructor.generateDefaults(program),
+      Pipeline.generateDefaults(),
+      this.constructor.generateDefaults(),
       settings,
     );
   }
