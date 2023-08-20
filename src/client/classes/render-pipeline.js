@@ -125,15 +125,14 @@ export default class RenderPipeline extends Pipeline {
     return passEncoder;
   }
 
-  draw(txIdx=0, start=0, length) {
-    length = length ?? this.numVerts - start;
-
+  // This argument order makes no sense
+  draw(txIdx=0, vertCount=this.numVerts, instCount=1, vertStart=0, instStart=0) {
     const commandEncoder = this.program.createCommandEncoder();
     this.copyInputTextures(commandEncoder, txIdx);
     this.program.globalUniforms.write('index', txIdx);
 
     const passEncoder = this.createPassEncoder(commandEncoder);
-    passEncoder.draw(length, 1, start);
+    passEncoder.draw(vertCount, instCount, vertStart, instStart);
     passEncoder.end();
 
     this.copyOutputTexures(commandEncoder, txIdx);
@@ -141,9 +140,9 @@ export default class RenderPipeline extends Pipeline {
     this.program.submitCommandEncoder(commandEncoder);
   }
 
-  drawIndexed(bufferIdx, txIdx=0, start=0, length, vertexStart) {
+  drawIndexed(bufferIdx, txIdx=0, idxCount, instCount=1, idxStart=0, baseVert=0, instStart=0) {
     const indexData = this.program.dataBuffers[bufferIdx];
-    length = length ?? indexData.length - start;
+    idxCount = idxCount ?? indexData.length - idxStart
 
     const commandEncoder = this.program.createCommandEncoder();
     this.copyInputTextures(commandEncoder, txIdx);
@@ -154,7 +153,7 @@ export default class RenderPipeline extends Pipeline {
       indexData.buffer,
       indexData.type
     );
-    passEncoder.drawIndexed(length, 1, start, vertexStart);
+    passEncoder.drawIndexed(idxCount, instCount, idxStart, baseVert, instStart);
     passEncoder.end();
 
     this.copyOutputTexures(commandEncoder, txIdx);
