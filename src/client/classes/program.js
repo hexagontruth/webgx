@@ -44,9 +44,7 @@ export default class Program {
         topology: 'triangle-strip',
         defaultNumVerts: 4,
       },
-      dataBuffers: [
-        p.createDefaultVertexBuffer(),
-      ],
+      dataBuffers: [],
       uniforms: {},
       media: [],
       controls: {},

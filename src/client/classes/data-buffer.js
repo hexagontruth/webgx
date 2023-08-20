@@ -21,7 +21,7 @@ export default class DataBuffer {
 
   static parseType(str) {
     // Assuming Float16Array will be added at some point?
-    // Length property isn't doing anything at the moment
+    // Vector length property is matched but ignored
     const match = str.match(/^(u|s)?([a-z]+)(\d{1,2})(x(\d))?$/);
     if (!match) {
       throw new WebgxError(`Invalid type string: ${str}`);
@@ -29,14 +29,13 @@ export default class DataBuffer {
     const signed = match[1] != 'u';
     const type = match[2];
     const size = Number(match[3]) / 8;
-    const length = Number(match[5]) || 1;
     let constructorName = signed == 'u' ? 'u' : '';
     constructorName += type == 'int' ? 'int' : 'float';
     constructorName = constructorName[0].toUpperCase() + constructorName.slice(1);
     constructorName += size * 8;
     constructorName += 'Array';
     const constructor = window[constructorName];
-    return { signed, type, size, length, constructor };
+    return { signed, type, size, constructor };
   }
 
   constructor(device, dataArg, flags, type) {
@@ -62,14 +61,14 @@ export default class DataBuffer {
       }
     }
     // This is not ideal terminology
-    this.typeSize = this.typeData.size * this.typeData.length;
+    this.typeSize = this.typeData.size;
     this.byteLength = this.typeSize * this.length;
     this.buffer = this.device.createBuffer({
       size: this.byteLength,
       usage: this.flags,
     });
 
-    this.hasFlag(GPUBufferUsage.COPY_DST) &&  this.write();
+    this.hasFlag(GPUBufferUsage.COPY_DST) && this.data && this.write();
 
   }
 
