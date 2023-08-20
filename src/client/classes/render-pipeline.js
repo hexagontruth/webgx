@@ -10,7 +10,7 @@ export default class RenderPipeline extends Pipeline {
 
   async init() {
     await super.init();
-    this.vertexBuffers = this.settings.vertexBuffers.map((idx) => this.program.dataBuffers[idx]);
+    this.vertexBuffers = this.settings.vertexBuffers;
     this.numVerts =
       this.vertexBuffers[0]?.numVerts ||
       this.settings.numVerts ||
@@ -125,8 +125,14 @@ export default class RenderPipeline extends Pipeline {
     return passEncoder;
   }
 
-  // This argument order makes no sense
-  draw(txIdx=0, vertCount=this.numVerts, instCount=1, vertStart=0, instStart=0) {
+  draw(vertCount, instCount, vertStart, instStart, txIdx) {
+    // Allow defaults with nulls
+    instCount = instCount ?? 1;
+    vertStart = vertStart ?? 0;
+    instStart = instStart ?? 0;
+    vertCount = vertCount ?? this.numVerts - vertStart;
+    txIdx = txIdx ?? 0;
+
     const commandEncoder = this.program.createCommandEncoder();
     this.copyInputTextures(commandEncoder, txIdx);
     this.program.globalUniforms.write('index', txIdx);
@@ -140,9 +146,13 @@ export default class RenderPipeline extends Pipeline {
     this.program.submitCommandEncoder(commandEncoder);
   }
 
-  drawIndexed(bufferIdx, txIdx=0, idxCount, instCount=1, idxStart=0, baseVert=0, instStart=0) {
-    const indexData = this.program.dataBuffers[bufferIdx];
-    idxCount = idxCount ?? indexData.length - idxStart
+  drawIndexed(idxData, idxCount, instCount, idxStart, baseVert, instStart, txIdx) {
+    instCount = instCount ?? 1
+    idxStart = idxStart ?? 0;
+    baseVert = baseVert ?? 0;
+    instStart = instStart ?? 0;
+    idxCount = idxCount ?? idxData.length - idxStart
+    txIdx = txIdx ?? 0;
 
     const commandEncoder = this.program.createCommandEncoder();
     this.copyInputTextures(commandEncoder, txIdx);
@@ -150,8 +160,8 @@ export default class RenderPipeline extends Pipeline {
 
     const passEncoder = this.createPassEncoder(commandEncoder);
     passEncoder.setIndexBuffer(
-      indexData.buffer,
-      indexData.type
+      idxData.buffer,
+      idxData.type
     );
     passEncoder.drawIndexed(idxCount, instCount, idxStart, baseVert, instStart);
     passEncoder.end();

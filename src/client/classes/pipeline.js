@@ -46,7 +46,7 @@ export default class Pipeline {
       ],
     );
 
-    this.dataBuffers = this.settings.dataBuffers.map((idx) => this.program.dataBuffers[idx]);
+    this.dataBuffers = this.settings.dataBuffers;
 
     this.dataGroupLayout = this.program.createBindGroupLayout(
       this.dataBuffers.map((e) => e.getLayout()),

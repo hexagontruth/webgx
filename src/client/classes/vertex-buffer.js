@@ -3,12 +3,12 @@ import DataBuffer from './data-buffer';
 import WebgxError from './webgx-error';
 
 export default class VertexBuffer extends DataBuffer {
-  static defaultFlags = DataBuffer.VERTEX;
+  static defaultUsage = DataBuffer.VERTEX;
 
-  constructor(device, stride, data, flags, type) {
-    super(device, data, flags, type);
+  constructor(device, length, stride=4, opts={}) {
+    super(device, length, opts);
 
-    if (stride.length) {
+    if (Array.isArray(stride)) {
       this.stride = stride.reduce((a, e) => a + e, 0);
       this.lengthMap = stride.slice();
     }
@@ -18,7 +18,7 @@ export default class VertexBuffer extends DataBuffer {
     }
 
     let offset = 0;
-    this.offsetMap = this.lengthMap.map((length, idx) => {
+    this.offsetMap = this.lengthMap.map((length) => {
       const curOffset = offset;
       offset += length;
       return curOffset;
@@ -28,7 +28,9 @@ export default class VertexBuffer extends DataBuffer {
     this.numParams = this.lengthMap.length;
 
     if (this.numVerts % 1 > 0) {
-      throw new WebgxError(`VertexBuffer length ${this.length} does not match stride ${this.stride}`);
+      throw new WebgxError(
+        `VertexBuffer length ${this.length} does not match stride ${this.stride}`
+      );
     }
   }
 
@@ -44,9 +46,5 @@ export default class VertexBuffer extends DataBuffer {
       arrayStride: this.stride * this.typeSize,
       stepMode: 'vertex',
     };
-  }
-
-  writeVerts(start, length=1) {
-    this.write(this.stride * start, this.stride * length);
   }
 }

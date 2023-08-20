@@ -44,7 +44,6 @@ export default class Program {
         topology: 'triangle-strip',
         defaultNumVerts: 4,
       },
-      dataBuffers: [],
       uniforms: {},
       media: [],
       controls: {},
@@ -111,7 +110,6 @@ export default class Program {
     this.buildControls(def.controls);
 
     this.settings = def.settings;
-    this.dataBuffers = def.dataBuffers;
     this.actions = def.actions;
     this.pipelines = def.pipelines;
     this.mediaCount = def.media.length;
@@ -479,24 +477,24 @@ export default class Program {
     this.hooks.call('afterStep', this.counter);
   }
 
-  draw(pipelineName, txIdx, start, length) {
+  draw(pipelineName, ...args) {
     const pipeline = this.getPipeline(pipelineName);
-    pipeline.draw(txIdx, start, length);
+    pipeline.draw(...args);
   }
 
-  drawIndexed(pipelineName, txIdx, start, length, vertexStart) {
+  drawIndexed(pipelineName, ...args) {
     const pipeline = this.getPipeline(pipelineName);
-    pipeline.drawIndexed(txIdx, start, length, vertexStart);
+    pipeline.drawIndexed(...args);
   }
 
-  compute(pipelineName, x, y, z) {
+  compute(pipelineName, ...args) {
     const pipeline = this.getPipeline(pipelineName);
-    pipeline.compute(x, y, z);
+    pipeline.compute(...args);
   }
 
-  computeIndirect(pipelineName, buffer, offset) {
+  computeIndirect(pipelineName, ...args) {
     const pipeline = this.getPipeline(pipelineName);
-    pipeline.computeIndirect(buffer, offset);
+    pipeline.computeIndirect(...args);
   }
 
   getPipeline(pipelineName) {
@@ -513,8 +511,8 @@ export default class Program {
     return this.device.createCommandEncoder();
   }
 
-  submitCommandEncoder(encoder) {
-    this.device.queue.submit([encoder.finish()]);
+  submitCommandEncoder(...encoders) {
+    this.device.queue.submit(encoders.map((e) => e.finish()));
   }
 
   render(txIdx) {
