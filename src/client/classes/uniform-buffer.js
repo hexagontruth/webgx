@@ -1,11 +1,8 @@
-import DataBuffer from "./data-buffer";
+export default class UniformBuffer {
+  static flags = GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST;
 
-export default class UniformBuffer extends DataBuffer {
-  static defaultFlags = DataBuffer.UNIFORM;
-  static defaultType = 'float32';
-
-  constructor(device, dataMap, flags, type) {
-    super(device, null, flags);
+  constructor(device, dataMap) {
+    this.device = device;
 
     if (Object.keys(dataMap).length == 0) {
       dataMap = { 'null': 0 };
@@ -27,7 +24,11 @@ export default class UniformBuffer extends DataBuffer {
     });
     length += (4 - length % 4) % 4;
 
-    this.setData(length, type);
+    this.data = new Float32Array(length);
+    this.buffer = this.device.createBuffer({
+      size: length * 4,
+      usage: UniformBuffer.flags,
+    })
 
     this.set(this.dataMap);
   }
@@ -39,7 +40,11 @@ export default class UniformBuffer extends DataBuffer {
     const [start, length] = key ?
       [this.idxMap[key], this.dataMap[key].length] :
       [0, this.data.length];
-    super.write(start, length);
+    this.device.queue.writeBuffer(
+      this.buffer, start * 4,
+      this.data, start,
+      length,
+    );
   }
 
   has(key) {

@@ -9,7 +9,7 @@ export default class DataBuffer {
   static UNIFORM = GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST;
   static VERTEX = GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST;
 
-  static defaultFlags = DataBuffer.STORAGE_READ;
+  static defaultUsage = DataBuffer.STORAGE_READ;
   static defaultType = 'float32';
 
   static defaultTypeMap = {
@@ -19,43 +19,50 @@ export default class DataBuffer {
     Uint32Array: 'uint32',
   };
 
-  static arrayTypeMap = {
-    float32: Float32Array,
-    int32: Int32Array,
-    uint16: Uint16Array,
-    uint32: Uint32Array,
-  };
-
-  constructor(device, data, flags, type) {
-    this.device = device;
-    this.flags = flags ?? this.constructor.defaultFlags;
-    this.flagSet = Object.entries(GPUBufferUsage).filter((e) => e[1] & this.flags).map((e) => e[0]);
-    data && this.setData(data, type);
+  static parseType(str) {
+    // Assuming Float16Array will be added at some point?
+    // Vector length property is matched but ignored
+    const match = str.match(/^(u|s)?([a-z]+)(\d{1,2})(x(\d))?$/);
+    if (!match) {
+      throw new WebgxError(`Invalid type string: ${str}`);
+    }
+    const signed = match[1] != 'u';
+    const type = match[2];
+    const typeSize = Number(match[3]) / 8;
+    let constructorName = signed == 'u' ? 'u' : '';
+    constructorName += type == 'int' ? 'int' : 'float';
+    constructorName = constructorName[0].toUpperCase() + constructorName.slice(1);
+    constructorName += typeSize * 8;
+    constructorName += 'Array';
+    const dataConstructor = window[constructorName];
+    return { signed, typeSize, dataConstructor };
   }
 
-  setData(data, type) {
-    if (ArrayBuffer.isView(data)) {
-      this.data = data;
-      this.type = type || this.constructor.defaultTypeMap[data.constructor.name];
+  constructor(device, length, opts={}) {
+    this.device = device;
+    this.length = length;
+
+    if (typeof opts.usage == 'string') {
+      this.usage = DataBuffer[opts.usage];
     }
     else {
-      this.type = type || this.constructor.defaultType;
-      this.data = new DataBuffer.arrayTypeMap[this.type](data);
+      this.usage = opts.usage ?? this.constructor.defaultUsage;
     }
-    this.length = this.data.length;
-    this.byteLength = this.data.byteLength;
-    this.typeSize = this.byteLength / this.length;
+
+    this.type = opts.type || this.constructor.defaultType;
+
+    Object.assign(this, DataBuffer.parseType(this.type));
+
+    this.byteLength = this.typeSize * this.length;
 
     this.buffer = this.device.createBuffer({
       size: this.byteLength,
-      usage: this.flags,
+      usage: this.usage,
     });
-
-    this.hasFlag(GPUBufferUsage.COPY_DST) && this.write();
   }
 
   hasFlag(flag) {
-    return !!(this.flags & flag);
+    return !!(this.usage & flag);
   }
 
   getLayout() {
@@ -66,15 +73,14 @@ export default class DataBuffer {
     return { buffer: { type } };
   }
 
-  write(start=0, length=this.data.length) {
+  write(data, offset=0, dataOffset, size) {
     if (!this.hasFlag(GPUBufferUsage.COPY_DST)) {
       throw new WebgxError('Buffer usage does not include COPY_DST');
     }
-    this.device.queue.writeBuffer(
-      this.buffer, start * this.typeSize,
-      this.data, start,
-      length,
-    );
+    if (Array.isArray(data)) {
+      data = new this.dataConstructor(data);
+    }
+    this.device.queue.writeBuffer(this.buffer, offset * this.typeSize, data, dataOffset, size);
   }
 
   view(start=0, length) {
@@ -85,10 +91,10 @@ export default class DataBuffer {
   map(offset=0, size) {
     size = size ?? this.byteLength - offset;
     let mode;
-    if (this.flags & GPUBufferUsage.MAP_READ) {
+    if (this.usage & GPUBufferUsage.MAP_READ) {
       mode = GPUMapMode.READ;
     }
-    else if (this.flags & GPUBufferUsage.MAP_WRITE) {
+    else if (this.usage & GPUBufferUsage.MAP_WRITE) {
       mode = GPUMapMode.WRITE;
     }
     else {

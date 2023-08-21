@@ -1,9 +1,9 @@
 @vertex
-fn vertexMain(@location(0) position: vec4f) -> VertexData
+fn vertexMain(@builtin(vertex_index) idx: u32) -> VertexData
 {
   var output : VertexData;
-  output.position = position;
-  output.uv = position.xy * 0.5 + 0.5;
-  output.cv = position.xy;
+  output.uv = vec2f(f32(idx % 2), f32(idx / 2));
+  output.cv = output.uv * 2 - 1;
+  output.position = vec4f(output.cv, 0, 1);
   return output;
 }

@@ -1,4 +1,4 @@
-#include /common/partials/std-header
+#include /common/partials/std-header-vertex
 #include /common/partials/filters
 #include /common/partials/test
 
@@ -18,23 +18,13 @@ struct ProgramUniforms {
 @group(1) @binding(0) var<uniform> pu : ProgramUniforms;
 
 @vertex
-fn vertexMain(@location(0) position: vec2f, @location(1) color: vec3f) -> CustomVertexData
+fn customVertexMain(@location(0) position: vec2f, @location(1) color: vec3f) -> CustomVertexData
 {
   var output : CustomVertexData;
   output.position = vec4f(position, 0, 1);
   output.uv = position.xy * 0.5 + 0.5;
   output.cv = position.xy;
   output.color = color;
-  return output;
-}
-
-@vertex
-fn fullVertexMain(@location(0) position: vec2f) -> VertexData
-{
-  var output : VertexData;
-  output.position = vec4f(position, 0, 1);
-  output.uv = position.xy * 0.5 + 0.5;
-  output.cv = position.xy;
   return output;
 }
 

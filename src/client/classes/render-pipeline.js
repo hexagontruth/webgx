@@ -1,16 +1,20 @@
 import Pipeline from './pipeline';
 
 export default class RenderPipeline extends Pipeline {
-  static generateDefaults(p) {
+  static generateDefaults() {
     return {
-      vertexBuffers: [0],
+      vertexBuffers: [],
+      numVerts: null,
     };
   }
 
   async init() {
     await super.init();
-    this.vertexBuffers = this.settings.vertexBuffers.map((idx) => this.program.dataBuffers[idx]);
-    this.numVerts = this.vertexBuffers[0].numVerts;
+    this.vertexBuffers = this.settings.vertexBuffers;
+    this.numVerts =
+      this.vertexBuffers[0]?.numVerts ||
+      this.settings.numVerts ||
+      this.program.settings.defaultNumVerts;
 
     let locationIdx = 0;
     const vertexBufferLayouts = this.vertexBuffers.map((vertexBuffer) => {
@@ -23,7 +27,7 @@ export default class RenderPipeline extends Pipeline {
       vertex: {
         module: this.shaderModule,
         entryPoint: this.settings.vertexMain,
-        buffers: vertexBufferLayouts,
+        buffers: vertexBufferLayouts.length ? vertexBufferLayouts : undefined,
       },
       fragment: {
         module: this.shaderModule,
@@ -121,15 +125,20 @@ export default class RenderPipeline extends Pipeline {
     return passEncoder;
   }
 
-  draw(txIdx=0, start=0, length) {
-    length = length ?? this.numVerts - start;
+  draw(vertCount, instCount, vertStart, instStart, txIdx) {
+    // Allow defaults with nulls
+    instCount = instCount ?? 1;
+    vertStart = vertStart ?? 0;
+    instStart = instStart ?? 0;
+    vertCount = vertCount ?? this.numVerts - vertStart;
+    txIdx = txIdx ?? 0;
 
     const commandEncoder = this.program.createCommandEncoder();
     this.copyInputTextures(commandEncoder, txIdx);
     this.program.globalUniforms.write('index', txIdx);
 
     const passEncoder = this.createPassEncoder(commandEncoder);
-    passEncoder.draw(length, 1, start);
+    passEncoder.draw(vertCount, instCount, vertStart, instStart);
     passEncoder.end();
 
     this.copyOutputTexures(commandEncoder, txIdx);
@@ -137,9 +146,13 @@ export default class RenderPipeline extends Pipeline {
     this.program.submitCommandEncoder(commandEncoder);
   }
 
-  drawIndexed(bufferIdx, txIdx=0, start=0, length, vertexStart) {
-    const indexData = this.program.dataBuffers[bufferIdx];
-    length = length ?? indexData.length - start;
+  drawIndexed(idxData, idxCount, instCount, idxStart, baseVert, instStart, txIdx) {
+    instCount = instCount ?? 1
+    idxStart = idxStart ?? 0;
+    baseVert = baseVert ?? 0;
+    instStart = instStart ?? 0;
+    idxCount = idxCount ?? idxData.length - idxStart
+    txIdx = txIdx ?? 0;
 
     const commandEncoder = this.program.createCommandEncoder();
     this.copyInputTextures(commandEncoder, txIdx);
@@ -147,10 +160,10 @@ export default class RenderPipeline extends Pipeline {
 
     const passEncoder = this.createPassEncoder(commandEncoder);
     passEncoder.setIndexBuffer(
-      indexData.buffer,
-      indexData.type
+      idxData.buffer,
+      idxData.type
     );
-    passEncoder.drawIndexed(length, 1, start, vertexStart);
+    passEncoder.drawIndexed(idxCount, instCount, idxStart, baseVert, instStart);
     passEncoder.end();
 
     this.copyOutputTexures(commandEncoder, txIdx);
