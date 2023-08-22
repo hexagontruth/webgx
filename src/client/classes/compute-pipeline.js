@@ -28,11 +28,16 @@ export default class ComputePipeline extends Pipeline {
     return passEncoder;
   }
 
-  compute(x, y, z) {
-    const commandEncoder = this.program.createCommandEncoder();
+  compute(commandEncoder, x, y, z) {
     const passEncoder = this.createPassEncoder(commandEncoder);
     passEncoder.dispatchWorkgroups(x, y, z);
     passEncoder.end();
-    this.program.submitCommandEncoder(commandEncoder);
+  }
+
+  // Untested lol
+  computeIndirect(commandEncoder, buffer, offset=0) {
+    const passEncoder = this.createPassEncoder(commandEncoder);
+    passEncoder.dispatchWorkgroupsIndirect(buffer.buffer ?? buffer, offset);
+    passEncoder.end();
   }
 }

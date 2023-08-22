@@ -10,8 +10,8 @@ fn textureRepeat(tx : texture_2d<f32>, uv : vec2f) -> vec4f {
   return textureSample(tx, repeatSampler, vec2f(uv.x, 1 - uv.y));
 }
 
-fn renderTextureIdx(uv : vec2f, idx : i32) -> vec4f {
-  return textureSample(renderTextures, linearSampler, uv, idx);
+fn swapTextureIdx(uv : vec2f, idx : i32) -> vec4f {
+  return textureSample(swapTextures, linearSampler, uv, idx);
 }
 
 fn mediaTextureIdx(uv : vec2f, idx : i32) -> vec4f {

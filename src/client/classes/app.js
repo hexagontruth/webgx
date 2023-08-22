@@ -187,7 +187,7 @@ export default class App {
         }
       }
       else if (key == 'c') {
-        this.player.clearRenderTextures();
+        this.player.clearSwapTextures();
       }
       else if (key == 'g') {
         this.config.toggle('guidesHidden');

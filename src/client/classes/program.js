@@ -8,6 +8,7 @@ import {
 import ComputePipeline from './compute-pipeline';
 import DataBuffer from './data-buffer';
 import Dim from './dim';
+import Encoder from './encoder';
 import Hook from './hook';
 import IndexBuffer from './index-buffer';
 import RenderPipeline from './render-pipeline';
@@ -31,6 +32,8 @@ export default class Program {
       settings: {
         dim: 1024,
         exportDim: null,
+        swapDim: null,
+        swapPairs: 0,
         mediaFit: 'cover',
         streamFit: 'cover',
         interval: 0,
@@ -39,7 +42,6 @@ export default class Program {
         stop: null,
         autoplay: null,
         skip: 1,
-        renderPairs: 2,
         output: {}, // Recording parameters can be overriden in dev console
         topology: 'triangle-strip',
         defaultNumVerts: 4,
@@ -135,14 +137,25 @@ export default class Program {
     else {
       settings.exportDim = new Dim(dim);
     }
+
+    if (!settings.swapPairs) {
+      settings.swapDim = new Dim(1);
+    }
+    else if (settings.swapDim) {
+      settings.swapDim = new Dim(settings.swapDim);
+    }
+    else {
+      settings.swapDim = new Dim(dim);
+    }
+
+    settings.swapPairs = max(2, settings.swapPairs);
+
     const [w, h] = settings.dim;
     settings.cover = w > h ? [1, h / w] : [w / h, 1];
 
     if (settings.stop == true) {
       settings.stop = settings.start + settings.period;
     }
-
-    settings.renderPairs = max(2, settings.renderPairs);
 
     this.programUniforms = new UniformBuffer(this.device, def.uniforms);
     this.programUniforms.write();
@@ -231,9 +244,9 @@ export default class Program {
         GPUTextureUsage.TEXTURE_BINDING,
     });
 
-    this.renderTextures = indexMap(2).map(() => {
+    this.swapTextures = indexMap(2).map(() => {
       return this.device.createTexture({
-        size: [...settings.dim, settings.renderPairs],
+        size: [...settings.swapDim, settings.swapPairs],
         format: 'bgra8unorm',
         usage:
           GPUTextureUsage.COPY_DST |
@@ -323,7 +336,7 @@ export default class Program {
         this.inputTexture.createView(),
         this.streamTexture.createView(),
         this.mediaTexture.createView(),
-        this.renderTextures[idx].createView(),
+        this.swapTextures[idx].createView(),
       ]);
     });
 
@@ -477,26 +490,6 @@ export default class Program {
     this.hooks.call('afterStep', this.counter);
   }
 
-  draw(pipelineName, ...args) {
-    const pipeline = this.getPipeline(pipelineName);
-    pipeline.draw(...args);
-  }
-
-  drawIndexed(pipelineName, ...args) {
-    const pipeline = this.getPipeline(pipelineName);
-    pipeline.drawIndexed(...args);
-  }
-
-  compute(pipelineName, ...args) {
-    const pipeline = this.getPipeline(pipelineName);
-    pipeline.compute(...args);
-  }
-
-  computeIndirect(pipelineName, ...args) {
-    const pipeline = this.getPipeline(pipelineName);
-    pipeline.computeIndirect(...args);
-  }
-
   getPipeline(pipelineName) {
     const pipeline = this.pipelines[pipelineName];
     if (pipeline) {
@@ -513,28 +506,6 @@ export default class Program {
 
   submitCommandEncoder(...encoders) {
     this.device.queue.submit(encoders.map((e) => e.finish()));
-  }
-
-  render(txIdx) {
-    const commandEncoder = this.createCommandEncoder();
-    commandEncoder.copyTextureToTexture(
-      txIdx != null ? {
-        // texture: this.alternatingTextures[this.next][0],
-        texture: this.renderTextures[this.next],
-        origin: { x: 0, y: 0, z: txIdx },
-      } : {
-        texture: this.drawTexture,
-      },
-      {
-        texture: this.ctx.getCurrentTexture(),
-      },
-      {
-        width: this.settings.dim.width,
-        height: this.settings.dim.height,
-        depthOrArrayLayers: 1,
-      },
-    );
-    this.submitCommandEncoder(commandEncoder);
   }
 
   stepCounter(n) {
@@ -595,27 +566,6 @@ export default class Program {
     this.cursorUniforms.write(key)
   }
 
-  createDataBuffer(...args) {
-    return new DataBuffer(this.device, ...args);
-  }
-
-  createIndexBuffer(...args) {
-    return new IndexBuffer(this.device, ...args);
-  }
-
-  createVertexBuffer(...args) {
-    return new VertexBuffer(this.device, ...args);
-  }
-
-  createDefaultVertexBuffer() {
-    return this.createVertexBuffer(4, [
-      -1, -1, 0, 1,
-      1, -1, 0, 1,
-      -1, 1, 0, 1,
-      1, 1, 0, 1,
-    ]);
-  }
-
   createBindGroupLayout(entries, flags) {
     flags = flags ?? GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT | GPUShaderStage.COMPUTE;
     return this.device.createBindGroupLayout({
@@ -647,6 +597,39 @@ export default class Program {
     });
   }
 
+  createDataBuffer(...args) {
+    return new DataBuffer(this.device, ...args);
+  }
+
+  createIndexBuffer(...args) {
+    return new IndexBuffer(this.device, ...args);
+  }
+
+  createVertexBuffer(...args) {
+    return new VertexBuffer(this.device, ...args);
+  }
+
+  createEncoder() {
+    return new Encoder(this);
+  }
+
+  submitEncoders(encoders) {
+    this.device.queue.submit(encoders.map((e) => e.finish()));
+  }
+
+  async withEncoder(fn) {
+    const encoder = this.createEncoder();
+    await fn(encoder);
+    encoder.submit();
+  }
+
+  async renderWithEncoder(fn) {
+    const encoder = this.createEncoder();
+    await fn(encoder);
+    encoder.render();
+    encoder.submit();
+  }
+
   createComputePipeline(shaderPath, settings) {
     return new ComputePipeline(this, shaderPath, settings);
   }
@@ -655,22 +638,9 @@ export default class Program {
     return new RenderPipeline(this, shaderPath, settings);
   }
 
-  copyBufferToBuffer(source, dest, sourceOffset=0, destOffset=0, size) {
-    size = size ?? source.byteLength;
-    const commandEncoder = this.createCommandEncoder();
-    commandEncoder.copyBufferToBuffer(
-      source.buffer,
-      sourceOffset,
-      dest.buffer,
-      destOffset,
-      size,
-    );
-    this.submitCommandEncoder(commandEncoder);
-  }
-
-  clearRenderTextures() {
-    this.renderTextures.forEach((renderTexture) => {
-      this.clearTexture(renderTexture);
+  clearSwapTextures() {
+    this.swapTextures.forEach((swapTexture) => {
+      this.clearTexture(swapTexture);
     });
   }
 

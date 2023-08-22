@@ -10,4 +10,4 @@
 @group(0) @binding(7) var stream : texture_2d<f32>;
 
 @group(0) @binding(8) var mediaTextures : texture_2d_array<f32>;
-@group(0) @binding(9) var renderTextures : texture_2d_array<f32>;
+@group(0) @binding(9) var swapTextures : texture_2d_array<f32>;
