@@ -1,5 +1,7 @@
 import WebgxError from './webgx-error';
 
+const { min } = Math;
+
 export default class Encoder {
   constructor(program) {
     this.program = program;
@@ -21,7 +23,7 @@ export default class Encoder {
   }
 
   copyBufferToBuffer(source, dest, sourceOffset=0, destOffset=0, size) {
-    size = size ?? Math.min(
+    size = size ?? min(
       source.byteLength - sourceOffset,
       dest.byteLength - destOffset
     );
@@ -35,19 +37,22 @@ export default class Encoder {
     return this;
   }
 
-  loadSwap(txIdx, swapIdx=this.cur) {
-    const { swapDim } = this.program.settings;
+  loadSwap(txIdx, sx=0, sy=0, dx=0, dy=0, width, height, swapIdx=this.cur) {
+    const { dim, swapDim } = this.program.settings;
+    width = width ?? min(swapDim.width - sx, dim.width - dx);
+    height = height ?? min(swapDim.height - sy, dim.height - dy);
     this.commandEncoder.copyTextureToTexture(
       {
         texture: this.program.swapTextures[swapIdx],
-        origin: { x: 0, y: 0, z: txIdx },
+        origin: { x: sx, y: sy, z: txIdx },
       },
       {
         texture: this.program.lastTexture,
+        origin: { x: dx, y: dy }
       },
       {
-        width: swapDim.width,
-        height: swapDim.height,
+        width,
+        height,
         depthOrArrayLayers: 1,
       },
     );
@@ -55,19 +60,22 @@ export default class Encoder {
     return this;
   }
 
-  storeSwap(txIdx, swapIdx=this.next) {
-    const { swapDim } = this.program.settings;
+  storeSwap(txIdx, sx=0, sy=0, dx=0, dy=0, width, height, swapIdx=this.next) {
+    const { dim, swapDim } = this.program.settings;
+    width = width ?? min(dim.width - sx, swapDim.width - sy);
+    height = height ?? min(dim.height - dy, swapDim.height - dy);
     this.commandEncoder.copyTextureToTexture(
       {
         texture: this.program.drawTexture,
+        origin: { x: sx, y: sy },
       },
       {
         texture: this.program.swapTextures[swapIdx],
-        origin: { x: 0, y: 0, z: txIdx },
+        origin: { x: dx, y: dy, z: txIdx },
       },
       {
-        width: swapDim.width,
-        height: swapDim.height,
+        width,
+        height,
         depthOrArrayLayers: 1,
       },
     );

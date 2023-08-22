@@ -617,6 +617,19 @@ export default class Program {
     this.device.queue.submit(encoders.map((e) => e.finish()));
   }
 
+  async withEncoder(fn) {
+    const encoder = this.createEncoder();
+    await fn(encoder);
+    encoder.submit();
+  }
+
+  async renderWithEncoder(fn) {
+    const encoder = this.createEncoder();
+    await fn(encoder);
+    encoder.render();
+    encoder.submit();
+  }
+
   createComputePipeline(shaderPath, settings) {
     return new ComputePipeline(this, shaderPath, settings);
   }
