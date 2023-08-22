@@ -125,7 +125,7 @@ export default class RenderPipeline extends Pipeline {
     return passEncoder;
   }
 
-  draw(vertCount, instCount, vertStart, instStart, txIdx) {
+  draw(commandEncoder, vertCount, instCount, vertStart, instStart, txIdx) {
     // Allow defaults with nulls
     instCount = instCount ?? 1;
     vertStart = vertStart ?? 0;
@@ -133,7 +133,6 @@ export default class RenderPipeline extends Pipeline {
     vertCount = vertCount ?? this.numVerts - vertStart;
     txIdx = txIdx ?? 0;
 
-    const commandEncoder = this.program.createCommandEncoder();
     this.copyInputTextures(commandEncoder, txIdx);
     this.program.globalUniforms.write('index', txIdx);
 
@@ -142,11 +141,9 @@ export default class RenderPipeline extends Pipeline {
     passEncoder.end();
 
     this.copyOutputTexures(commandEncoder, txIdx);
-
-    this.program.submitCommandEncoder(commandEncoder);
   }
 
-  drawIndexed(idxData, idxCount, instCount, idxStart, baseVert, instStart, txIdx) {
+  drawIndexed(commandEncoder, idxData, idxCount, instCount, idxStart, baseVert, instStart, txIdx) {
     instCount = instCount ?? 1
     idxStart = idxStart ?? 0;
     baseVert = baseVert ?? 0;
@@ -154,7 +151,6 @@ export default class RenderPipeline extends Pipeline {
     idxCount = idxCount ?? idxData.length - idxStart
     txIdx = txIdx ?? 0;
 
-    const commandEncoder = this.program.createCommandEncoder();
     this.copyInputTextures(commandEncoder, txIdx);
     this.program.globalUniforms.write('index', txIdx);
 
@@ -167,7 +163,5 @@ export default class RenderPipeline extends Pipeline {
     passEncoder.end();
 
     this.copyOutputTexures(commandEncoder, txIdx);
-
-    this.program.submitCommandEncoder(commandEncoder);
   }
 }
