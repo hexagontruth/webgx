@@ -32,33 +32,68 @@ export default class Encoder {
       destOffset,
       size,
     );
+    return this;
   }
 
-  draw(pipelineName, ...args) {
-    const pipeline = this.program.getPipeline(pipelineName);
-    pipeline.draw(this.commandEncoder, ...args);
+  loadSwap(txIdx, swapIdx=this.cur) {
+    const { swapDim } = this.program.settings;
+    this.commandEncoder.copyTextureToTexture(
+      {
+        texture: this.program.swapTextures[swapIdx],
+        origin: { x: 0, y: 0, z: txIdx },
+      },
+      {
+        texture: this.program.lastTexture,
+      },
+      {
+        width: swapDim.width,
+        height: swapDim.height,
+        depthOrArrayLayers: 1,
+      },
+    );
+    this.program.globalUniforms.write('index', txIdx);
+    return this;
   }
 
-  drawIndexed(pipelineName, ...args) {
-    const pipeline = this.program.getPipeline(pipelineName);
-    pipeline.drawIndexed(this.commandEncoder, ...args);
+  storeSwap(txIdx, swapIdx=this.next) {
+    const { swapDim } = this.program.settings;
+    this.commandEncoder.copyTextureToTexture(
+      {
+        texture: this.program.drawTexture,
+      },
+      {
+        texture: this.program.swapTextures[swapIdx],
+        origin: { x: 0, y: 0, z: txIdx },
+      },
+      {
+        width: swapDim.width,
+        height: swapDim.height,
+        depthOrArrayLayers: 1,
+      },
+    );
+    return this;
   }
 
-  compute(pipelineName, ...args) {
-    const pipeline = this.program.getPipeline(pipelineName);
-    pipeline.compute(this.commandEncoder, ...args);
+  loadInput() {
+    const { dim } = this.program.settings;
+    this.commandEncoder.copyTextureToTexture(
+      {
+        texture: this.program.drawTexture,
+      },
+      {
+        texture: this.program.inputTexture,
+      },
+      {
+        width: dim.width,
+        height: dim.height,
+      },
+    );
   }
 
-  computeIndirect(pipelineName, ...args) {
-    const pipeline = this.program.getPipeline(pipelineName);
-    pipeline.computeIndirect(this.this.commandEncoder, ...args);
-  }
-
-  render(txIdx) {
+  render(txIdx, swapIdx=this.next) {
     this.commandEncoder.copyTextureToTexture(
       txIdx != null ? {
-        // texture: this.alternatingTextures[this.next][0],
-        texture: this.program.renderTextures[this.program.next],
+        texture: this.program.swapTextures[swapIdx],
         origin: { x: 0, y: 0, z: txIdx },
       } : {
         texture: this.program.drawTexture,
@@ -72,5 +107,52 @@ export default class Encoder {
         depthOrArrayLayers: 1,
       },
     );
+    return this;
+  }
+
+  drawSwap(pipelineName, txIdx, ...args) {
+    this.loadSwap(txIdx);
+    this.draw(pipelineName, ...args);
+    this.storeSwap(txIdx);
+  }
+
+  drawIndexedSwap(pipelineName, txIdx, ...args) {
+    this.loadSwap(txIdx);
+    this.drawIndexed(pipelineName, ...args);
+    this.storeSwap(txIdx);
+  }
+
+  draw(pipelineName, ...args) {
+    const pipeline = this.program.getPipeline(pipelineName);
+    this.loadInput();
+    pipeline.draw(this.commandEncoder, ...args);
+    return this;
+  }
+
+  drawIndexed(pipelineName, ...args) {
+    const pipeline = this.program.getPipeline(pipelineName);
+    this.loadInput();
+    pipeline.drawIndexed(this.commandEncoder, ...args);
+    return this;
+  }
+
+  compute(pipelineName, ...args) {
+    const pipeline = this.program.getPipeline(pipelineName);
+    pipeline.compute(this.commandEncoder, ...args);
+    return this;
+  }
+
+  computeIndirect(pipelineName, ...args) {
+    const pipeline = this.program.getPipeline(pipelineName);
+    pipeline.computeIndirect(this.this.commandEncoder, ...args);
+    return this;
+  }
+
+  get cur() {
+    return this.program.cur;
+  }
+
+  get next() {
+    return this.program.next;
   }
 }

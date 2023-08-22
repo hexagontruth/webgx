@@ -32,6 +32,8 @@ export default class Program {
       settings: {
         dim: 1024,
         exportDim: null,
+        swapDim: null,
+        swapPairs: 0,
         mediaFit: 'cover',
         streamFit: 'cover',
         interval: 0,
@@ -40,7 +42,6 @@ export default class Program {
         stop: null,
         autoplay: null,
         skip: 1,
-        renderPairs: 2,
         output: {}, // Recording parameters can be overriden in dev console
         topology: 'triangle-strip',
         defaultNumVerts: 4,
@@ -136,14 +137,25 @@ export default class Program {
     else {
       settings.exportDim = new Dim(dim);
     }
+
+    if (!settings.swapPairs) {
+      settings.swapDim = new Dim(1);
+    }
+    else if (settings.swapDim) {
+      settings.swapDim = new Dim(settings.swapDim);
+    }
+    else {
+      settings.swapDim = new Dim(dim);
+    }
+
+    settings.swapPairs = max(2, settings.swapPairs);
+
     const [w, h] = settings.dim;
     settings.cover = w > h ? [1, h / w] : [w / h, 1];
 
     if (settings.stop == true) {
       settings.stop = settings.start + settings.period;
     }
-
-    settings.renderPairs = max(2, settings.renderPairs);
 
     this.programUniforms = new UniformBuffer(this.device, def.uniforms);
     this.programUniforms.write();
@@ -232,9 +244,9 @@ export default class Program {
         GPUTextureUsage.TEXTURE_BINDING,
     });
 
-    this.renderTextures = indexMap(2).map(() => {
+    this.swapTextures = indexMap(2).map(() => {
       return this.device.createTexture({
-        size: [...settings.dim, settings.renderPairs],
+        size: [...settings.swapDim, settings.swapPairs],
         format: 'bgra8unorm',
         usage:
           GPUTextureUsage.COPY_DST |
@@ -324,7 +336,7 @@ export default class Program {
         this.inputTexture.createView(),
         this.streamTexture.createView(),
         this.mediaTexture.createView(),
-        this.renderTextures[idx].createView(),
+        this.swapTextures[idx].createView(),
       ]);
     });
 
@@ -613,9 +625,9 @@ export default class Program {
     return new RenderPipeline(this, shaderPath, settings);
   }
 
-  clearRenderTextures() {
-    this.renderTextures.forEach((renderTexture) => {
-      this.clearTexture(renderTexture);
+  clearSwapTextures() {
+    this.swapTextures.forEach((swapTexture) => {
+      this.clearTexture(swapTexture);
     });
   }
 

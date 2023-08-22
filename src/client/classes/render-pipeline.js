@@ -52,54 +52,6 @@ export default class RenderPipeline extends Pipeline {
     });
   }
 
-  copyInputTextures(commandEncoder, txIdx) {
-    const { dim } = this.program.settings;
-    commandEncoder.copyTextureToTexture(
-      {
-        texture: this.program.drawTexture,
-      },
-      {
-        texture: this.program.inputTexture,
-      },
-      {
-        width: dim.width,
-        height: dim.height,
-      },
-    );
-    commandEncoder.copyTextureToTexture(
-      {
-        texture: this.program.renderTextures[this.program.cur],
-        origin: { x: 0, y: 0, z: txIdx },
-      },
-      {
-        texture: this.program.lastTexture,
-      },
-      {
-        width: dim.width,
-        height: dim.height,
-        depthOrArrayLayers: 1,
-      },
-    );
-  }
-
-  copyOutputTexures(commandEncoder, txIdx) {
-    const { dim } = this.program.settings;
-    commandEncoder.copyTextureToTexture(
-      {
-        texture: this.program.drawTexture,
-      },
-      {
-        texture: this.program.renderTextures[this.program.next],
-        origin: { x: 0, y: 0, z: txIdx },
-      },
-      {
-        width: dim.width,
-        height: dim.height,
-        depthOrArrayLayers: 1,
-      },
-    );
-  }
-
   createPassDescriptor() {
     return {
       colorAttachments: [
@@ -125,43 +77,31 @@ export default class RenderPipeline extends Pipeline {
     return passEncoder;
   }
 
-  draw(commandEncoder, vertCount, instCount, vertStart, instStart, txIdx) {
-    // Allow defaults with nulls
-    instCount = instCount ?? 1;
-    vertStart = vertStart ?? 0;
-    instStart = instStart ?? 0;
+  draw(commandEncoder, vertCount, instCount=1, vertStart=0, instStart=0) {
     vertCount = vertCount ?? this.numVerts - vertStart;
-    txIdx = txIdx ?? 0;
-
-    this.copyInputTextures(commandEncoder, txIdx);
-    this.program.globalUniforms.write('index', txIdx);
 
     const passEncoder = this.createPassEncoder(commandEncoder);
     passEncoder.draw(vertCount, instCount, vertStart, instStart);
     passEncoder.end();
-
-    this.copyOutputTexures(commandEncoder, txIdx);
   }
 
-  drawIndexed(commandEncoder, idxData, idxCount, instCount, idxStart, baseVert, instStart, txIdx) {
-    instCount = instCount ?? 1
-    idxStart = idxStart ?? 0;
-    baseVert = baseVert ?? 0;
-    instStart = instStart ?? 0;
-    idxCount = idxCount ?? idxData.length - idxStart
-    txIdx = txIdx ?? 0;
-
-    this.copyInputTextures(commandEncoder, txIdx);
-    this.program.globalUniforms.write('index', txIdx);
+  drawIndexed(
+    commandEncoder,
+    idxBuffer,
+    idxCount,
+    instCount=1,
+    idxStart=0,
+    baseVert=0,
+    instStart=0
+  ) {
+    idxCount = idxCount ?? idxBuffer.length - idxStart
 
     const passEncoder = this.createPassEncoder(commandEncoder);
     passEncoder.setIndexBuffer(
-      idxData.buffer,
-      idxData.type
+      idxBuffer.buffer,
+      idxBuffer.type
     );
     passEncoder.drawIndexed(idxCount, instCount, idxStart, baseVert, instStart);
     passEncoder.end();
-
-    this.copyOutputTexures(commandEncoder, txIdx);
   }
 }

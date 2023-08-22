@@ -182,8 +182,8 @@ export default class Player {
     this.program.reset();
   }
 
-  clearRenderTextures() {
-    this.program.clearRenderTextures();
+  clearSwapTextures() {
+    this.program.clearSwapTextures();
   }
 
   moveArrow([x, y]) {
