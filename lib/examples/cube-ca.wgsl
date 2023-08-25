@@ -50,45 +50,22 @@ const corners = array(
   vec3i(1,   1,  1),
 );
 
-fn wrapGrid(p: vec3u) -> vec3u {
-  var dim = u32(pu.bufferDim);
+fn wrapGrid(p: vec3i) -> vec3i {
+  // I don't know why this doesn't work
+  var dim = i32(pu.bufferDim);
   return (p + dim) % dim;
 }
 
-fn toCube(idx: u32) -> vec3u {
-  var dim = u32(pu.bufferDim);
-  var p : vec3u;
-  p.x = idx / dim / dim;
-  p.y = idx / dim;
-  p.z = idx % dim;
-  return p;
-}
-
-fn fromCube(p: vec3u) -> u32 {
-  var dim = u32(pu.bufferDim);
-  var idx = p.x * dim * dim + p.y * dim + p.z;
+fn fromCube(p: vec3i) -> i32 {
+  var dim = i32(pu.bufferDim);
+  var v = (p + dim) % dim;
+  var idx = v.x * dim * dim + v.y * dim + v.z;
   return idx;
 }
 
-fn sampleCell(p: vec3u) -> f32 {
+fn sampleCell(p: vec3i) -> f32 {
   var idx = fromCube(p);
   return input[idx];
-}
-
-fn colorMix(s: f32) -> vec3f {
-  var c = mix(
-    vec3f(
-      2 / (1 + pow(e, -s / min(pu.numStates, 16) * 4)) - 1
-    ),
-    hsv2rgb3(vec3f(
-      (s - 1) / pu.numStates,
-      0.75,
-      1 - step(1, 1 - s),
-    )),
-    pu.colorDisplay
-  );
-  c *= htWhite;
-  return c;
 }
 
 @vertex
@@ -108,25 +85,22 @@ fn vertexCube(
 fn fragmentMain(data: VertexData) -> @location(0) vec4f {
   var dim = 512.;
   var nv = data.uv;
-  // nv = data.cv * gu.cover * 0.5 + 0.5;
-  var v = (nv * dim) % 64;
+  var v = floor(nv * dim) % 64;
   var w = floor((nv * dim) / 64);
-  // return vec4(v/8., w.x/64, 1);
-  var offset = w.x * 64 * 64 * 8 + w.y * 8 +  v.x * 64 + v.y;
-  // offset = offset % pu.bufferSize;
+  var offset = w.x * 64 * 64 * 8 + w.y * 64 * 64 +  v.x * 64 + v.y;
   var s = input[u32(offset)];
-  var c = vec3f(s);
-  return vec4f(c, 1);
+  return vec4f(vec3f(s) + vec3f(v/64., w.x/8) / 2, 1);
 }
 
 @fragment
 fn fragmentTest(data: VertexData) -> @location(0) vec4f {
-  var nv = data.cv * gu.cover * 0.5 + 0.5;
-  var v = nv * gu.size;
-  var offset = v.x * gu.size.x + v.y;
+  var dim = 512.;
+  var nv = data.uv;
+  var v = floor(nv * dim) % 64;
+  var w = floor((nv * dim) / 64);
+  var offset = w.x * 64 * 64 * 8 + w.y * 64 * 64 +  v.x * 64 + v.y;
   var s = input[u32(offset)];
-  var c = colorMix(s);
-  return vec4f(c, 1);
+  return vec4f(vec3f(s) + vec3f(v/64., w.x/8) / 2, 1);
 }
 
 @compute @workgroup_size(4, 4, 4)
@@ -135,9 +109,11 @@ fn computeMain(
   // @builtin(workgroup_id) workgroupIdx : vec3u,
   // @builtin(local_invocation_id) localIdx : vec3u
 ) {
-  var dim = u32(pu.bufferDim);
-  var p = globalIdx.xyz;
+  var p = vec3i(globalIdx.xyz);
   var cur = sampleCell(p);
+  // var ntest = sampleCell(p + vec3i(0, 0, 1));
+  // output[fromCube(p)] =ntest;
+  // return;
   var s = 0;
   var e = 0;
   var c = 0;
@@ -146,49 +122,43 @@ fn computeMain(
   var cs = 0.;
   var v : f32;
   for (var i = 0; i < 6; i++) {
-    var u = wrapGrid(vec3u(vec3i(p) + sides[i]));
-    var samp = sampleCell(u);
+    var samp = sampleCell(p + sides[i]);
     s += i32(step(1, samp)) << u32(i);
     ss += samp;
   }
-  for (var i = 0; i < 8; i++) {
-    var u = wrapGrid(vec3u(vec3i(p) + edges[i]));
-    var samp = sampleCell(u);
+  for (var i = 0; i < 12; i++) {
+    var samp = sampleCell(p + edges[i]);
     e += i32(step(1, samp)) << u32(i);
     es += samp;
   }
-  for (var i = 0; i < 12; i++) {
-    var u = wrapGrid(vec3u(vec3i(p) + corners[i]));
-    var samp = sampleCell(u);
+  for (var i = 0; i < 8; i++) {
+    var samp = sampleCell(p + corners[i]);
     c += i32(step(1, samp)) << u32(i);
     cs += samp;
   }
-  v = select(
-    cur - 1,
-    cur + 1,
-    s == (1 | 2) ||
-    s == (2 | 4) ||
-    s == (4 | 8) ||
-    s == (8 | 16) ||
-    s == (16 | 32) ||
-    s == (32 | 1) ||
+  // v = select(
+  //   cur - 1,
+  //   cur + 1,
+  //   s == (1 | 2) ||
+  //   s == (2 | 4) ||
+  //   s == (4 | 8) ||
+  //   s == (8 | 16) ||
+  //   s == (16 | 32) ||
+  //   s == (32 | 1) ||
 
-    s == (1 | 8) ||
-    s == (2 | 16) ||
-    s == (4 | 32) ||
+  //   s == (1 | 8) ||
+  //   s == (2 | 16) ||
+  //   s == (4 | 32) ||
 
-    s == (1 | 2 | 8 | 16) ||
-    s == (2 | 4 | 16 | 32) ||
-    s == (4 | 8 | 32 | 1) ||
-    false,
-  );
+  //   s == (1 | 2 | 8 | 16) ||
+  //   s == (2 | 4 | 16 | 32) ||
+  //   s == (4 | 8 | 32 | 1) ||
+  //   false,
+  // );
 
-  // v = max(0, v);
-  // v = m1(v, pu.numStates);
-  // v = select(v, cur, gu.counter == 0);
-  var d = ss - es + cs;
-  v = f32(select(0, 1, d > 0 && d < 6 ));
-  // v = cur + 0.1;
-  // v = cur;
-  output[fromCube(p)] = v;
+  var d = es - ss;
+  var cond = (cur == 0 && d > 0 && d < 3) || (cur > 0 && d == 2);
+  cond = d == 1 || d == 2;
+  v = f32(select(0, 1, cond));
+  output[fromCube(p)] = select(cur, v, gu.time > 0);
 }
