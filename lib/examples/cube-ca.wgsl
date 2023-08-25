@@ -2,6 +2,7 @@
 
 struct ProgramUniforms {
   bufferDim: f32,
+  bufferSize: f32,
   numStates: f32,
   colorDisplay: f32,
 };
@@ -11,36 +12,42 @@ struct ProgramUniforms {
 @group(2) @binding(0) var<storage, read> input: array<f32>;
 @group(2) @binding(1) var<storage, read_write> output: array<f32>;
 
-const nbrs = array(
-  vec3i(-1, -1, -1),
-  vec3i(-1, -1,  0),
-  vec3i(-1, -1,  1),
-  vec3i(-1,  0, -1),
+const sides = array(
   vec3i(-1,  0,  0),
-  vec3i(-1,  0,  1),
-  vec3i(-1,  1, -1),
-  vec3i(-1,  1,  0),
-  vec3i(-1,  1,  1),
-
-  vec3i(0, -1, -1),
   vec3i(0, -1,  0),
-  vec3i(0, -1,  1),
   vec3i(0,  0, -1),
-  vec3i(0,  0,  0),
-  // vec3i(0,  0,  1),
-  vec3i(0,  1, -1),
-  vec3i(0,  1,  0),
-  vec3i(0,  1,  1),
-
-  vec3i(1, -1, -1),
-  vec3i(1, -1,  0),
-  vec3i(1, -1,  1),
-  vec3i(1,  0, -1),
   vec3i(1,  0,  0),
-  vec3i(1,  0,  1),
-  vec3i(1,  1, -1),
-  vec3i(1,  1,  0),
-  vec3i(1,  1,  1),
+  vec3i(0,  1,  0),
+  vec3i(0,  0,  1),
+);
+
+const edges = array(
+  vec3i(-1, -1,  0),
+  vec3i(0,  -1, -1),
+  vec3i(-1,  0, -1),
+
+  vec3i(-1,  1,  0),
+  vec3i(0,  -1,  1),
+  vec3i(1,  0, -1),
+
+  vec3i(1,   1,  0),
+  vec3i(0,   1,  1),
+  vec3i(1,   0,  1),
+
+  vec3i(1,  -1,  0),
+  vec3i(0,   1, -1),
+  vec3i(-1,  0,  1),
+);
+
+const corners = array(
+  vec3i(-1, -1, -1),
+  vec3i(-1, -1,  1),
+  vec3i(-1,  1, -1),
+  vec3i(-1,  1,  1),
+  vec3i(1,  -1, -1),
+  vec3i(1,  -1,  1),
+  vec3i(1,   1, -1),
+  vec3i(1,   1,  1),
 );
 
 fn wrapGrid(p: vec3u) -> vec3u {
@@ -99,11 +106,14 @@ fn vertexCube(
 
 @fragment
 fn fragmentMain(data: VertexData) -> @location(0) vec4f {
-  var nv = data.cv * gu.cover * 0.5 + 0.5;
-  var v = nv * gu.size;
-  // v = data.position.xy;
-  var offset = v.y * gu.size.x + v.x;
-  offset = offset % pow(pu.bufferDim, 3);
+  var dim = 512.;
+  var nv = data.uv;
+  // nv = data.cv * gu.cover * 0.5 + 0.5;
+  var v = (nv * dim) % 64;
+  var w = floor((nv * dim) / 64);
+  // return vec4(v/8., w.x/64, 1);
+  var offset = w.x * 64 * 64 * 8 + w.y * 8 +  v.x * 64 + v.y;
+  // offset = offset % pu.bufferSize;
   var s = input[u32(offset)];
   var c = vec3f(s);
   return vec4f(c, 1);
@@ -128,38 +138,56 @@ fn computeMain(
   var dim = u32(pu.bufferDim);
   var p = globalIdx.xyz;
   var cur = sampleCell(p);
-  var s = cur;
+  var s = 0;
+  var e = 0;
+  var c = 0;
+  var ss = 0.;
+  var es = 0.;
+  var cs = 0.;
   var v : f32;
-  for (var i = 0; i < 26; i++) {
-    var u = wrapGrid(vec3u(vec3i(p) + nbrs[i]));
+  for (var i = 0; i < 6; i++) {
+    var u = wrapGrid(vec3u(vec3i(p) + sides[i]));
     var samp = sampleCell(u);
-    // s += i32(step(1, samp)) << u32(i);
-    s += samp;
+    s += i32(step(1, samp)) << u32(i);
+    ss += samp;
   }
-  // v = select(
-  //   cur - 1,
-  //   cur + 1,
-  //   s == (1 | 2) ||
-  //   s == (2 | 4) ||
-  //   s == (4 | 8) ||
-  //   s == (8 | 16) ||
-  //   s == (16 | 32) ||
-  //   s == (32 | 1) ||
+  for (var i = 0; i < 8; i++) {
+    var u = wrapGrid(vec3u(vec3i(p) + edges[i]));
+    var samp = sampleCell(u);
+    e += i32(step(1, samp)) << u32(i);
+    es += samp;
+  }
+  for (var i = 0; i < 12; i++) {
+    var u = wrapGrid(vec3u(vec3i(p) + corners[i]));
+    var samp = sampleCell(u);
+    c += i32(step(1, samp)) << u32(i);
+    cs += samp;
+  }
+  v = select(
+    cur - 1,
+    cur + 1,
+    s == (1 | 2) ||
+    s == (2 | 4) ||
+    s == (4 | 8) ||
+    s == (8 | 16) ||
+    s == (16 | 32) ||
+    s == (32 | 1) ||
 
-  //   s == (1 | 8) ||
-  //   s == (2 | 16) ||
-  //   s == (4 | 32) ||
+    s == (1 | 8) ||
+    s == (2 | 16) ||
+    s == (4 | 32) ||
 
-  //   s == (1 | 2 | 8 | 16) ||
-  //   s == (2 | 4 | 16 | 32) ||
-  //   s == (4 | 8 | 32 | 1) ||
-  //   false,
-  // );
+    s == (1 | 2 | 8 | 16) ||
+    s == (2 | 4 | 16 | 32) ||
+    s == (4 | 8 | 32 | 1) ||
+    false,
+  );
 
   // v = max(0, v);
   // v = m1(v, pu.numStates);
   // v = select(v, cur, gu.counter == 0);
-  v = f32(select(0, 1, s > 0 && s < 10));
+  var d = ss - es + cs;
+  v = f32(select(0, 1, d > 0 && d < 6 ));
   // v = cur + 0.1;
   // v = cur;
   output[fromCube(p)] = v;
