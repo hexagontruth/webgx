@@ -11,6 +11,7 @@ export default class Pipeline {
       dataBuffers: [],
       uniforms: {},
       params: {},
+      bufferVisibility: GPUShaderStage.FRAGMENT | GPUShaderStage.COMPUTE,
     };
   }
 
@@ -50,7 +51,7 @@ export default class Pipeline {
 
     this.dataGroupLayout = this.program.createBindGroupLayout(
       this.dataBuffers.map((e) => e.getLayout()),
-      GPUShaderStage.FRAGMENT | GPUShaderStage.COMPUTE,
+      this.settings.bufferVisibility,
     );
 
     this.dataGroup = this.program.createBindGroup(

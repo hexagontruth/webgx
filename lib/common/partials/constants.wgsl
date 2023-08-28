@@ -8,6 +8,24 @@ const unit = vec3f(1, 0, -1);
 
 const htWhite = 1. - vec3f(1./36., 1./24., 1./12.);
 
+const id2 = mat2x2(
+  1, 0,
+  0, 1,
+);
+
+const id3 = mat3x3(
+  1, 0, 0,
+  0, 1, 0,
+  0, 0, 1,
+);
+
+const id4 = mat4x4(
+  1, 0, 0, 0,
+  0, 1, 0, 0,
+  0, 0, 1, 0,
+  0, 0, 0, 1
+);
+
 const hex2cart = mat3x2(
   0,   0,
   1,   0,

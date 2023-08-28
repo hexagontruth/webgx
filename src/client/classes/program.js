@@ -45,6 +45,7 @@ export default class Program {
         output: {}, // Recording parameters can be overriden in dev console
         topology: 'triangle-strip',
         defaultNumVerts: 4,
+        defaultDepthTest: false,
       },
       uniforms: {},
       media: [],
@@ -215,6 +216,12 @@ export default class Program {
         addressModeW: 'repeat',
       }),
     };
+
+    this.depthTexture = this.device.createTexture({
+      size: settings.dim,
+      format: 'depth24plus',
+      usage: GPUTextureUsage.RENDER_ATTACHMENT,
+    });
 
     this.drawTexture = this.device.createTexture({
       size: settings.dim,
