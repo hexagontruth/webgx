@@ -1,4 +1,5 @@
 #include /common/partials/std-header-vertex
+#param WORKGROUP_SIZE 4
 
 struct ProgramUniforms {
   bufferDim: f32,
@@ -13,13 +14,10 @@ struct ProgramUniforms {
 
 struct CubeVertexData {
   @builtin(position) position : vec4f,
-  @location(1) normal: vec4f,
+  @location(0) p: vec3f,
+  @location(1) n: vec3f,
   @location(2) cell: vec3f,
   @location(3) color: vec3f,
-  @location(4) uv : vec2f,
-  @location(5) cv : vec2f,
-  @location(6) v: vec3f,
-  @location(7) lv: vec3f,
 };
 
 @group(1) @binding(0) var<uniform> pu : ProgramUniforms;
@@ -86,26 +84,6 @@ fn sampleCell(p: vec3i) -> f32 {
   return input[idx];
 }
 
-fn phong(
-  d: vec3f,
-  p: vec3f,
-  n: vec3f,
-  lightPos: vec3f,
-  aColor: vec3f,
-  dColor: vec3f,
-  sColor: vec3f,
-  s: f32
-) -> vec3f {
-    var light = normalize(lightPos - d);
-    var view = normalize(d - p);
-
-    var rf = normalize(reflect(light, n));
-    var dif = dColor * max(dot(light, n), 0);
-    var spec = sColor * pow(max(dot(view, rf), 0), s,);
-
-    return aColor + dif + spec;
-}
-
 @vertex
 fn vertexCube(
   @location(0) position: vec4f,
@@ -114,41 +92,34 @@ fn vertexCube(
   @builtin(instance_index) instIdx: u32
 ) -> CubeVertexData {
   var output : CubeVertexData;
-  output.color = position.xyz;
-  var pos = position.xyz;
-  var n = normal.xyz;
-  var cube = toCube(i32(instIdx));
-  var state = sampleCell(cube);
-  output.cell = vec3f(cube);
-  var cubePos = output.cell / pu.bufferDim;
-  output.color = (output.color + cubePos) / 2;
-  cubePos = cubePos * 2 - 1;
 
-  output.lv = pos.xyz * 0.5 + 0.5;
-  pos /= pu.bufferDim;
-  pos *= 2;
-  pos *= clamp(state - pu.displayMin, 0, pu.sizeMax);
+  var cell = toCube(i32(instIdx));
+  var state = sampleCell(cell);
 
-  pos += cubePos;
-  pos /= sr3;
+  output.p = position.xyz;
+  output.n = normal.xyz;
+  output.cell = vec3f(cell);
 
-  var rot = trot3m(id3, unit.yxy, 0.125);
-  rot = rot3m(rot, unit.xyy, 0.61548);
-  var uniformRot = normalize(vec3f(pu.rotX, pu.rotY, pu.rotZ)) * unit.zzx;
-  if (amax3(uniformRot) > 0) {
-    rot = trot3m(rot, uniformRot, gu.time);
-  }
+  var cellPos = output.cell / pu.bufferDim;
 
-  pos = rot * pos;
-  n = rot * n;
+  output.color = (position.xyz + cellPos) / 2;
 
-  pos.z = pos.z * 0.25 + 0.5;
+  output.p = output.p / pu.bufferDim * 2;
+  output.p *= clamp(state - pu.displayMin, 0, pu.sizeMax);
+  output.p += cellPos * 2 - 1;
+  output.p /= sr3;
 
-  output.position = vec4f(pos, 1);
-  output.normal = vec4f(n, 1);
-  output.cv = pos.xy;
-  output.v = pos.xyz;
-  output.uv = output.cv * 0.5 + 0.5;
+  var rot = id3;
+  rot = trot3m(rot, unit.xyy, gu.totalTime * pu.rotX);
+  rot = trot3m(rot, unit.yxy, gu.totalTime * pu.rotY);
+  rot = trot3m(rot, unit.yyx, gu.totalTime * pu.rotZ);
+
+  output.p = stdCubic * rot *  output.p;
+  output.n = rot * output.n;
+
+  var vertPos = output.p * unit.xxz;
+  vertPos.z = vertPos.z * 0.25 + 0.5;
+  output.position = vec4f(vertPos, 1);
   return output;
 }
 
@@ -159,30 +130,26 @@ fn fragmentBackground(data: VertexData) -> @location(0) vec4f {
 
 @fragment
 fn fragmentMain(data: CubeVertexData) -> @location(0) vec4f {
-  var d = dot(data.normal, normalize(unit.yxzy));
-  var sd = dot(data.normal, normalize(unit.xxzy));
+  var dx = max(0, dot(data.n, unit.xyy));
+  var dy = max(0, dot(data.n, unit.yxy));
+  var dz = max(0, dot(data.n, unit.yyx));
 
-  d = abs(d) * 1;
-  sd = sd * sd * sd;
-  sd = clamp(sd/1, 0., 1.);
   var c = data.color;
+  var l = dz * 1 + dx * 0.5 + dy * 0.25;
 
-  c = c * d;
   c = rgb2hsv3(c);
-  c.x += length(data.v * 2);
-  c.y = max(0.25, c.y);// + sd;
-  c.z = max(0.25, c.z) + sd;
+  c.x += length(data.p * 2);
+  c.z = 1;
 
-  var cmax = amax3(data.cell);
-  var cmin = amin3(data.cell);
-  c.y = select(c.y, 0, cmin == 0 || cmax == pu.bufferDim - 1);
+  c.y = select(
+    1.,
+    0.,
+    amin3(data.cell) == 0 || amax3(data.cell) == pu.bufferDim - 1
+  );
+
   c = hsv2rgb3(c);
-  c *= 1.1;
-
-  var ambient = htWhite * 0.25;
-  var diffuse = data.normal.xyz * 0.75;
-  var specFact = pow(2, 6);
-  var spec = mix(diffuse, unit.xxx, specFact/1024);
+  c *= l;
+  c *= htWhite;
 
   return vec4f(c, 1);
 }
@@ -198,7 +165,7 @@ fn fragmentTest(data: VertexData) -> @location(0) vec4f {
   return vec4f(vec3f(s) + vec3f(v/64., w.x/8) / 2, 1);
 }
 
-@compute @workgroup_size(4, 4, 4)
+@compute @workgroup_size($WORKGROUP_SIZE, $WORKGROUP_SIZE, $WORKGROUP_SIZE)
 fn computeMain(
   @builtin(global_invocation_id) globalIdx : vec3u,
   // @builtin(workgroup_id) workgroupIdx : vec3u,
@@ -210,24 +177,24 @@ fn computeMain(
   // var e = 0;
   // var c = 0;
   var ss = 0.;
-  var es = 0.;
-  var cs = 0.;
+  // var es = 0.;
+  // var cs = 0.;
   var v : f32;
   for (var i = 0; i < 6; i++) {
     var samp = sampleCell(p + sides[i]);
     // s += i32(step(1, samp)) << u32(i);
     ss += step(1, samp);
   }
-  for (var i = 0; i < 12; i++) {
-    var samp = sampleCell(p + edges[i]);
-    // e += i32(step(1, samp)) << u32(i);
-    es += samp;
-  }
-  for (var i = 0; i < 8; i++) {
-    var samp = sampleCell(p + corners[i]);
-    // c += i32(step(1, samp)) << u32(i);
-    cs += samp;
-  }
+  // for (var i = 0; i < 12; i++) {
+  //   var samp = sampleCell(p + edges[i]);
+  //   // e += i32(step(1, samp)) << u32(i);
+  //   es += samp;
+  // }
+  // for (var i = 0; i < 8; i++) {
+  //   var samp = sampleCell(p + corners[i]);
+  //   // c += i32(step(1, samp)) << u32(i);
+  //   cs += samp;
+  // }
   // v = select(
   //   cur - 1,
   //   cur + 1,
@@ -248,7 +215,6 @@ fn computeMain(
   //   false,
   // );
 
-  var d = es - ss;
   var cond = ss == 1 && cur == 0;
   v = f32(select(max(0, cur - 1), pu.numStates, cond));
   output[fromCube(p)] = select(cur, v, gu.time > 0);

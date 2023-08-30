@@ -1,5 +1,6 @@
 struct GlobalUniforms {
   time: f32,
+  totalTime: f32,
   counter: f32,
   clock: f32,
   lastClock: f32,
