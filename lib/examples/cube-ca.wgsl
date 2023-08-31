@@ -2,14 +2,14 @@
 #param WORKGROUP_SIZE 4
 
 struct ProgramUniforms {
-  bufferDim: f32,
-  bufferSize: f32,
+  gridDim: f32,
   numStates: f32,
   displayMin: f32,
   sizeMax: f32,
   rotX: f32,
   rotY: f32,
   rotZ: f32,
+  stepTime: f32,
 };
 
 struct CubeVertexData {
@@ -22,8 +22,8 @@ struct CubeVertexData {
 
 @group(1) @binding(0) var<uniform> pu : ProgramUniforms;
 
-@group(2) @binding(0) var<storage, read> input: array<f32>;
-@group(2) @binding(1) var<storage, read_write> output: array<f32>;
+@group(2) @binding(0) var<storage, read> inputBuffer: array<f32>;
+@group(2) @binding(1) var<storage, read_write> outputBuffer: array<f32>;
 
 const sides = array(
   vec3i(-1,  0,  0),
@@ -64,14 +64,14 @@ const corners = array(
 );
 
 fn fromCube(p: vec3i) -> i32 {
-  var dim = i32(pu.bufferDim);
+  var dim = i32(pu.gridDim);
   var v = (p + dim) % dim;
   var idx = v.x * dim * dim + v.y * dim + v.z;
   return idx;
 }
 
 fn toCube(idx: i32) -> vec3i {
-  var dim = i32(pu.bufferDim);
+  var dim = i32(pu.gridDim);
   var p : vec3i;
   p.x = idx / dim / dim;
   p.y = (idx / dim) % dim;
@@ -79,9 +79,9 @@ fn toCube(idx: i32) -> vec3i {
   return p;
 }
 
-fn sampleCell(p: vec3i) -> f32 {
+fn sampleCell(p: vec3i) -> vec2f {
   var idx = fromCube(p);
-  return input[idx];
+  return vec2f(inputBuffer[idx * 2], inputBuffer[idx * 2 + 1]);
 }
 
 @vertex
@@ -96,16 +96,29 @@ fn vertexCube(
   var cell = toCube(i32(instIdx));
   var state = sampleCell(cell);
 
-  output.p = position.xyz;
+  state = clamp(state - pu.displayMin, unit.yy, vec2f(pu.sizeMax));
+
+  var size = select(
+    state.x,
+    mix(
+      state.y,
+      state.x,
+      pu.stepTime,
+    ),
+    state.x - state.y != 0
+  );
+  size = smoothstep(0, pu.sizeMax, size) * pu.sizeMax;
+
+  output.p = position.xyz * 2 - 1;
   output.n = normal.xyz;
   output.cell = vec3f(cell);
 
-  var cellPos = output.cell / pu.bufferDim;
+  var cellPos = (output.cell + 0.5) / pu.gridDim;
 
-  output.color = mix(abs(position.xyz), cellPos, 0.9);
+  output.color = mix(abs(output.p), cellPos, 0.75);
 
-  output.p = output.p / pu.bufferDim * 2;
-  output.p *= clamp(state - pu.displayMin, 0, pu.sizeMax);
+  output.p = output.p / pu.gridDim;
+  output.p *= size;
   output.p += cellPos * 2 - 1;
   output.p /= sr3;
 
@@ -138,13 +151,13 @@ fn fragmentMain(data: CubeVertexData) -> @location(0) vec4f {
   var l = dz * 1 + dx * 0.5 + dy * 0.25;
 
   c = rgb2hsv3(c);
-  c.x += length(data.p * 2);
+  c.x += length(data.p);
   c.z = 1;
 
   c.y = select(
     c.y + .5,
     0.,
-    amin3(data.cell) == 0 || amax3(data.cell) == pu.bufferDim - 1
+    amin3(data.cell) == 0 || amax3(data.cell) == pu.gridDim - 1
   );
 
   c = hsv2rgb3(c);
@@ -161,7 +174,7 @@ fn fragmentTest(data: VertexData) -> @location(0) vec4f {
   var v = floor(nv * dim) % 64;
   var w = floor((nv * dim) / 64);
   var offset = w.x * 64 * 64 * 8 + w.y * 64 * 64 +  v.x * 64 + v.y;
-  var s = input[u32(offset)];
+  var s = inputBuffer[u32(offset)];
   return vec4f(vec3f(s) + vec3f(v/64., w.x/8) / 2, 1);
 }
 
@@ -172,7 +185,7 @@ fn computeMain(
   // @builtin(local_invocation_id) localIdx : vec3u
 ) {
   var p = vec3i(globalIdx.xyz);
-  var cur = sampleCell(p);
+  var cur = sampleCell(p).x;
   // var s = 0;
   // var e = 0;
   // var c = 0;
@@ -181,17 +194,17 @@ fn computeMain(
   // var cs = 0.;
   var v : f32;
   for (var i = 0; i < 6; i++) {
-    var samp = sampleCell(p + sides[i]);
+    var samp = sampleCell(p + sides[i]).x;
     // s += i32(step(1, samp)) << u32(i);
     ss += step(1, samp);
   }
   // for (var i = 0; i < 12; i++) {
-  //   var samp = sampleCell(p + edges[i]);
+  //   var samp = sampleCell(p + edges[i]).x;
   //   // e += i32(step(1, samp)) << u32(i);
   //   es += samp;
   // }
   // for (var i = 0; i < 8; i++) {
-  //   var samp = sampleCell(p + corners[i]);
+  //   var samp = sampleCell(p + corners[i]).x;
   //   // c += i32(step(1, samp)) << u32(i);
   //   cs += samp;
   // }
@@ -217,5 +230,8 @@ fn computeMain(
 
   var cond = ss == 1 && cur == 0;
   v = f32(select(max(0, cur - 1), pu.numStates, cond));
-  output[fromCube(p)] = select(cur, v, gu.time > 0);
+
+  var idx = fromCube(p);
+  outputBuffer[idx * 2 + 1] = cur;
+  outputBuffer[idx * 2] = select(cur, v, gu.time > 0);
 }

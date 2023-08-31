@@ -22,6 +22,10 @@ fn smoothstep4(a: f32, b: f32, v: vec4f) -> vec4f {
   return smoothstep(vec4f(a), vec4f(b), v);
 }
 
+fn easeCircle(x : f32) -> f32 {
+  return sqrt(1 - pow(x - 1, 2));
+}
+
 fn clamp2(v : vec2f, a : f32, b : f32) -> vec2f {
   return clamp(v, vec2f(a), vec2f(b));
 }
