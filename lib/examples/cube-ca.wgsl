@@ -9,6 +9,7 @@ struct ProgramUniforms {
   rotX: f32,
   rotY: f32,
   rotZ: f32,
+  rotStd: f32,
   stepTime: f32,
 };
 
@@ -107,7 +108,7 @@ fn vertexCube(
     ),
     state.x - state.y != 0
   );
-  size = smoothstep(0, pu.sizeMax, size) * pu.sizeMax;
+  // size = smoothstep(0, pu.sizeMax, size) * pu.sizeMax;
 
   output.p = position.xyz * 2 - 1;
   output.n = normal.xyz;
@@ -123,11 +124,15 @@ fn vertexCube(
   output.p /= sr3;
 
   var rot = id3;
-  rot = trot3m(rot, unit.xyy, gu.totalTime * pu.rotX);
-  rot = trot3m(rot, unit.yxy, gu.totalTime * pu.rotY);
-  rot = trot3m(rot, unit.yyx, gu.totalTime * pu.rotZ);
+  var transform  = id3;
+  if (pu.rotStd == 0) {
+    transform = stdCubic;
+  }
+  rot = trot3m(rot, unit.xyy * transform, gu.totalTime * pu.rotX);
+  rot = trot3m(rot, unit.yxy * transform, gu.totalTime * pu.rotY);
+  rot = trot3m(rot, unit.yyx * transform, gu.totalTime * pu.rotZ);
 
-  output.p = stdCubic * rot *  output.p;
+  output.p = stdCubic * rot * output.p;
   output.n = rot * output.n;
 
   var vertPos = output.p * unit.xxz;
@@ -164,6 +169,8 @@ fn fragmentMain(data: CubeVertexData) -> @location(0) vec4f {
   c *= l;
   c *= htWhite;
 
+  c *= clamp(2 - length(stdCubic * unit.xxx - data.p) / sr3 * 1.125, 0, 1);
+
   return vec4f(c, 1);
 }
 
@@ -174,7 +181,7 @@ fn fragmentTest(data: VertexData) -> @location(0) vec4f {
   var v = floor(nv * dim) % 64;
   var w = floor((nv * dim) / 64);
   var offset = w.x * 64 * 64 * 8 + w.y * 64 * 64 +  v.x * 64 + v.y;
-  var s = inputBuffer[u32(offset)];
+  var s = inputBuffer[u32(offset * 2)];
   return vec4f(vec3f(s) + vec3f(v/64., w.x/8) / 2, 1);
 }
 
@@ -186,52 +193,46 @@ fn computeMain(
 ) {
   var p = vec3i(globalIdx.xyz);
   var cur = sampleCell(p).x;
-  // var s = 0;
-  // var e = 0;
-  // var c = 0;
+  var s = 0;
+  var e = 0;
+  var c = 0;
   var ss = 0.;
-  // var es = 0.;
-  // var cs = 0.;
-  var v : f32;
+  var es = 0.;
+  var cs = 0.;
+  var next : f32;
   for (var i = 0; i < 6; i++) {
     var samp = sampleCell(p + sides[i]).x;
-    // s += i32(step(1, samp)) << u32(i);
+    s += i32(step(1, samp)) << u32(i);
     ss += step(1, samp);
   }
-  // for (var i = 0; i < 12; i++) {
-  //   var samp = sampleCell(p + edges[i]).x;
-  //   // e += i32(step(1, samp)) << u32(i);
-  //   es += samp;
-  // }
-  // for (var i = 0; i < 8; i++) {
-  //   var samp = sampleCell(p + corners[i]).x;
-  //   // c += i32(step(1, samp)) << u32(i);
-  //   cs += samp;
-  // }
-  // v = select(
-  //   cur - 1,
-  //   cur + 1,
-  //   s == (1 | 2) ||
-  //   s == (2 | 4) ||
-  //   s == (4 | 8) ||
-  //   s == (8 | 16) ||
-  //   s == (16 | 32) ||
-  //   s == (32 | 1) ||
+  for (var i = 0; i < 12; i++) {
+    var samp = sampleCell(p + edges[i]).x;
+    e += i32(step(1, samp)) << u32(i);
+    es += step(1, samp);
+  }
+  for (var i = 0; i < 8; i++) {
+    var samp = sampleCell(p + corners[i]).x;
+    c += i32(step(1, samp)) << u32(i);
+    cs += step(1, samp);
+  }
 
+  var cond = ss == 1 && cur == 0;
+
+  // cond = (
+  //   (ss == 1 && es == 0) ||
+  //   (ss == 0 && es == 1) ||
+  //   false
+  // ) && cur == 0;
+
+  // var pattern =
   //   s == (1 | 8) ||
   //   s == (2 | 16) ||
   //   s == (4 | 32) ||
+  //   false;
 
-  //   s == (1 | 2 | 8 | 16) ||
-  //   s == (2 | 4 | 16 | 32) ||
-  //   s == (4 | 8 | 32 | 1) ||
-  //   false,
-  // );
-
-  var cond = ss == 1 && cur == 0;
-  v = f32(select(max(0, cur - 1), pu.numStates, cond));
+  next = f32(select(max(0, cur - 1), pu.numStates, cond));
 
   var idx = fromCube(p);
   outputBuffer[idx * 2 + 1] = cur;
-  outputBuffer[idx * 2] = select(cur, v, gu.time > 0);
+  outputBuffer[idx * 2] = select(cur, next, gu.time > 0);
 }
