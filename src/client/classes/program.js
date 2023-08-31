@@ -45,6 +45,7 @@ export default class Program {
         output: {}, // Recording parameters can be overriden in dev console
         topology: 'triangle-strip',
         defaultNumVerts: 4,
+        defaultDepthTest: false,
       },
       uniforms: {},
       media: [],
@@ -162,6 +163,7 @@ export default class Program {
 
     this.globalUniforms = new UniformBuffer(this.device, {
       time: 0,
+      totalTime: 0,
       counter: 0,
       clock: 0,
       lastClock: 0,
@@ -215,6 +217,12 @@ export default class Program {
         addressModeW: 'repeat',
       }),
     };
+
+    this.depthTexture = this.device.createTexture({
+      size: settings.dim,
+      format: 'depth24plus',
+      usage: GPUTextureUsage.RENDER_ATTACHMENT,
+    });
 
     this.drawTexture = this.device.createTexture({
       size: settings.dim,
@@ -467,6 +475,7 @@ export default class Program {
     const period = this.globalUniforms.get('period');
     const clock = this.globalUniforms.get('clock');
     this.globalUniforms.set('time', (this.counter / period) % 1);
+    this.globalUniforms.set('totalTime', this.counter / period);
     this.globalUniforms.set('counter', this.counter);
     // This is independent of counter increment
     this.globalUniforms.set('lastClock', clock);

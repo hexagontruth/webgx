@@ -38,18 +38,25 @@ export default class DataBuffer {
     return { signed, typeSize, dataConstructor };
   }
 
+  static parseUsage(usage) {
+    if (typeof usage == 'string') {
+      return DataBuffer[usage];
+    }
+    else if (Array.isArray(usage)) {
+      return usage.reduce((a, e) => a | DataBuffer.parseUsage(e), 0);
+    }
+    else {
+      return usage;
+    }
+  }
+
   constructor(device, length, opts={}) {
     this.device = device;
     this.length = length;
 
-    if (typeof opts.usage == 'string') {
-      this.usage = DataBuffer[opts.usage];
-    }
-    else {
-      this.usage = opts.usage ?? this.constructor.defaultUsage;
-    }
-
     this.type = opts.type || this.constructor.defaultType;
+
+    this.usage = DataBuffer.parseUsage(opts.usage) ?? this.constructor.defaultUsage;
 
     Object.assign(this, DataBuffer.parseType(this.type));
 

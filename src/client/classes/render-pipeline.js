@@ -5,16 +5,18 @@ export default class RenderPipeline extends Pipeline {
     return {
       vertexBuffers: [],
       numVerts: null,
+      depthTest: null,
     };
   }
 
   async init() {
     await super.init();
     this.vertexBuffers = this.settings.vertexBuffers;
-    this.numVerts =
+    this.settings.numVerts =
       this.vertexBuffers[0]?.numVerts ||
       this.settings.numVerts ||
       this.program.settings.defaultNumVerts;
+    this.settings.depthTest = this.settings.depthTest || this.program.settings.defaultDepthTest;
 
     let locationIdx = 0;
     const vertexBufferLayouts = this.vertexBuffers.map((vertexBuffer) => {
@@ -42,6 +44,11 @@ export default class RenderPipeline extends Pipeline {
         topology: this.settings.topology ?? this.program.settings.topology,
         unclippedDepth: this.program.features.includes('depth-clip-control') ? true : undefined,
       },
+      depthStencil: this.settings.depthTest? {
+        depthWriteEnabled: true,
+        depthCompare: 'less-equal',
+        format: 'depth24plus',
+       } : undefined,
       layout: this.device.createPipelineLayout({
           bindGroupLayouts: [
             this.program.swapGroupLayout,
@@ -53,7 +60,7 @@ export default class RenderPipeline extends Pipeline {
   }
 
   createPassDescriptor() {
-    return {
+    const descriptor = {
       colorAttachments: [
         {
           clearValue: { r: 1, g: 0, b: 1, a: 1.0 },
@@ -63,6 +70,15 @@ export default class RenderPipeline extends Pipeline {
         },
       ],
     };
+    if (this.settings.depthTest) {
+      descriptor.depthStencilAttachment = {
+        view: this.program.depthTexture.createView(),
+        depthClearValue: 1,
+        depthLoadOp: 'clear',
+        depthStoreOp: 'store',
+      };
+    }
+    return descriptor;
   }
 
   createPassEncoder(commandEncoder) {
@@ -78,7 +94,7 @@ export default class RenderPipeline extends Pipeline {
   }
 
   draw(commandEncoder, vertCount, instCount=1, vertStart=0, instStart=0) {
-    vertCount = vertCount ?? this.numVerts - vertStart;
+    vertCount = vertCount ?? this.settings.numVerts - vertStart;
 
     const passEncoder = this.createPassEncoder(commandEncoder);
     passEncoder.draw(vertCount, instCount, vertStart, instStart);

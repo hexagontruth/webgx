@@ -22,6 +22,10 @@ fn smoothstep4(a: f32, b: f32, v: vec4f) -> vec4f {
   return smoothstep(vec4f(a), vec4f(b), v);
 }
 
+fn easeCircle(x : f32) -> f32 {
+  return sqrt(1 - pow(x - 1, 2));
+}
+
 fn clamp2(v : vec2f, a : f32, b : f32) -> vec2f {
   return clamp(v, vec2f(a), vec2f(b));
 }
@@ -191,12 +195,28 @@ fn rot3(p: vec3f, u: vec3f, a: f32) -> vec3f {
   return m * p;
 }
 
+fn rot3m(p: mat3x3<f32>, u: vec3f, a: f32) -> mat3x3<f32> {
+  var cosa = cos(a);
+  var cosa1 = 1. - cosa;
+  var sina = sin(a);
+  var m = mat3x3(
+    cosa + u.x * u.x * cosa1,         u.x * u.y * cosa1 + u.z * sina,   u.z * u.x * cosa1 - u.y * sina,
+    u.x * u.y * cosa1 - u.z * sina,   cosa + u.y * u.y * cosa1,         u.z * u.y * cosa1 + u.x * sina,
+    u.x * u.z * cosa1 + u.y * sina,   u.y * u.z * cosa1 - u.x * sina,   cosa + u.z * u.z * cosa1
+  );
+  return m * p;
+}
+
 fn trot2(p: vec2f, a: f32) -> vec2f {
   return rot2(p, a * tau);
 }
 
 fn trot3(p: vec3f, u: vec3f, a: f32) -> vec3f {
   return rot3(p, u, a * tau);
+}
+
+fn trot3m(p: mat3x3<f32>, u: vec3f, a: f32) -> mat3x3<f32> {
+  return rot3m(p, u, a * tau);
 }
 
 fn rotHex(p: vec3f, a: f32) -> vec3f {
