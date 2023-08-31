@@ -102,7 +102,7 @@ fn vertexCube(
 
   var cellPos = output.cell / pu.bufferDim;
 
-  output.color = (position.xyz + cellPos) / 2;
+  output.color = mix(abs(position.xyz), cellPos, 0.9);
 
   output.p = output.p / pu.bufferDim * 2;
   output.p *= clamp(state - pu.displayMin, 0, pu.sizeMax);
@@ -142,7 +142,7 @@ fn fragmentMain(data: CubeVertexData) -> @location(0) vec4f {
   c.z = 1;
 
   c.y = select(
-    1.,
+    c.y + .5,
     0.,
     amin3(data.cell) == 0 || amax3(data.cell) == pu.bufferDim - 1
   );
