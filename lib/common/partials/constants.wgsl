@@ -35,7 +35,7 @@ const stdCubic = mat3x3(
 const hex2cart = mat3x2(
   0,   0,
   1,   0,
-  0.5, 1 / sr3,
+  0.5, sr3 / 2,
 );
 
 const cart2hex = mat2x3(
