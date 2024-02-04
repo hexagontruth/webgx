@@ -41,7 +41,6 @@ export default class Program {
         start: 0,
         stop: null,
         autoplay: null,
-        skip: 1,
         output: {}, // Recording parameters can be overriden in dev console
         topology: 'triangle-strip',
         defaultNumVerts: 4,
@@ -79,7 +78,8 @@ export default class Program {
     this.stream = null;
     this.playing = false;
     this.recording = false;
-    this.hooks = new Hook(this, ['afterCounter', 'afterStep', 'onFit']);
+    this.status = '';
+    this.hooks = new Hook(this, ['afterCounter', 'afterStep', 'afterStatus', 'onFit']);
     this.videoCapture = createElement('video', { autoplay: true });
     this.resetCounter();
   }
@@ -418,10 +418,9 @@ export default class Program {
 
   frameCond(counter) {
     const { settings } = this;
-    const skipCond = counter % settings.skip == 0;
     const startCond = counter >= settings.start;
     const stopCond = !settings.stop || counter < settings.stop;
-    return skipCond && startCond && stopCond;
+    return startCond && stopCond;
   }
 
   stopCond(counter) {
@@ -523,6 +522,11 @@ export default class Program {
     this.cur = (this.counter + 2) % 2;
     this.next = (this.counter + 1) % 2;
     this.hooks.call('afterCounter', this.counter, this.cur, this.next);
+  }
+
+  setStatus(status) {
+    this.status = status ?? '';
+    this.hooks.call('afterStatus', this.status);
   }
 
   resetCounter() {

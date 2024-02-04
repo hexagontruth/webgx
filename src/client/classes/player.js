@@ -29,6 +29,7 @@ export default class Player {
 
     this.hooks = new Hook(this, [
       'afterCounter',
+      'afterStatus',
       'onPointer',
       'beforePlayingStart',
       'afterPlayingStop',
@@ -57,6 +58,7 @@ export default class Player {
     config.put('streamFit', program.settings.streamFit);
 
     program.hooks.add('afterCounter', (...args) => this.hooks.call('afterCounter', ...args));
+    program.hooks.add('afterStatus', (...args) => this.hooks.call('afterStatus', ...args));
     program.hooks.add('afterStep', (...args) => this.afterStep(...args));
 
     config.testSet.add('screenShareEnabled', (v) => program.setStreamEnabled(v, 'screenShare'));

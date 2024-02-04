@@ -18,6 +18,7 @@ export default class App {
     recordImagesButton: 'record-images-button',
     recordVideoButton: 'record-video-button',
     counterField: 'counter-field',
+    statusField: 'status-field',
     horizontalGuide: 'horizontal-guide',
     verticalGuide: 'vertical-guide',
   };
@@ -52,6 +53,7 @@ export default class App {
     this.player = await Player.build(this.config, this.els.playerContainer);
 
     this.player.hooks.add('afterCounter', (val) => this.els.counterField.value = val);
+    this.player.hooks.add('afterStatus', (val) => this.els.statusField.value = val);
     this.player.hooks.add('beforePlayingStart', () => this.togglePlay(true));
     this.player.hooks.add('afterPlayingStop', () => this.togglePlay(false));
     this.player.hooks.add('beforeRecordingStart', () => this.toggleRecord(true));
