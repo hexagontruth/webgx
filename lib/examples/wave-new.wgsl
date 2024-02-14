@@ -60,7 +60,17 @@ fn wrapGrid(p: vec3i) -> vec3i {
     }
   }
   else if (amax3(u) == pu.gridRadius && u.z < 0) {
+    var absU = abs(u);
     u = -u;
+    u = select(
+      select(
+        u.yxz,
+        u.zyx,
+        u.y == -pu.gridRadius,
+      ),
+      u.xzy,
+      u.x == -pu.gridRadius,
+    );
   }
   return vec3i(u);
 }
@@ -76,16 +86,16 @@ fn isWrapped(u: vec3i, v: vec3i) -> bool {
 
 fn toHex(p: vec2u) -> vec3i {
   var cellDim = i32(pu.cellDim);
-  var pi = vec2i(p) - cellDim / 2;
-  var u = vec3i(pi, -pi.x - pi.y);
+  var u = vec3i(vec2i(p), 0) - cellDim / 2;
+  u.z = -u.x - u.y;
   return u;
 }
 
 fn fromHex(p: vec3i) -> vec2u {
   var cellDim = i32(pu.cellDim);
-  var u = p;
+  var u = p.xy;
   u = u + cellDim / 2;
-  return vec2u(u.xy);
+  return vec2u(u);
 }
 
 fn sampleCell(h: vec3i) -> vec4f {
@@ -143,7 +153,7 @@ fn fragmentMain(data: VertexData) -> @location(0) vec4f {
   h = h * pu.gridRadius;
   var p = interpolatedCubic(h);
   var c = unit.yyy;
-  for (var i = 0; i < 1; i++) {
+  for (var i = 0; i < 3; i++) {
     var u = p[i].xyz;
     var dist = p[i].w;
     var coord = wrapGrid(vec3i(u));
@@ -152,7 +162,7 @@ fn fragmentMain(data: VertexData) -> @location(0) vec4f {
       s.x/3-1/6.,
       1 - abs(s.y),
       (abs(s.x)) * 2.,
-    ) * 1;
+    ) * dist;
   }
   // c.x -= pu.step / 720;
   c = hsv2rgb3(c);
@@ -165,7 +175,8 @@ fn fragmentMain(data: VertexData) -> @location(0) vec4f {
 @fragment
 fn fragmentTest(data: VertexData) -> @location(0) vec4f {
   var p = vec2u(floor((data.cv * gu.cover * 0.5 + 0.5) * pu.cellDim));
-  var offset = (p.x * u32(pu.cellDim) + p.y) * 4;
+  var offset = (p.x  * u32(pu.cellDim) + p.y) * 4;
+  // return vec4f(vec2f(p)/2048, 0, 1);
   var s = vec4f(input[offset], input[offset + 1], input[offset + 2], input[offset + 3]);
   var c = s.xyz;
   return vec4f(c, 1);
@@ -181,18 +192,19 @@ fn computeMain(
   var p = globalIdx.xy;
   var hRaw = toHex(p);
   var h = wrapGrid(hRaw);
-  var cur = sampleCell(h);
+  var cur = sampleCell(hRaw);
   var radius = amax3i(h);
   var next = cur;
   var n = unit.yyyy;
 
   if (isWrapped(h, hRaw)) {
     writeCell(p, unit.yyyy);
+    // writeCell(p, next);
     return;
   }
 
   if (pu.step == 0) {
-    if (pu.noiseSeed > 0) {
+    if (pu.noiseSeed > 0 && radius < i32(pu.gridRadius) * 3/4) {
       next += computeNoise(h);
     }
     if (pu.centerSeed > 0 && radius <= i32(pu.centerRadius)) {
@@ -206,11 +218,13 @@ fn computeMain(
   }
 
   for (var i = 0; i < 6; i++) {
-    var u = wrapGrid(h + nbrs[i]);
+    var u = h + nbrs[i];
 
-    var isEdge = step(pu.gridRadius, amax3(vec3f(u)));
+    var isEdge = step(pu.gridRadius + 1, amax3(vec3f(u)));
     var wrapCoef = 1.;
     wrapCoef = mix(1, pu.wrap, isEdge);
+
+    u = wrapGrid(u);
 
     var samp = sampleCell(u);
     n += samp * wrapCoef;
