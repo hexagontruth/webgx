@@ -39,14 +39,38 @@ const nbrs = array(
 );
 
 fn wrapGrid(p: vec3i) -> vec3i {
+  // There is a more efficient way to do this
   var u = vec3f(p);
+  u *= 1 - pow(2, -16); // This is terrible
   u = hex2hex * u;
   u = u / pu.gridRadius / sr3;
   u = getCubic(u);
   u = u * pu.gridRadius * sr3;
   u = transpose(hex2hex) * u;
+
+  // Fix fp rounding errors
   u = roundCubic(u);
+
+  // We need to map all edge and corner cells to canonical coordinates
+  if (isCorner(vec3i(u)) && u.z != pu.gridRadius) {
+    u = u.yzx;
+    if (u.z != pu.gridRadius) {
+      u = u.yzx;
+    }
+  }
+  else if (amax3(u) == pu.gridRadius && u.z < 0) {
+    u = -u;
+  }
   return vec3i(u);
+}
+
+fn isCorner(p: vec3i) -> bool {
+  var u = vec3f(p);
+  return amax3(u) + amin3(u) == sum3(abs(u)) - pu.gridRadius;
+}
+
+fn isWrapped(u: vec3i, v: vec3i) -> bool {
+  return sum3(abs(vec3f(u - v))) != 0;
 }
 
 fn toHex(p: vec2u) -> vec3i {
@@ -82,6 +106,32 @@ fn writeCell(p: vec2u, v: vec4f) {
   output[offset + 3] = v.w;
 }
 
+fn computeNoise(hex: vec3i) -> vec4f {
+  var h = vec3f(hex);
+  if (amax3(h) >= pu.gridRadius) {
+    return vec4f(0, 0, 0, 0);
+  }
+  var r = pu.randomSeed;
+  var t = 0.;
+  let octaves = log2(pu.gridRadius);
+  for (var i = 0.; i < octaves; i += 1) {
+    h = h / 2;
+    var n = interpolatedCubic(h);
+    var s = 0.;
+    for (var j = 0; j < 3; j++) {
+      let nbr = vec3f(wrapGrid(vec3i(n[j].xyz)));
+      var u = hex2cart * nbr.xyz;
+      var v = vec2f(
+        cos((r.x + u.x) * 256),
+        sin((r.y + u.y) * 256),
+      );
+      s += sum2(v) * n[j].w;
+    }
+    t += s * pow(2., -octaves + i);
+  }
+  return vec4f(t, 0, 0, 0);
+}
+
 @fragment
 fn fragmentMain(data: VertexData) -> @location(0) vec4f {
   // return vec4f(1,1,0,1);
@@ -92,15 +142,16 @@ fn fragmentMain(data: VertexData) -> @location(0) vec4f {
   h = h * pu.gridRadius;
   var p = interpolatedCubic(h);
   var c = unit.yyy;
-  for (var i = 0; i < 3; i++) {
+  for (var i = 0; i < 1; i++) {
     var u = p[i].xyz;
     var dist = p[i].w;
-    var s = sampleCell(vec3i(u));
+    var coord = wrapGrid(vec3i(u));
+    var s = sampleCell(coord);
     c += vec3f(
       s.x/3-1/6.,
       1 - abs(s.y),
       (abs(s.x)) * 2.,
-    ) * dist;
+    ) * 1;
   }
   // c.x -= pu.step / 720;
   c = hsv2rgb3(c);
@@ -112,7 +163,7 @@ fn fragmentMain(data: VertexData) -> @location(0) vec4f {
 
 @fragment
 fn fragmentTest(data: VertexData) -> @location(0) vec4f {
-  var p = vec2u(round((data.cv * gu.cover * 0.5 + 0.5) * pu.cellDim));
+  var p = vec2u(floor((data.cv * gu.cover * 0.5 + 0.5) * pu.cellDim));
   var offset = (p.x * u32(pu.cellDim) + p.y) * 4;
   var s = vec4f(input[offset], input[offset + 1], input[offset + 2], input[offset + 3]);
   var c = s.xyz;
@@ -130,23 +181,24 @@ fn computeMain(
   var hRaw = toHex(p);
   var h = wrapGrid(hRaw);
   var cur = sampleCell(h);
-  var radius = amax3i(hRaw);
+  var radius = amax3i(h);
   var next = cur;
   var n = unit.yyyy;
 
-  // writeCell(p, vec4f(100, 100, 100, 100));
-  // return;
-
-  if (radius > i32(pu.gridRadius)) {
+  if (isWrapped(h, hRaw)) {
     writeCell(p, unit.yyyy);
     return;
   }
-  else if (pu.step == 0) {
+
+  if (pu.step == 0) {
+    if (pu.noiseSeed > 0) {
+      next += computeNoise(h);
+    }
     if (pu.centerSeed > 0 && radius <= i32(pu.centerRadius)) {
-      next = unit.xyyy * pow(2, pu.centerMagnitude);
+      next += unit.xyyy * pow(2, pu.centerMagnitude);
     }
     if (pu.edgeSeed > 0 && radius > i32(pu.gridRadius - pu.edgeRadius)) {
-      next = unit.xyyy * pow(2, pu.edgeMagnitude);
+      next += unit.xyyy * pow(2, pu.edgeMagnitude);
     }
     writeCell(p, next);
     return;
@@ -155,7 +207,6 @@ fn computeMain(
   for (var i = 0; i < 6; i++) {
     var u = wrapGrid(h + nbrs[i]);
 
-    // var isEdge = step(pu.gridRadius, amax3(vec3f(hRaw + nbrs[i])));
     var isEdge = step(pu.gridRadius, amax3(vec3f(u)));
     var wrapCoef = 1.;
     wrapCoef = mix(1, pu.wrap, isEdge);
@@ -175,6 +226,6 @@ fn computeMain(
   var s = (cur.x + v) * coef.z;
   s = s + tsin1(pu.step / pu.pulseFrequency) * pow(2, pu.pulseMagnitude) * pulseCoef;
 
-  next = vec4f(s, v, a, cur.x);
+  next = vec4f(s, v, a, 0);
   writeCell(p, next);
 }
