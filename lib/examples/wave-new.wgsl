@@ -41,18 +41,19 @@ const nbrs = array(
 fn wrapGrid(p: vec3i) -> vec3i {
   // There is a more efficient way to do this
   var u = vec3f(p);
-  u *= 1 - pow(2, -16); // This is terrible
-  u = hex2hex * u;
-  u = u / pu.gridRadius / sr3;
-  u = getCubic(u);
-  u = u * pu.gridRadius * sr3;
-  u = transpose(hex2hex) * u;
 
-  // Fix fp rounding errors
-  u = roundCubic(u);
+  if (amax3(u) > pu.gridRadius) {
+    u = hex2hex * u;
+    u = u / pu.gridRadius / sr3;
+    u = getCubic(u);
+    u = u * pu.gridRadius * sr3;
+    u = transpose(hex2hex) * u;
+    // Fix fp rounding errors
+    u = roundCubic(u);
+  }
 
   // We need to map all edge and corner cells to canonical coordinates
-  if (isCorner(vec3i(u)) && u.z != pu.gridRadius) {
+  if (isCorner(vec3i(u))) {
     u = u.yzx;
     if (u.z != pu.gridRadius) {
       u = u.yzx;
@@ -66,7 +67,7 @@ fn wrapGrid(p: vec3i) -> vec3i {
 
 fn isCorner(p: vec3i) -> bool {
   var u = vec3f(p);
-  return amax3(u) + amin3(u) == sum3(abs(u)) - pu.gridRadius;
+  return amax3(u) + amin3(u) + pu.gridRadius == sum3(abs(u));
 }
 
 fn isWrapped(u: vec3i, v: vec3i) -> bool {
@@ -220,7 +221,6 @@ fn computeMain(
   pulseCoef *= step(pu.pulseMinRadius, f32(radius));
   pulseCoef *= (1 - step(pu.pulseMaxRadius, f32(radius)));
 
-  // n.x = n.x - pow(2, -10) * mix(-1, 1, step(0, n.x));
   var a = (n.x - cur.x * 6) * coef.x;
   var v = (cur.y + a) * coef.y;
   var s = (cur.x + v) * coef.z;
