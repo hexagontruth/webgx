@@ -551,6 +551,14 @@ fn qw4(n: vec4f, q: f32, w: f32) -> vec4f {
   return smoothstep(vec4f(w/2. + q/2.), vec4f(w/2. - q/2.), abs(n));
 }
 
-fn qwp(n: f32, q: f32, w: f32) -> f32 {
+fn qwp1(n: f32, q: f32, w: f32) -> f32 {
   return qw1(abs(fract(n + 0.5) - 0.5), q, w);
+}
+
+fn qwp2(n: vec2f, q: f32, w: f32) -> vec2f {
+  return qw2(abs(fract(n + 0.5) - 0.5), q, w);
+}
+
+fn qwp3(n: vec3f, q: f32, w: f32) -> vec3f {
+  return qw3(abs(fract(n + 0.5) - 0.5), q, w);
 }

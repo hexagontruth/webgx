@@ -4,8 +4,10 @@ struct ProgramUniforms {
   step: f32,
   cellDim: f32,
   gridRadius: f32,
-  scale: f32,
   wrap: f32,
+  scale: f32,
+  interpolateCells: f32,
+  showGrid: f32,
   pulse: f32,
   pulseMinRadius: f32,
   pulseMaxRadius: f32,
@@ -20,7 +22,7 @@ struct ProgramUniforms {
   edgeSeed: f32,
   edgeRadius: f32,
   edgeMagnitude: f32,
-  randomSeed: vec2f,
+  randomSeed: vec4f,
   waveCoef: vec3f,
 };
 
@@ -53,7 +55,7 @@ fn wrapGrid(p: vec3i) -> vec3i {
   }
 
   // We need to map all edge and corner cells to canonical coordinates
-  if (isCorner(vec3i(u))) {
+  if (isCorner(vec3i(u)) && u.z != pu.gridRadius) {
     u = u.yzx;
     if (u.z != pu.gridRadius) {
       u = u.yzx;
@@ -117,30 +119,24 @@ fn writeCell(p: vec2u, v: vec4f) {
   output[offset + 3] = v.w;
 }
 
-fn computeNoise(hex: vec3i) -> vec4f {
-  var h = vec3f(hex);
-  if (amax3(h) >= pu.gridRadius) {
-    return vec4f(0, 0, 0, 0);
-  }
-  var r = pu.randomSeed;
-  var t = 0.;
-  let octaves = log2(pu.gridRadius);
-  for (var i = 0.; i < octaves; i += 1) {
-    h = h / 2;
-    var n = interpolatedCubic(h);
-    var s = 0.;
+fn computeNoise(p: vec3i) -> vec4f {
+  var h = vec3f(p) / pu.gridRadius;
+  var r = pu.randomSeed.xyz;
+  var n = unit.yyy;
+  for (var i = 0.; i < pu.noiseDepth; i += 1) {
+    var octave = pow(2, i);
+    var p = interpolatedCubic(h * octave * 2);
+    var s = unit.yyy;
+
     for (var j = 0; j < 3; j++) {
-      let nbr = vec3f(wrapGrid(vec3i(n[j].xyz)));
-      var u = hex2cart * nbr.xyz;
-      var v = vec2f(
-        cos((r.x + u.x) * 256),
-        sin((r.y + u.y) * 256),
-      );
-      s += sum2(v) * n[j].w;
+      let u = p[j].xyz / octave / 2;
+      let dist = p[j].w;
+      s += tsin3(r + u * i) * tsin3(u) * dist;
     }
-    t += s * pow(2., -octaves + i);
+
+    n += s / octave / 2;
   }
-  return vec4f(t, 0, 0, 0);
+  return vec4f(sum3(n) * pow(2, pu.noiseMagnitude), 0, 0, 0);
 }
 
 @fragment
@@ -151,9 +147,14 @@ fn fragmentMain(data: VertexData) -> @location(0) vec4f {
   var h = hex * pu.scale;
   h = wrapCubic(h);
   h = h * pu.gridRadius;
-  var p = interpolatedCubic(h);
   var c = unit.yyy;
-  for (var i = 0; i < 3; i++) {
+
+  var p = interpolatedCubic(h);
+  var interpCount = 1 + i32(pu.interpolateCells) * 2;
+  var gridDist = amax3(hex2hex * getCubic(h)) * sr3;
+  var gridScale = 4 / amin2(gu.size) * pu.gridRadius * 2 * pu.scale / ap;
+
+  for (var i = 0; i < interpCount; i++) {
     var u = p[i].xyz;
     var dist = p[i].w;
     var coord = wrapGrid(vec3i(u));
@@ -164,21 +165,28 @@ fn fragmentMain(data: VertexData) -> @location(0) vec4f {
       (abs(s.x)) * 2.,
     ) * dist;
   }
-  // c.x -= pu.step / 720;
+
+  c /= select(1, p[0].w, interpCount == 1);
+
   c = hsv2rgb3(c);
+  c += qw1(1 - gridDist, gridScale / 4, gridScale) * pu.showGrid;
   c *= htWhite;
-  // c = sampleCell(vec3i(p[0].xyz)).xyz;
-  // c = hsv2rgb3(vec3(c.x/6, 1, c.x*2));
+
   return vec4f(c, 1);
 }
 
 @fragment
 fn fragmentTest(data: VertexData) -> @location(0) vec4f {
-  var p = vec2u(floor((data.cv * gu.cover * 0.5 + 0.5) * pu.cellDim));
+  var uv = data.cv * gu.cover * 0.5 + 0.5;
+  var gridScale = 2 / amin2(gu.size) * pu.cellDim;
+
+  var p = vec2u(floor(uv * pu.cellDim));
   var offset = (p.x  * u32(pu.cellDim) + p.y) * 4;
-  // return vec4f(vec2f(p)/2048, 0, 1);
+
   var s = vec4f(input[offset], input[offset + 1], input[offset + 2], input[offset + 3]);
+
   var c = s.xyz;
+  c += amax2(qwp2(uv * pu.cellDim, gridScale / 4, gridScale)) * pu.showGrid;
   return vec4f(c, 1);
 }
 
@@ -204,7 +212,7 @@ fn computeMain(
   }
 
   if (pu.step == 0) {
-    if (pu.noiseSeed > 0 && radius < i32(pu.gridRadius) * 3/4) {
+    if (pu.noiseSeed > 0) {
       next += computeNoise(h);
     }
     if (pu.centerSeed > 0 && radius <= i32(pu.centerRadius)) {
