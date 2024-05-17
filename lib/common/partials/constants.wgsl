@@ -5,6 +5,8 @@ const sr2 = pow(2, 0.5);
 const sr3 = pow(3, 0.5);
 const ap = sr3/2;
 const unit = vec3f(1, 0, -1);
+const epsilon = 1. / pow(2, 16);
+const epsilonHex = vec3f(-epsilon / 2, -epsilon / 2, epsilon);
 
 const htWhite = 1. - vec3f(1./36., 1./24., 1./12.);
 

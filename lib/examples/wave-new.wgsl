@@ -40,46 +40,52 @@ const nbrs = array(
   vec3i( 1, -1,  0),
 );
 
-fn wrapGrid(p: vec3i) -> vec3i {
+fn wrapGridTo(p: vec3i, radius: f32) -> vec3i {
   // There is a more efficient way to do this
   var u = vec3f(p);
 
-  if (amax3(u) > pu.gridRadius) {
+  if (amax3(u) > radius) {
     u = hex2hex * u;
-    u = u / pu.gridRadius / sr3;
+    u = u / radius / sr3;
     u = getCubic(u);
-    u = u * pu.gridRadius * sr3;
+    u = u * radius * sr3;
     u = transpose(hex2hex) * u;
     // Fix fp rounding errors
     u = roundCubic(u);
   }
 
   // We need to map all edge and corner cells to canonical coordinates
-  if (isCorner(vec3i(u)) && u.z != pu.gridRadius) {
+  if (isCorner(u, radius) && u.z != radius) {
     u = u.yzx;
-    if (u.z != pu.gridRadius) {
+    if (u.z != radius) {
       u = u.yzx;
     }
   }
-  else if (amax3(u) == pu.gridRadius && u.z < 0) {
-    var absU = abs(u);
+  else if (amax3(u) == radius && u.z < 0) {
     u = -u;
     u = select(
       select(
         u.yxz,
         u.zyx,
-        u.y == -pu.gridRadius,
+        u.y == -radius,
       ),
       u.xzy,
-      u.x == -pu.gridRadius,
+      u.x == -radius,
     );
   }
   return vec3i(u);
 }
 
-fn isCorner(p: vec3i) -> bool {
-  var u = vec3f(p);
-  return amax3(u) + amin3(u) + pu.gridRadius == sum3(abs(u));
+fn wrapGrid(p: vec3i) -> vec3i {
+  return wrapGridTo(p, pu.gridRadius);
+}
+
+fn wrapGridf(p: vec3f, radius: f32) -> vec3f {
+  return vec3f(wrapGridTo(vec3i(round(p)), radius));
+}
+
+fn isCorner(p: vec3f, radius: f32) -> bool {
+  return max3(p) == radius && min3(p) == -radius;
 }
 
 fn isWrapped(u: vec3i, v: vec3i) -> bool {
@@ -119,35 +125,35 @@ fn writeCell(p: vec2u, v: vec4f) {
   output[offset + 3] = v.w;
 }
 
-fn computeNoise(p: vec3i) -> vec4f {
+fn computeNoise(p: vec3i) -> f32 {
   var h = vec3f(p) / pu.gridRadius;
   var r = pu.randomSeed.xyz;
   var n = unit.yyy;
+  var li = 0.;
   for (var i = 0.; i < pu.noiseDepth; i += 1) {
-    var octave = pow(2, i);
-    var p = interpolatedCubic(h * octave * 2);
+    var octave = pow(2, i + 1);
+    var p = interpolatedCubic(h * octave + epsilonHex);
+    var dist = vec3f(p[0].w, p[1].w, p[2].w);
     var s = unit.yyy;
 
     for (var j = 0; j < 3; j++) {
-      let u = p[j].xyz / octave / 2;
-      let dist = p[j].w;
-      s += tsin3(r + u * i) * tsin3(u) * dist;
+      var u = wrapGridf(p[j].xyz, octave);
+      s += tsin3(u * r + dist[j] * 1 + r) * dist[j];
     }
-
-    n += s / octave / 2;
+    n += s / octave;
   }
-  return vec4f(sum3(n) * pow(2, pu.noiseMagnitude), 0, 0, 0);
+  return tsin1(sum3(n) / 3.) * pow(2, pu.noiseMagnitude);
 }
 
 @fragment
 fn fragmentMain(data: VertexData) -> @location(0) vec4f {
-  // return vec4f(1,1,0,1);
-  // return hsv2rgb(vec4(pu.step / 6, 1, 1, 1));
   var hex = cart2hex * (data.cv * gu.cover);
   var h = hex * pu.scale;
   h = wrapCubic(h);
   h = h * pu.gridRadius;
+  var s : array<vec3f, 3>;
   var c = unit.yyy;
+  var dist = unit.yyy;
 
   var p = interpolatedCubic(h);
   var interpCount = 1 + i32(pu.interpolateCells) * 2;
@@ -156,21 +162,23 @@ fn fragmentMain(data: VertexData) -> @location(0) vec4f {
 
   for (var i = 0; i < interpCount; i++) {
     var u = p[i].xyz;
-    var dist = p[i].w;
     var coord = wrapGrid(vec3i(u));
-    var s = sampleCell(coord);
-    c += vec3f(
-      s.x/3-1/6.,
-      1 - abs(s.y),
-      (abs(s.x)) * 2.,
-    ) * dist;
+    var samp = sampleCell(coord).xyz;
+    s[i] = vec3f(
+      samp.x/3-1/6.,
+      1 - abs(samp.y),
+      (abs(samp.x)) * 2.,
+    );
+    dist[i] = p[i].w;
   }
-
-  c /= select(1, p[0].w, interpCount == 1);
+  c = s[0] * dist.x + s[1] * dist.y + s[2] * dist.z;
+  c = select(c, s[0], interpCount == 1);
 
   c = hsv2rgb3(c);
-  c += qw1(1 - gridDist, gridScale / 4, gridScale) * pu.showGrid;
+  c += qw1(1 - gridDist, gridScale / 4, gridScale) * pu.showGrid * 0.25;
   c *= htWhite;
+
+  // c = p[0].xyz/pu.gridRadius;
 
   return vec4f(c, 1);
 }
@@ -213,7 +221,7 @@ fn computeMain(
 
   if (pu.step == 0) {
     if (pu.noiseSeed > 0) {
-      next += computeNoise(h);
+      next.x += computeNoise(h);
     }
     if (pu.centerSeed > 0 && radius <= i32(pu.centerRadius)) {
       next += unit.xyyy * pow(2, pu.centerMagnitude);
