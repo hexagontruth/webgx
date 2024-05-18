@@ -21,17 +21,6 @@ const nbrs = array(
   vec3i( 1, -1,  0),
 );
 
-fn wrapGrid(p: vec3i) -> vec3i {
-  var u = vec3f(p);
-  u = hex2hex * u;
-  u = u / pu.gridRadius / sr3;
-  u = getCubic(u);
-  u = u * pu.gridRadius * sr3;
-  u = transpose(hex2hex) * u;
-  u = roundCubic(u);
-  return vec3i(u);
-}
-
 fn toHex(p: vec2u) -> vec3i {
   var bufferDim = i32(pu.bufferDim);
   var pi = vec2i(p) - bufferDim / 2;
@@ -70,7 +59,7 @@ fn colorMix(s: f32) -> vec3f {
 @fragment
 fn fragmentMain(data: VertexData) -> @location(0) vec4f {
   var hex = cart2hex * (data.cv * gu.cover);
-  var h = wrapCubic(hex);
+  var h = wrapCubic(hex, 1);
   h = roundCubic(h * pu.gridRadius);
   var s = sampleCell(vec3i(h));
   var c = colorMix(s);
@@ -95,11 +84,11 @@ fn computeMain(
   var size = i32(pu.bufferDim);
   var p = globalIdx.xy;
   var h = toHex(p);
-  h = wrapGrid(h);
+  h = wrapGrid(h, pu.gridRadius);
   var cur = sampleCell(h);
   var s = 0;
   for (var i = 0; i < 6; i++) {
-    var u = wrapGrid(h + nbrs[i]);
+    var u = wrapGrid(h + nbrs[i], pu.gridRadius);
     var samp = sampleCell(u);
     s += i32(step(1, samp)) << u32(i);
   }

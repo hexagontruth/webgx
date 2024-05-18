@@ -40,58 +40,6 @@ const nbrs = array(
   vec3i( 1, -1,  0),
 );
 
-fn wrapGridTo(p: vec3i, radius: f32) -> vec3i {
-  // There is a more efficient way to do this
-  var u = vec3f(p);
-
-  if (amax3(u) > radius) {
-    u = hex2hex * u;
-    u = u / radius / sr3;
-    u = getCubic(u);
-    u = u * radius * sr3;
-    u = transpose(hex2hex) * u;
-    // Fix fp rounding errors
-    u = roundCubic(u);
-  }
-
-  // We need to map all edge and corner cells to canonical coordinates
-  if (isCorner(u, radius) && u.z != radius) {
-    u = u.yzx;
-    if (u.z != radius) {
-      u = u.yzx;
-    }
-  }
-  else if (amax3(u) == radius && u.z < 0) {
-    u = -u;
-    u = select(
-      select(
-        u.yxz,
-        u.zyx,
-        u.y == -radius,
-      ),
-      u.xzy,
-      u.x == -radius,
-    );
-  }
-  return vec3i(u);
-}
-
-fn wrapGrid(p: vec3i) -> vec3i {
-  return wrapGridTo(p, pu.gridRadius);
-}
-
-fn wrapGridf(p: vec3f, radius: f32) -> vec3f {
-  return vec3f(wrapGridTo(vec3i(round(p)), radius));
-}
-
-fn isCorner(p: vec3f, radius: f32) -> bool {
-  return max3(p) == radius && min3(p) == -radius;
-}
-
-fn isWrapped(u: vec3i, v: vec3i) -> bool {
-  return sum3(abs(vec3f(u - v))) != 0;
-}
-
 fn toHex(p: vec2u) -> vec3i {
   var cellDim = i32(pu.cellDim);
   var u = vec3i(vec2i(p), 0) - cellDim / 2;
@@ -137,7 +85,7 @@ fn computeNoise(p: vec3i) -> f32 {
     var s = unit.yyy;
 
     for (var j = 0; j < 3; j++) {
-      var u = wrapGridf(p[j].xyz, octave);
+      var u = wrapCubic(p[j].xyz, octave);
       s += tsin3(u * r + dist[j] * 1 + r) * dist[j];
     }
     n += s / octave;
@@ -149,7 +97,7 @@ fn computeNoise(p: vec3i) -> f32 {
 fn fragmentMain(data: VertexData) -> @location(0) vec4f {
   var hex = cart2hex * (data.cv * gu.cover);
   var h = hex * pu.scale;
-  h = wrapCubic(h);
+  h = wrapCubic(h, 1);
   h = h * pu.gridRadius;
   var s : array<vec3f, 3>;
   var c = unit.yyy;
@@ -162,7 +110,7 @@ fn fragmentMain(data: VertexData) -> @location(0) vec4f {
 
   for (var i = 0; i < interpCount; i++) {
     var u = p[i].xyz;
-    var coord = wrapGrid(vec3i(u));
+    var coord = wrapGridUnique(vec3i(u), pu.gridRadius);
     var samp = sampleCell(coord).xyz;
     s[i] = vec3f(
       samp.x/3-1/6.,
@@ -207,7 +155,7 @@ fn computeMain(
   var size = i32(pu.cellDim);
   var p = globalIdx.xy;
   var hRaw = toHex(p);
-  var h = wrapGrid(hRaw);
+  var h = wrapGridUnique(hRaw, pu.gridRadius);
   var cur = sampleCell(hRaw);
   var radius = amax3i(h);
   var next = cur;
@@ -240,7 +188,7 @@ fn computeMain(
     var wrapCoef = 1.;
     wrapCoef = mix(1, pu.wrap, isEdge);
 
-    u = wrapGrid(u);
+    u = wrapGridUnique(u, pu.gridRadius);
 
     var samp = sampleCell(u);
     n += samp * wrapCoef;
