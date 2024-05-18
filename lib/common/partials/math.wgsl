@@ -73,11 +73,65 @@ fn getCubic(p: vec3f) -> vec3f {
   return p - roundCubic(p);
 }
 
-fn wrapCubic(p: vec3f) -> vec3f {
-  var u = p;
-  u = hex2hex * u;
-  u = getCubic(u / sr3) * sr3;
+fn wrapCubic(p: vec3f, radius: f32) -> vec3f {
+  var u = hex2hex * p;
+  u = u / radius / sr3;
+  u = getCubic(u);
+  u = u * radius * sr3;
   u = transpose(hex2hex) * u;
+  return u;
+}
+
+fn wrapGrid(p: vec3i, radius: f32) -> vec3i {
+  var u = wrapCubic(vec3f(p), radius);
+  u = roundCubic(u);
+  return vec3i(u);
+}
+
+fn wrapGridUnique(p: vec3i, radius: f32) -> vec3i {
+  // There is a more efficient way to do this
+  // But I don't want to do it
+
+  var u = vec3f(p);
+
+  if (amax3(u) > radius) {
+    u = vec3f(wrapGrid(p, radius));
+  }
+
+  // Is corner and not in canonical z+ location
+  if (max3(u) == radius && min3(u) == -radius && u.z != radius) {
+    u = u.yzx;
+    if (u.z != radius) {
+      u = u.yzx;
+    }
+  }
+  // Is non-corner z- edge
+  else if (amax3(u) == radius && u.z < 0) {
+    u = -u;
+    u = select(
+      select(
+        u.yxz,
+        u.zyx,
+        u.y == -radius,
+      ),
+      u.xzy,
+      u.x == -radius,
+    );
+  }
+  return vec3i(u);
+}
+
+fn isWrapped(u: vec3i, v: vec3i) -> bool {
+  return sum3(abs(vec3f(u - v))) != 0;
+}
+
+fn toHex(p: vec2i, dim: i32) -> vec3i {
+  var u = p - dim / 2;
+  return vec3i(u, -u.x - u.y);
+}
+
+fn fromHex(p: vec3i, dim: i32) -> vec2i {
+  var u = p.xy + dim / 2;
   return u;
 }
 
@@ -551,6 +605,14 @@ fn qw4(n: vec4f, q: f32, w: f32) -> vec4f {
   return smoothstep(vec4f(w/2. + q/2.), vec4f(w/2. - q/2.), abs(n));
 }
 
-fn qwp(n: f32, q: f32, w: f32) -> f32 {
+fn qwp1(n: f32, q: f32, w: f32) -> f32 {
   return qw1(abs(fract(n + 0.5) - 0.5), q, w);
+}
+
+fn qwp2(n: vec2f, q: f32, w: f32) -> vec2f {
+  return qw2(abs(fract(n + 0.5) - 0.5), q, w);
+}
+
+fn qwp3(n: vec3f, q: f32, w: f32) -> vec3f {
+  return qw3(abs(fract(n + 0.5) - 0.5), q, w);
 }
