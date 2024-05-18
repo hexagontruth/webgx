@@ -40,23 +40,10 @@ const nbrs = array(
   vec3i( 1, -1,  0),
 );
 
-fn toHex(p: vec2u) -> vec3i {
-  var cellDim = i32(pu.cellDim);
-  var u = vec3i(vec2i(p), 0) - cellDim / 2;
-  u.z = -u.x - u.y;
-  return u;
-}
-
-fn fromHex(p: vec3i) -> vec2u {
-  var cellDim = i32(pu.cellDim);
-  var u = p.xy;
-  u = u + cellDim / 2;
-  return vec2u(u);
-}
-
 fn sampleCell(h: vec3i) -> vec4f {
-  var p = fromHex(h);
-  var offset = (p.x * u32(pu.cellDim) + p.y) * 4;
+  var dim = i32(pu.cellDim);
+  var p = fromHex(h, dim);
+  var offset = (p.x * dim + p.y) * 4;
   return vec4f(
     input[offset],
     input[offset + 1],
@@ -65,8 +52,9 @@ fn sampleCell(h: vec3i) -> vec4f {
   );
 }
 
-fn writeCell(p: vec2u, v: vec4f) {
-  var offset = (p.x * u32(pu.cellDim) + p.y) * 4;
+fn writeCell(p: vec2i, v: vec4f) {
+  var dim = i32(pu.cellDim);
+  var offset = (p.x * dim + p.y) * 4;
   output[offset] = v.x;
   output[offset + 1] = v.y;
   output[offset + 2] = v.z;
@@ -96,8 +84,7 @@ fn computeNoise(p: vec3i) -> f32 {
 @fragment
 fn fragmentMain(data: VertexData) -> @location(0) vec4f {
   var hex = cart2hex * (data.cv * gu.cover);
-  var h = hex * pu.scale;
-  h = wrapCubic(h, 1);
+  var h = wrapCubic(hex * pu.scale, 1);
   h = h * pu.gridRadius;
   var s : array<vec3f, 3>;
   var c = unit.yyy;
@@ -153,8 +140,8 @@ fn computeMain(
   // @builtin(local_invocation_id) localIdx : vec3u
 ) {
   var size = i32(pu.cellDim);
-  var p = globalIdx.xy;
-  var hRaw = toHex(p);
+  var p = vec2i(globalIdx.xy);
+  var hRaw = toHex(p, size);
   var h = wrapGridUnique(hRaw, pu.gridRadius);
   var cur = sampleCell(hRaw);
   var radius = amax3i(h);

@@ -1,8 +1,9 @@
 #include /common/partials/std-header-vertex
 
 struct ProgramUniforms {
-  bufferDim: f32,
+  cellDim: f32,
   gridRadius: f32,
+  scale: f32,
   numStates: f32,
   colorDisplay: f32,
 };
@@ -21,23 +22,10 @@ const nbrs = array(
   vec3i( 1, -1,  0),
 );
 
-fn toHex(p: vec2u) -> vec3i {
-  var bufferDim = i32(pu.bufferDim);
-  var pi = vec2i(p) - bufferDim / 2;
-  var u = vec3i(pi, -pi.x - pi.y);
-  return u;
-}
-
-fn fromHex(p: vec3i) -> vec2u {
-  var bufferDim = i32(pu.bufferDim);
-  var u = p;
-  u = u + bufferDim / 2;
-  return vec2u(u.xy);
-}
-
 fn sampleCell(h: vec3i) -> f32 {
-  var p = fromHex(h);
-  return input[p.x * u32(pu.bufferDim) + p.y];
+  var dim = i32(pu.cellDim);
+  var p = fromHex(h, dim);
+  return input[p.x * dim + p.y];
 }
 
 fn colorMix(s: f32) -> vec3f {
@@ -59,7 +47,7 @@ fn colorMix(s: f32) -> vec3f {
 @fragment
 fn fragmentMain(data: VertexData) -> @location(0) vec4f {
   var hex = cart2hex * (data.cv * gu.cover);
-  var h = wrapCubic(hex, 1);
+  var h = wrapCubic(hex * pu.scale, 1);;
   h = roundCubic(h * pu.gridRadius);
   var s = sampleCell(vec3i(h));
   var c = colorMix(s);
@@ -68,8 +56,8 @@ fn fragmentMain(data: VertexData) -> @location(0) vec4f {
 
 @fragment
 fn fragmentTest(data: VertexData) -> @location(0) vec4f {
-  var p = vec2u((data.cv * gu.cover * 0.5 + 0.5) * pu.bufferDim);
-  var offset = p.x * u32(pu.bufferDim) + p.y;
+  var p = vec2u((data.cv * gu.cover * 0.5 + 0.5) * pu.cellDim);
+  var offset = p.x * u32(pu.cellDim) + p.y;
   var s = input[offset];
   var c = colorMix(s);
   return vec4f(c, 1);
@@ -81,9 +69,9 @@ fn computeMain(
   // @builtin(workgroup_id) workgroupIdx : vec3u,
   // @builtin(local_invocation_id) localIdx : vec3u
 ) {
-  var size = i32(pu.bufferDim);
-  var p = globalIdx.xy;
-  var h = toHex(p);
+  var size = i32(pu.cellDim);
+  var p = vec2i(globalIdx.xy);
+  var h = toHex(p, size);
   h = wrapGrid(h, pu.gridRadius);
   var cur = sampleCell(h);
   var s = 0;
@@ -117,5 +105,5 @@ fn computeMain(
   v = m1(v, pu.numStates);
   v = select(v, cur, gu.counter == 0);
   // v = cur;
-  output[p.x * u32(size) + p.y] = v;
+  output[p.x * size + p.y] = v;
 }
