@@ -38,6 +38,20 @@ const nbrs = array(
   vec3i(-1,  0,  1),
   vec3i( 0, -1,  1),
   vec3i( 1, -1,  0),
+
+  vec3i( 2, -1, -1),
+  vec3i( 1,  1, -2),
+  vec3i(-1,  2, -1),
+  vec3i(-2,  1,  1),
+  vec3i(-1, -1,  2),
+  vec3i( 1, -2,  1),
+
+  vec3i( 2,  0, -2),
+  vec3i( 0,  2, -2),
+  vec3i(-2,  2,  0),
+  vec3i(-2,  0,  2),
+  vec3i( 0, -2,  2),
+  vec3i( 2, -2,  0),
 );
 
 fn sampleCell(h: vec3i) -> vec4f {
@@ -73,7 +87,7 @@ fn computeNoise(p: vec3i) -> f32 {
     var s = unit.yyy;
 
     for (var j = 0; j < 3; j++) {
-      var u = wrapCubic(p[j].xyz, octave);
+      var u = vec3f(wrapGridUnique(vec3i(p[j].xyz), octave));
       s += tsin3(u * r + dist[j] * 1 + r) * dist[j];
     }
     n += s / octave;
