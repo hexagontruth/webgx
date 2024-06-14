@@ -144,8 +144,8 @@ fn hexbin(base : vec2f, s : f32) -> vec4f {
   var r = vec2f(1/sr3, 1);
   var h = r * 0.5;
 
-  var a = m2(cv, r) - h;
-  var b = m2(cv - h, r) - h;
+  var a = mv2(cv, r) - h;
+  var b = mv2(cv - h, r) - h;
   dv = select(b, a, length(a) < length(b));
   ev = (cv - dv) / res;
 
@@ -369,15 +369,31 @@ fn m1(n: f32, m: f32) -> f32 {
   return fract(n / m) * m;
 }
 
-fn m2(n: vec2f, m: vec2f) -> vec2f {
+fn m2(n: vec2f, m: f32) -> vec2f {
   return fract(n / m) * m;
 }
 
-fn m3(n: vec3f, m: vec3f) -> vec3f {
+fn m3(n: vec3f, m: f32) -> vec3f {
   return fract(n / m) * m;
 }
 
-fn m4(n: vec4f, m: vec4f) -> vec4f {
+fn m4(n: vec4f, m: f32) -> vec4f {
+  return fract(n / m) * m;
+}
+
+fn mv1(n: f32, m: f32) -> f32 {
+  return fract(n / m) * m;
+}
+
+fn mv2(n: vec2f, m: vec2f) -> vec2f {
+  return fract(n / m) * m;
+}
+
+fn mv3(n: vec3f, m: vec3f) -> vec3f {
+  return fract(n / m) * m;
+}
+
+fn mv4(n: vec4f, m: vec4f) -> vec4f {
   return fract(n / m) * m;
 }
 
@@ -467,6 +483,22 @@ fn osc3(n: vec3f) -> vec3f {
 
 fn osc4(n: vec4f) -> vec4f {
   return cos((n + 0.5) * tau) * 0.5 + 0.5;
+}
+
+fn triwave1(n: f32) -> f32 {
+  return abs(fract(n - 0.25) - 0.5) * 2. - 0.5;
+}
+
+fn triwave2(n: vec2f) -> vec2f {
+  return abs(fract(n - 0.25) - 0.5) * 2. - 0.5;
+}
+
+fn triwave3(n: vec3f) -> vec3f {
+  return abs(fract(n - 0.25) - 0.5) * 2. - 0.5;
+}
+
+fn triwave4(n: vec4f) -> vec4f {
+  return abs(fract(n - 0.25) - 0.5) * 2. - 0.5;
 }
 
 fn project2(a: vec2f, b: vec2f) -> vec2f {
