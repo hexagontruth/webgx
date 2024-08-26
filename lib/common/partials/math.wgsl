@@ -648,3 +648,23 @@ fn qwp2(n: vec2f, q: f32, w: f32) -> vec2f {
 fn qwp3(n: vec3f, q: f32, w: f32) -> vec3f {
   return qw3(abs(fract(n + 0.5) - 0.5), q, w);
 }
+
+fn qwp4(n: vec4f, q: f32, w: f32) -> vec4f {
+  return qw4(abs(fract(n + 0.5) - 0.5), q, w);
+}
+
+fn p1(n: f32, p: f32) -> f32 {
+  return (fract(n / p + 0.5) - 0.5) * p;
+}
+
+fn p2(n: vec2f, p: f32) -> vec2f {
+  return (fract(n / p + 0.5) - 0.5) * p;
+}
+
+fn p3(n: vec3f, p: f32) -> vec3f {
+  return (fract(n / p + 0.5) - 0.5) * p;
+}
+
+fn p4(n: vec4f, p: f32) -> vec4f {
+  return (fract(n / p + 0.5) - 0.5) * p;
+}
