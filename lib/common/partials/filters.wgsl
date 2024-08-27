@@ -1,4 +1,4 @@
-fn gaussianBlur(range: i32, sd: f32, uv: vec2f) -> vec4f {
+fn gaussianBlur(uv: vec2f, range: i32, sd: f32) -> vec4f {
   var s : vec4f;
   var n : vec4f;
   var d : f32;
@@ -21,7 +21,7 @@ fn medianFilter(uv: vec2f) -> vec4f {
   for (var i = 0; i < 9; i++) {
     var x = f32(i) % 3;
     var y = floor(f32(i) / 3);
-    var v = vec2f(x, y) - unit.xy;
+    var v = vec2f(x, y) - unit.xx;
     var t = texture(inputTexture, uv + v / gu.size);
     for (var j = 0; j < 4; j++) {
       var tj = t[j];
@@ -45,7 +45,7 @@ fn medianFilter(uv: vec2f) -> vec4f {
 
 fn dogFilter(uv: vec2f, sd: f32, range: i32, magnitude: f32) -> vec4f {
   var samp = texture(inputTexture, uv);
-  var g = gaussianBlur(range, sd, uv);
+  var g = gaussianBlur(uv, range, sd);
   var d = abs(samp - g);
   var c = samp - d * magnitude;
   c = clamp(c, unit.yyyy, unit.xxxx);

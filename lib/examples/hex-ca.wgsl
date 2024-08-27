@@ -47,9 +47,10 @@ fn colorMix(s: f32) -> vec3f {
 @fragment
 fn fragmentMain(data: VertexData) -> @location(0) vec4f {
   var hex = cart2hex * (data.cv * gu.cover);
-  var h = wrapCubic(hex * pu.scale, 1);;
+  var h = wrapCubic(hex * pu.scale, 1);
   h = roundCubic(h * pu.gridRadius);
-  var s = sampleCell(vec3i(h));
+  var v = wrapGridUnique(vec3i(h), pu.gridRadius);
+  var s = sampleCell(v);
   var c = colorMix(s);
   return vec4f(c, 1);
 }
@@ -72,11 +73,11 @@ fn computeMain(
   var size = i32(pu.cellDim);
   var p = vec2i(globalIdx.xy);
   var h = toHex(p, size);
-  h = wrapGrid(h, pu.gridRadius);
+  h = wrapGridUnique(h, pu.gridRadius);
   var cur = sampleCell(h);
   var s = 0;
   for (var i = 0; i < 6; i++) {
-    var u = wrapGrid(h + nbrs[i], pu.gridRadius);
+    var u = wrapGridUnique(h + nbrs[i], pu.gridRadius);
     var samp = sampleCell(u);
     s += i32(step(1, samp)) << u32(i);
   }
