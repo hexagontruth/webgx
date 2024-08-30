@@ -125,7 +125,6 @@ export default class Player {
     this.exportCtx.clearRect(0, 0, ...dim);
     this.exportCtx.drawImage(this.canvas, 0, 0, ...dim);
     const url = this.exportCanvas.toDataURL('image/png', 1);
-    // const buffer =
     return url;
   }
 
