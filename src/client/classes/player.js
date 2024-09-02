@@ -26,6 +26,7 @@ export default class Player {
     this.exportCtx = this.exportCanvas.getContext('2d');
     this.encoder = new TextEncoder();
     this.recordingStart = null;
+    this.recordedFrames = 0;
 
     this.hooks = new Hook(this, [
       'afterCounter',
@@ -105,18 +106,24 @@ export default class Player {
 
   afterStep(counter) {
     requestAnimationFrame(async() => {
-      const frameCond = this.program.frameCond(counter);
-      if (this.recording) {
-        const stopCond = this.program.stopCond(counter);
-        if (frameCond) {
+      const startCond = this.program.startCond(counter);
+      const stopCond = this.program.stopCond(counter);
+
+      if (this.recording && this.recordedFrames == counter - this.program.settings.start) {
+        if (startCond && !stopCond) {
+          this.recordedFrames ++;
           const url = this.getDataUrl();
           await this.postFrame(url, counter);
         }
-        if (this.recording && stopCond) {
+        else if (stopCond) {
           await this.toggleRecord(false);
+          if (this.playing && this.program.settings.playStop) {
+            await this.togglePlay(false);
+          }
         }
       }
-      this.playing && this.setTimer(frameCond);
+
+      this.playing && this.setTimer(startCond && !stopCond);
     });
   }
 
@@ -168,11 +175,12 @@ export default class Player {
       await Promise.all(this.hooks.map('beforeRecordingStart'));
       this.program.recording = true;
       this.recordingStart = Date.now();
+      this.recordedFrames = 0;
       this.program.reset();
     }
     else if (dif == -1) {
       const t = Date.now() - this.recordingStart;
-      console.log(`Recorded ${this.program.counter + 1} frames for ${t / 1000} seconds`)
+      console.log(`Recorded ${this.recordedFrames} frames for ${t / 1000} seconds`)
       this.recordingStart = null;
       this.program.recording = false;
       await Promise.all(this.hooks.map('afterRecordingStop'));

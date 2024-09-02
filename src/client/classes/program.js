@@ -30,18 +30,19 @@ export default class Program {
   static generateDefaults(p) {
     return {
       settings: {
-        dim: 1024,
-        exportDim: null,
-        swapDim: null,
-        swapPairs: 0,
-        mediaFit: 'cover',
-        streamFit: 'cover',
-        interval: 0,
-        period: 360,
-        start: 0,
-        stop: null,
-        autoplay: null,
-        output: {}, // Recording parameters can be overriden in dev console
+        dim: 1024,          // Either scalar value or array of [width, height]
+        exportDim: null,    // Dimension to send image frames to server-side video or image export
+        swapDim: null,      // This is basically not even used anymore
+        swapPairs: 0,       // Also not used but usable to write parallel fragment chains to different textures
+        mediaFit: 'cover',  // cover or contain
+        streamFit: 'cover', // cover or contain
+        interval: 0,        // Timer interval between frames --- 0 is set to requestAnimationFrame
+        period: 360,        // Number of frames in a cycle --- determines gu.period and gu.time
+        start: 0,           // Where to start recording
+        stop: null,         // Set to counter number to stop recording; "true" stops at period value
+        playStop: false,    // Stop playing after recording stops
+        autoplay: null,     // Set to false to prevent autoplay; "null" is overridable by URL params (I think?)
+        output: {},         // ffmpeg args --- see server.yml; parameters can be overriden in dev console
         topology: 'triangle-strip',
         defaultNumVerts: 4,
         defaultDepthTest: false,
@@ -416,16 +417,15 @@ export default class Program {
     addControls();
   }
 
-  frameCond(counter) {
+  startCond(counter) {
     const { settings } = this;
     const startCond = counter >= settings.start;
-    const stopCond = !settings.stop || counter < settings.stop;
-    return startCond && stopCond;
+    return startCond;
   }
 
   stopCond(counter) {
     const { settings } = this;
-    return settings.stop && settings.stop - 1 <= counter;
+    return settings.stop && counter >= settings.stop;
   }
 
   async loadShader(basePath, path, params) {
