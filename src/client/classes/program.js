@@ -420,14 +420,11 @@ export default class Program {
   startCond(counter) {
     const { settings } = this;
     const startCond = counter >= settings.start;
-    // Why was this here?
-    // const stopCond = !settings.stop || counter < settings.stop;
-    return startCond;// && stopCond;
+    return startCond;
   }
 
   stopCond(counter) {
     const { settings } = this;
-    // return settings.stop && settings.stop - 1 <= counter;
     return settings.stop && counter >= settings.stop;
   }
 
