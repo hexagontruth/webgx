@@ -88,7 +88,7 @@ fn wrapGrid(p: vec3i, radius: f32) -> vec3i {
   return vec3i(u);
 }
 
-fn wrapGridUnique(p: vec3i, radius: f32) -> vec3i {
+fn wrapGridUniqueOld(p: vec3i, radius: f32) -> vec3i {
   // There is a more efficient way to do this
   // But I don't want to do it
 
@@ -119,6 +119,50 @@ fn wrapGridUnique(p: vec3i, radius: f32) -> vec3i {
     );
   }
   return vec3i(u);
+}
+
+fn wrapGridUnique(p: vec3i, radius: f32) -> vec3i {
+  // The more efficient way
+  var r = i32(radius);
+  var m = r * 3;
+  var offset = i32(ceil(radius * 3 / 2.));
+
+  var u = p;
+  u += offset;
+  u = (u % m + m) % m;
+  u -= offset;
+  u.z = -u.x - u.y;
+
+  // Skip all if we are safely ensconced in the grid
+  if (amax3i(u) >= r) {
+    // Top right
+    if (u.x + u.y >= r && u.x >= 0 && u.y >= 0) {
+      u += vec3i(-r, -r, r * 2);
+    }
+    // Bottom left
+    else if (u.x + u.y < -r && u.x < 0 && u.y < 0) {
+      u += vec3i(r, r, -r * 2);
+    }
+    // Top left
+    else if (u.x < -r || u.y >= r) {
+      if (u.z > 0) {
+        u += vec3i(r * 2, -r, -r);
+      }
+      else {
+        u += vec3i(r, -r * 2, r);
+      }
+    }
+    // Bottom right
+    else if (u.x >= r || u.y < -r) {
+      if (u.z > 0) {
+        u += vec3i(-r, r * 2, -r);
+      }
+      else {
+        u += vec3i(-r * 2, r, r);
+      }
+    }
+  }
+  return u;
 }
 
 fn isWrapped(u: vec3i, v: vec3i) -> bool {
