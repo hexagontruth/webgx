@@ -420,35 +420,39 @@ fn min4(v: vec4f) -> f32 {
 }
 
 fn m1(n: f32, m: f32) -> f32 {
-  return fract(n / m) * m;
+  return (n % m + m) % m;
 }
 
 fn m2(n: vec2f, m: f32) -> vec2f {
-  return fract(n / m) * m;
+  return (n % m + m) % m;
 }
 
 fn m3(n: vec3f, m: f32) -> vec3f {
-  return fract(n / m) * m;
+  return (n % m + m) % m;
 }
 
 fn m4(n: vec4f, m: f32) -> vec4f {
-  return fract(n / m) * m;
+  return (n % m + m) % m;
 }
 
-fn mv1(n: f32, m: f32) -> f32 {
-  return fract(n / m) * m;
+fn m1i(n: i32, m: i32) -> i32 {
+  return (n % m + m) % m;
+}
+
+fn m2i(n: vec2i, m: i32) -> vec2i {
+  return (n % m + m) % m;
+}
+
+fn m3i(n: vec3i, m: i32) -> vec3i {
+  return (n % m + m) % m;
+}
+
+fn m4i(n: vec4i, m: i32) -> vec4i {
+  return (n % m + m) % m;
 }
 
 fn mv2(n: vec2f, m: vec2f) -> vec2f {
-  return fract(n / m) * m;
-}
-
-fn mv3(n: vec3f, m: vec3f) -> vec3f {
-  return fract(n / m) * m;
-}
-
-fn mv4(n: vec4f, m: vec4f) -> vec4f {
-  return fract(n / m) * m;
+  return (n % m + m) % m;
 }
 
 fn sum2(p: vec2f) -> f32 {
