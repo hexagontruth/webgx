@@ -179,6 +179,16 @@ fn fromHex(p: vec3i, dim: i32) -> vec2i {
   return u;
 }
 
+fn toBuffer(p: vec2i, dim: i32) -> i32 {
+  var u = p + dim;
+  var bottomBound = min(dim, u.y);
+  var topBound = max(0, p.y);
+  var bottomOffset = bottomBound * (bottomBound + 1) / 2;
+  var topOffset = topBound * (topBound - 1) / 2;
+  var idx = u.y * dim * 2 + u.x - bottomOffset - topOffset;
+  return idx;
+}
+
 fn hexbin(base : vec2f, s : f32) -> vec4f {
   var res = s / 3;
   var cv = base * res;
