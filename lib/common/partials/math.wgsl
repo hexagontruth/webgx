@@ -169,14 +169,49 @@ fn isWrapped(u: vec3i, v: vec3i) -> bool {
   return sum3(abs(vec3f(u - v))) != 0;
 }
 
-fn toHex(p: vec2i, dim: i32) -> vec3i {
-  var u = p - dim / 2;
+fn hexToBufferIdx(p: vec3i, r: i32) -> i32 {
+  // This is more easily reversible imo
+  var u = p.xy;
+  var q = 0;
+  if (u.x >= 0 && u.y >= 0) {
+    u -= r;
+  }
+  else if (u.x >= 0) {
+    q = 1;
+  }
+  else if (u.y >= 0) {
+    q = 2;
+  }
+  u = (p.xy % r + r) % r;
+  var idx = r * r * q + u.y * r + u.x;
+  return idx;
+}
+
+fn bufferIdxToHex(idx: i32, r: i32) -> vec3i {
+  var square = r * r;
+  var q = idx / square;
+  var i = idx % square;
+  var u = vec2i(i % r, i / r) - r;
+  if (q == 1) {
+    u += vec2i(r, 0);
+  }
+  else if (q == 2) {
+    u += vec2i(0, r);
+  }
+  else if (u.x + u.y < -r) {
+    u += vec2i(r, r);
+  }
   return vec3i(u, -u.x - u.y);
 }
 
-fn fromHex(p: vec3i, dim: i32) -> vec2i {
-  var u = p.xy + dim / 2;
-  return u;
+fn globalIdxToBufferIdx(globalIdx: vec3u, r: i32) -> i32 {
+  var u = vec3i(globalIdx);
+  return r * r * u.z + r * u.y + u.x;
+}
+
+fn globalIdxToHex(globalIdx: vec3u, r: i32) -> vec3i {
+  var idx = globalIdxToBufferIdx(globalIdx, r);
+  return bufferIdxToHex(idx, r);
 }
 
 fn hexbin(base : vec2f, s : f32) -> vec4f {
@@ -410,35 +445,39 @@ fn min4(v: vec4f) -> f32 {
 }
 
 fn m1(n: f32, m: f32) -> f32 {
-  return fract(n / m) * m;
+  return (n % m + m) % m;
 }
 
 fn m2(n: vec2f, m: f32) -> vec2f {
-  return fract(n / m) * m;
+  return (n % m + m) % m;
 }
 
 fn m3(n: vec3f, m: f32) -> vec3f {
-  return fract(n / m) * m;
+  return (n % m + m) % m;
 }
 
 fn m4(n: vec4f, m: f32) -> vec4f {
-  return fract(n / m) * m;
+  return (n % m + m) % m;
 }
 
-fn mv1(n: f32, m: f32) -> f32 {
-  return fract(n / m) * m;
+fn m1i(n: i32, m: i32) -> i32 {
+  return (n % m + m) % m;
+}
+
+fn m2i(n: vec2i, m: i32) -> vec2i {
+  return (n % m + m) % m;
+}
+
+fn m3i(n: vec3i, m: i32) -> vec3i {
+  return (n % m + m) % m;
+}
+
+fn m4i(n: vec4i, m: i32) -> vec4i {
+  return (n % m + m) % m;
 }
 
 fn mv2(n: vec2f, m: vec2f) -> vec2f {
-  return fract(n / m) * m;
-}
-
-fn mv3(n: vec3f, m: vec3f) -> vec3f {
-  return fract(n / m) * m;
-}
-
-fn mv4(n: vec4f, m: vec4f) -> vec4f {
-  return fract(n / m) * m;
+  return (n % m + m) % m;
 }
 
 fn sum2(p: vec2f) -> f32 {

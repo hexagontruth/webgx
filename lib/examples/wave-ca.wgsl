@@ -2,11 +2,12 @@
 
 struct ProgramUniforms {
   step: f32,
-  cellDim: f32,
+  maxRadius: f32,
   gridRadius: f32,
   wrap: f32,
   scale: f32,
-  interpolateCells: f32,
+  interpolate: f32,
+  subsamples: f32,
   showGrid: f32,
   pulse: f32,
   pulseMinRadius: f32,
@@ -28,8 +29,10 @@ struct ProgramUniforms {
 
 @group(1) @binding(0) var<uniform> pu : ProgramUniforms;
 
-@group(2) @binding(0) var<storage, read> input: array<f32>;
-@group(2) @binding(1) var<storage, read_write> output: array<f32>;
+@group(2) @binding(0) var<storage, read> input0: array<u32>;
+@group(2) @binding(1) var<storage, read> input1: array<u32>;
+@group(2) @binding(2) var<storage, read_write> output0: array<u32>;
+@group(2) @binding(3) var<storage, read_write> output1: array<u32>;
 
 const nbrs = array(
   vec3i( 1,  0, -1),
@@ -54,25 +57,21 @@ const nbrs = array(
   vec3i( 2, -2,  0),
 );
 
-fn sampleCell(h: vec3i) -> vec4f {
-  var dim = i32(pu.cellDim);
-  var p = fromHex(h, dim);
-  var offset = (p.x * dim + p.y) * 4;
+fn readCell(idx: i32) -> vec4f {
   return vec4f(
-    input[offset],
-    input[offset + 1],
-    input[offset + 2],
-    input[offset + 3],
+    vec2f(unpack2x16float(input0[idx])),
+    vec2f(unpack2x16float(input1[idx])),
   );
 }
 
-fn writeCell(p: vec2i, v: vec4f) {
-  var dim = i32(pu.cellDim);
-  var offset = (p.x * dim + p.y) * 4;
-  output[offset] = v.x;
-  output[offset + 1] = v.y;
-  output[offset + 2] = v.z;
-  output[offset + 3] = v.w;
+fn writeCell(idx: i32, v: vec4f) {
+  output0[idx] = pack2x16float(v.xy);
+  output1[idx] = pack2x16float(v.zw);
+}
+
+fn readCellHex(p: vec3i) -> vec4f {
+  var r = i32(pu.maxRadius);
+  return readCell(hexToBufferIdx(p, r));
 }
 
 fn computeNoise(p: vec3i) -> f32 {
@@ -97,31 +96,46 @@ fn computeNoise(p: vec3i) -> f32 {
 
 @fragment
 fn fragmentMain(data: VertexData) -> @location(0) vec4f {
-  var hex = cart2hex * (data.cv * gu.cover);
-  var h = wrapCubic(hex * pu.scale, 1);
-  h = h * pu.gridRadius;
-  var s : array<vec3f, 3>;
-  var c = unit.yyy;
-  var dist = unit.yyy;
+  var u = data.cv * gu.cover;
+  var hex = cart2hex * u;
+  hex = wrapCubic(hex * pu.scale, 1) * pu.gridRadius;
 
-  var p = interpolatedCubic(h);
-  var interpCount = 1 + i32(pu.interpolateCells) * 2;
-  var gridDist = amax3(hex2hex * getCubic(h)) * sr3;
+  var gridDist = amax3(hex2hex * getCubic(hex)) * sr3;
   var gridScale = 4 / amin2(gu.size) * pu.gridRadius * 2 * pu.scale / ap;
 
-  for (var i = 0; i < interpCount; i++) {
-    var u = p[i].xyz;
-    var coord = wrapGridUnique(vec3i(u), pu.gridRadius);
-    var samp = sampleCell(coord).xyz;
-    s[i] = vec3f(
-      samp.x/3-1/6.,
-      1 - abs(samp.y),
-      (abs(samp.x)) * 2.,
-    );
-    dist[i] = p[i].w;
+  var s : array<vec3f, 3>;
+  var c : vec3f;
+
+  var totalSubsamples = pu.subsamples * pu.subsamples;
+  var subsampleStep = 1. / pu.subsamples;
+  var subsampleOffset = (pu.subsamples - 1) / (pu.subsamples * 2);
+
+  for (var j = 0; j < i32(totalSubsamples); j++) {
+    var jj = f32(j);
+    var offset = vec2f(jj % pu.subsamples, floor(jj / pu.subsamples)) * subsampleStep - subsampleOffset;
+    var v = (u + offset / gu.size);
+    var h = cart2hex * v;
+    h = wrapCubic(h * pu.scale, 1) * pu.gridRadius;
+    var p = interpolatedCubic(h);
+    for (var i = 0; i < 3; i++) {
+      var coord = wrapGridUnique(vec3i(p[i].xyz), pu.gridRadius);
+      var samp = readCellHex(coord).xyz;
+      s[i] = vec3f(
+        samp.x/3-1/6.,
+        1 - abs(samp.y),
+        (abs(samp.x)) * 2.,
+      );
+
+      if (pu.interpolate == 0) {
+        c += s[i];
+        break;
+      }
+      else {
+        c += s[i] * p[i].w;
+      }
+    }
   }
-  c = s[0] * dist.x + s[1] * dist.y + s[2] * dist.z;
-  c = select(c, s[0], interpCount == 1);
+  c /= totalSubsamples;
 
   c = hsv2rgb3(c);
   c += qw1(1 - gridDist, gridScale / 4, gridScale) * pu.showGrid * 0.25;
@@ -134,16 +148,11 @@ fn fragmentMain(data: VertexData) -> @location(0) vec4f {
 
 @fragment
 fn fragmentTest(data: VertexData) -> @location(0) vec4f {
-  var uv = data.cv * gu.cover * 0.5 + 0.5;
-  var gridScale = 2 / amin2(gu.size) * pu.cellDim;
-
-  var p = vec2u(floor(uv * pu.cellDim));
-  var offset = (p.x  * u32(pu.cellDim) + p.y) * 4;
-
-  var s = vec4f(input[offset], input[offset + 1], input[offset + 2], input[offset + 3]);
-
+  var r = i32(pu.maxRadius);
+  var p = vec2i((data.cv * gu.cover) * pu.maxRadius);
+  var bufferIdx = hexToBufferIdx(vec3i(p, -p.x -p.y), r);
+  var s = readCell(bufferIdx);
   var c = s.xyz;
-  c += amax2(qwp2(uv * pu.cellDim, gridScale / 4, gridScale)) * pu.showGrid;
   return vec4f(c, 1);
 }
 
@@ -153,32 +162,31 @@ fn computeMain(
   // @builtin(workgroup_id) workgroupIdx : vec3u,
   // @builtin(local_invocation_id) localIdx : vec3u
 ) {
-  var size = i32(pu.cellDim);
-  var p = vec2i(globalIdx.xy);
-  var hRaw = toHex(p, size);
-  var h = wrapGridUnique(hRaw, pu.gridRadius);
-  var cur = sampleCell(hRaw);
-  var radius = amax3i(h);
-  var next = cur;
-  var n = unit.yyyy;
+  var r = i32(pu.maxRadius);
+  var bufferIdx = globalIdxToBufferIdx(globalIdx, r);
+  var p = bufferIdxToHex(bufferIdx, r);
+  var h = wrapGridUnique(p, pu.gridRadius);
 
-  if (isWrapped(h, hRaw)) {
-    writeCell(p, unit.yyyy);
-    // writeCell(p, next);
+  if (isWrapped(h, p)) {
     return;
   }
+
+  var cur = readCell(bufferIdx);
+  var radius = amax3(vec3f(h));
+  var next = cur;
+  var n = unit.yyyy;
 
   if (pu.step == 0) {
     if (pu.noiseSeed > 0) {
       next.x += computeNoise(h);
     }
-    if (pu.centerSeed > 0 && radius <= i32(pu.centerRadius)) {
+    if (pu.centerSeed > 0 && radius <= pu.centerRadius) {
       next += unit.xyyy * pow(2, pu.centerMagnitude);
     }
-    if (pu.edgeSeed > 0 && radius > i32(pu.gridRadius - pu.edgeRadius)) {
+    if (pu.edgeSeed > 0 && radius > pu.gridRadius - pu.edgeRadius) {
       next += unit.xyyy * pow(2, pu.edgeMagnitude);
     }
-    writeCell(p, next);
+    writeCell(bufferIdx, next);
     return;
   }
 
@@ -191,14 +199,14 @@ fn computeMain(
 
     u = wrapGridUnique(u, pu.gridRadius);
 
-    var samp = sampleCell(u);
+    var samp = readCellHex(u);
     n += samp * wrapCoef;
   }
 
   var coef = pu.waveCoef;
   var pulseCoef = pu.pulse;
-  pulseCoef *= step(pu.pulseMinRadius, f32(radius));
-  pulseCoef *= (1 - step(pu.pulseMaxRadius, f32(radius)));
+  pulseCoef *= step(pu.pulseMinRadius, radius);
+  pulseCoef *= (1 - step(pu.pulseMaxRadius, radius));
 
   var a = (n.x - cur.x * 6) * coef.x;
   var v = (cur.y + a) * coef.y;
@@ -206,5 +214,5 @@ fn computeMain(
   s = s + tsin1(pu.step / pu.pulseFrequency) * pow(2, pu.pulseMagnitude) * pulseCoef;
 
   next = vec4f(s, v, a, 0);
-  writeCell(p, next);
+  writeCell(bufferIdx, next);
 }

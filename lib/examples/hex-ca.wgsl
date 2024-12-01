@@ -1,7 +1,7 @@
 #include /common/partials/std-header-vertex
 
 struct ProgramUniforms {
-  cellDim: f32,
+  maxRadius: f32,
   gridRadius: f32,
   scale: f32,
   numStates: f32,
@@ -23,9 +23,8 @@ const nbrs = array(
 );
 
 fn sampleCell(h: vec3i) -> f32 {
-  var dim = i32(pu.cellDim);
-  var p = fromHex(h, dim);
-  return input[p.x * dim + p.y];
+  var p = hexToBufferIdx(h, i32(pu.maxRadius));
+  return input[p];
 }
 
 fn colorMix(s: f32) -> vec3f {
@@ -57,9 +56,10 @@ fn fragmentMain(data: VertexData) -> @location(0) vec4f {
 
 @fragment
 fn fragmentTest(data: VertexData) -> @location(0) vec4f {
-  var p = vec2u((data.cv * gu.cover * 0.5 + 0.5) * pu.cellDim);
-  var offset = p.x * u32(pu.cellDim) + p.y;
-  var s = input[offset];
+  var r = i32(pu.maxRadius);
+  var p = vec2i((data.cv * gu.cover) * pu.maxRadius);
+  var bufferIdx = hexToBufferIdx(vec3i(p, -p.x -p.y), r);
+  var s = input[bufferIdx];
   var c = colorMix(s);
   return vec4f(c, 1);
 }
@@ -70,11 +70,16 @@ fn computeMain(
   // @builtin(workgroup_id) workgroupIdx : vec3u,
   // @builtin(local_invocation_id) localIdx : vec3u
 ) {
-  var size = i32(pu.cellDim);
-  var p = vec2i(globalIdx.xy);
-  var h = toHex(p, size);
-  h = wrapGridUnique(h, pu.gridRadius);
-  var cur = sampleCell(h);
+  var r = i32(pu.maxRadius);
+  var bufferIdx = globalIdxToBufferIdx(globalIdx, r);
+  var p = bufferIdxToHex(bufferIdx, r);
+  var h = wrapGridUnique(p, pu.gridRadius);
+
+  if (isWrapped(h, p)) {
+    return;
+  }
+
+  var cur = input[bufferIdx];
   var s = 0;
   for (var i = 0; i < 6; i++) {
     var u = wrapGridUnique(h + nbrs[i], pu.gridRadius);
@@ -106,5 +111,5 @@ fn computeMain(
   v = m1(v, pu.numStates);
   v = select(v, cur, gu.counter == 0);
   // v = cur;
-  output[p.x * size + p.y] = v;
+  output[bufferIdx] = v;
 }
