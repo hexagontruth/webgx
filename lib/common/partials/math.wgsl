@@ -179,14 +179,43 @@ fn fromHex(p: vec3i, dim: i32) -> vec2i {
   return u;
 }
 
-fn toBuffer(p: vec2i, dim: i32) -> i32 {
-  var u = p + dim;
-  var bottomBound = min(dim, u.y);
-  var topBound = max(0, p.y);
-  var bottomOffset = bottomBound * (bottomBound + 1) / 2;
-  var topOffset = topBound * (topBound - 1) / 2;
-  var idx = u.y * dim * 2 + u.x - bottomOffset - topOffset;
+fn toHexBufferAlt(p: vec3i, r: i32) -> i32 {
+  // Normalize x and y to be in the range [0, r - 1]
+  var u = p.xy + r;
+  // Count offset rows
+  var bottomRows = min(r - 1, u.y) + 1;
+  var topRows = max(0, p.y);
+  // Each offset is the difference of two triangular numbers
+  var bottomOffset = r * (r + 1) / 2 - (r - bottomRows) * (r - bottomRows + 1) / 2;
+  var topOffset = topRows * (topRows + 1) / 2;
+  var idx = u.y * r * 2 + u.x - bottomOffset - topOffset;
   return idx;
+}
+
+fn toHexBuffer(p: vec3i, r: i32) -> i32 {
+  // This is more easily reversible imo
+  var u = p.xy;
+  var q = 0;
+  if (u.x >= 0 && u.y >= 0) {
+    u -= r;
+  }
+  else if (u.x >= 0) {
+    q = 1;
+  }
+  else if (u.y >= 0) {
+    q = 2;
+  }
+  u = (p.xy % r + r) % r;
+  var idx = r * r * q + u.y * r + u.x;
+  return idx;
+}
+
+fn fromHexBuffer(idx: i32, r: i32) -> vec3i {
+  var square = r * r;
+  var q = idx / square;
+  var i = idx % square;
+  var u = vec2i(i % r, i / r);
+  return vec3i(u, -u.x - u.y);
 }
 
 fn hexbin(base : vec2f, s : f32) -> vec4f {
