@@ -169,16 +169,6 @@ fn isWrapped(u: vec3i, v: vec3i) -> bool {
   return sum3(abs(vec3f(u - v))) != 0;
 }
 
-fn toHex(p: vec2i, dim: i32) -> vec3i {
-  var u = p - dim / 2;
-  return vec3i(u, -u.x - u.y);
-}
-
-fn fromHex(p: vec3i, dim: i32) -> vec2i {
-  var u = p.xy + dim / 2;
-  return u;
-}
-
 fn hexToBufferIdx(p: vec3i, r: i32) -> i32 {
   // This is more easily reversible imo
   var u = p.xy;
