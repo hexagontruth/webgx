@@ -28,18 +28,18 @@
   },
   "homepage": "https://github.com/hexagontruth/webgx#readme",
   "dependencies": {
-    "css-loader": "^6.7.4",
+    "css-loader": "^7.1.2",
     "dat.gui": "^0.7.9",
-    "dotenv": "^16.0.3",
-    "express": "^4.18.2",
-    "sass": "^1.62.1",
-    "sass-loader": "^13.2.2",
-    "style-loader": "^3.3.2",
-    "webpack": "^5.82.1",
-    "webpack-cli": "^5.1.1",
-    "webpack-dev-middleware": "^6.1.1",
-    "webpack-dev-server": "^4.15.0",
-    "webpack-hot-middleware": "^2.25.3",
-    "yaml": "^2.2.2"
+    "dotenv": "^16.4.7",
+    "express": "^4.21.1",
+    "sass": "^1.82.0",
+    "sass-loader": "^16.0.4",
+    "style-loader": "^4.0.0",
+    "webpack": "^5.97.0",
+    "webpack-cli": "^5.1.4",
+    "webpack-dev-middleware": "^7.4.2",
+    "webpack-dev-server": "^5.1.0",
+    "webpack-hot-middleware": "^2.26.1",
+    "yaml": "^2.6.1"
   }
 }
