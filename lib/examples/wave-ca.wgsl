@@ -6,7 +6,8 @@ struct ProgramUniforms {
   gridRadius: f32,
   wrap: f32,
   scale: f32,
-  interpolateCells: f32,
+  interpolate: f32,
+  subsamples: f32,
   showGrid: f32,
   pulse: f32,
   pulseMinRadius: f32,
@@ -95,31 +96,46 @@ fn computeNoise(p: vec3i) -> f32 {
 
 @fragment
 fn fragmentMain(data: VertexData) -> @location(0) vec4f {
-  var hex = cart2hex * (data.cv * gu.cover);
-  var h = wrapCubic(hex * pu.scale, 1);
-  h = h * pu.gridRadius;
-  var s : array<vec3f, 3>;
-  var c = unit.yyy;
-  var dist = unit.yyy;
+  var u = data.cv * gu.cover;
+  var hex = cart2hex * u;
+  hex = wrapCubic(hex * pu.scale, 1) * pu.gridRadius;
 
-  var p = interpolatedCubic(h);
-  var interpCount = 1 + i32(pu.interpolateCells) * 2;
-  var gridDist = amax3(hex2hex * getCubic(h)) * sr3;
+  var gridDist = amax3(hex2hex * getCubic(hex)) * sr3;
   var gridScale = 4 / amin2(gu.size) * pu.gridRadius * 2 * pu.scale / ap;
 
-  for (var i = 0; i < interpCount; i++) {
-    var u = p[i].xyz;
-    var coord = wrapGridUnique(vec3i(u), pu.gridRadius);
-    var samp = readCellHex(coord).xyz;
-    s[i] = vec3f(
-      samp.x/3-1/6.,
-      1 - abs(samp.y),
-      (abs(samp.x)) * 2.,
-    );
-    dist[i] = p[i].w;
+  var s : array<vec3f, 3>;
+  var c : vec3f;
+
+  var totalSubsamples = pu.subsamples * pu.subsamples;
+  var subsampleStep = 1. / pu.subsamples;
+  var subsampleOffset = (pu.subsamples - 1) / (pu.subsamples * 2);
+
+  for (var j = 0; j < i32(totalSubsamples); j++) {
+    var jj = f32(j);
+    var offset = vec2f(jj % pu.subsamples, floor(jj / pu.subsamples)) * subsampleStep - subsampleOffset;
+    var v = (u + offset / gu.size);
+    var h = cart2hex * v;
+    h = wrapCubic(h * pu.scale, 1) * pu.gridRadius;
+    var p = interpolatedCubic(h);
+    for (var i = 0; i < 3; i++) {
+      var coord = wrapGridUnique(vec3i(p[i].xyz), pu.gridRadius);
+      var samp = readCellHex(coord).xyz;
+      s[i] = vec3f(
+        samp.x/3-1/6.,
+        1 - abs(samp.y),
+        (abs(samp.x)) * 2.,
+      );
+
+      if (pu.interpolate == 0) {
+        c += s[i];
+        break;
+      }
+      else {
+        c += s[i] * p[i].w;
+      }
+    }
   }
-  c = s[0] * dist.x + s[1] * dist.y + s[2] * dist.z;
-  c = select(c, s[0], interpCount == 1);
+  c /= totalSubsamples;
 
   c = hsv2rgb3(c);
   c += qw1(1 - gridDist, gridScale / 4, gridScale) * pu.showGrid * 0.25;
