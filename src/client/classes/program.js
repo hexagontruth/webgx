@@ -48,6 +48,7 @@ export default class Program {
         defaultDepthTest: false,
       },
       uniforms: {},
+      textures: [],       // Array of custom textures
       media: [],
       controls: {},
       actions: {
@@ -117,6 +118,7 @@ export default class Program {
     this.actions = def.actions;
     this.pipelines = def.pipelines;
     this.mediaCount = def.media.length;
+    this.textures = def.textures;
 
     const { settings } = def;
 
@@ -219,54 +221,44 @@ export default class Program {
       }),
     };
 
-    this.depthTexture = this.device.createTexture({
-      size: settings.dim,
+    this.depthTexture = this.createTexture(settings.dim, {
       format: 'depth24plus',
       usage: GPUTextureUsage.RENDER_ATTACHMENT,
     });
 
-    this.drawTexture = this.device.createTexture({
-      size: settings.dim,
-      format: 'bgra8unorm',
-      usage:
-        GPUTextureUsage.COPY_DST |
-        GPUTextureUsage.COPY_SRC |
-        GPUTextureUsage.RENDER_ATTACHMENT |
-        GPUTextureUsage.TEXTURE_BINDING,
-    });
+    this.drawTexture = this.createTexture(
+      settings.dim,
+      GPUTextureUsage.COPY_DST |
+      GPUTextureUsage.COPY_SRC |
+      GPUTextureUsage.RENDER_ATTACHMENT |
+      GPUTextureUsage.TEXTURE_BINDING,
+    );
 
-    this.lastTexture = this.device.createTexture({
-      size: settings.dim,
-      format: 'bgra8unorm',
-      usage:
-        GPUTextureUsage.COPY_DST |
-        GPUTextureUsage.RENDER_ATTACHMENT |
-        GPUTextureUsage.TEXTURE_BINDING,
-    });
+    this.lastTexture = this.createTexture(
+      settings.dim,
+      GPUTextureUsage.COPY_DST |
+      GPUTextureUsage.RENDER_ATTACHMENT |
+      GPUTextureUsage.TEXTURE_BINDING,
+    );
 
-    this.inputTexture = this.device.createTexture({
-      size: settings.dim,
-      format: 'bgra8unorm',
-      usage:
-        GPUTextureUsage.COPY_DST |
-        GPUTextureUsage.RENDER_ATTACHMENT |
-        GPUTextureUsage.TEXTURE_BINDING,
-    });
+    this.inputTexture = this.createTexture(
+      settings.dim,
+      GPUTextureUsage.COPY_DST |
+      GPUTextureUsage.RENDER_ATTACHMENT |
+      GPUTextureUsage.TEXTURE_BINDING,
+    );
 
     this.swapTextures = indexMap(2).map(() => {
-      return this.device.createTexture({
-        size: [...settings.swapDim, settings.swapPairs],
-        format: 'bgra8unorm',
-        usage:
-          GPUTextureUsage.COPY_DST |
-          GPUTextureUsage.COPY_SRC |
-          GPUTextureUsage.TEXTURE_BINDING |
-          GPUTextureUsage.RENDER_ATTACHMENT,
-      });
+      return this.createTexture(
+        [...settings.swapDim, settings.swapPairs],
+        GPUTextureUsage.COPY_DST |
+        GPUTextureUsage.COPY_SRC |
+        GPUTextureUsage.TEXTURE_BINDING |
+        GPUTextureUsage.RENDER_ATTACHMENT,
+      );
     });
 
-    this.streamTexture = this.device.createTexture({
-      size: settings.dim,
+    this.streamTexture = this.createTexture(settings.dim, {
       format: 'rgba8unorm',
       usage:
         GPUTextureUsage.COPY_DST |
@@ -281,18 +273,19 @@ export default class Program {
       this.settings.streamFit,
     );
 
-    this.mediaTexture = this.device.createTexture({
-      size:
-        this.mediaCount > 1 ? [...settings.dim, this.mediaCount] :
+    this.mediaTexture = this.createTexture(
+      this.mediaCount > 1 ? [...settings.dim, this.mediaCount] :
         this.mediaCount > 0 ? [...settings.dim, 2] :
         [1, 1, 2],
-      format: 'rgba8unorm',
-      usage:
-        GPUTextureUsage.COPY_DST |
-        GPUTextureUsage.COPY_SRC |
-        GPUTextureUsage.TEXTURE_BINDING |
-        GPUTextureUsage.RENDER_ATTACHMENT,
-    });
+      {
+        format: 'rgba8unorm',
+        usage:
+          GPUTextureUsage.COPY_DST |
+          GPUTextureUsage.COPY_SRC |
+          GPUTextureUsage.TEXTURE_BINDING |
+          GPUTextureUsage.RENDER_ATTACHMENT,
+      },
+  );
 
     this.media = await Promise.all(def.media.map(async (filename, idx) => {
       const ext = filename.match(/\.(\w+)$/)?.[1];
@@ -608,6 +601,18 @@ export default class Program {
         return { binding, resource };
       }),
     });
+  }
+
+  createTexture(size, opts) {
+    // Explicit size arg is needed because can be called before settings initialized
+    opts = typeof opts == 'number' ? { usage: opts } : opts;
+    opts = merge({
+      format: 'bgra8unorm',
+      usage: GPUTextureUsage.COPY_DST |
+        GPUTextureUsage.RENDER_ATTACHMENT |
+        GPUTextureUsage.TEXTURE_BINDING,
+    }, opts);
+    return this.device.createTexture({ size, ...opts });
   }
 
   createDataBuffer(...args) {
