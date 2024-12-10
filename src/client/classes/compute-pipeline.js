@@ -12,7 +12,7 @@ export default class ComputePipeline extends Pipeline {
       layout: this.device.createPipelineLayout({
         bindGroupLayouts: [
           this.program.swapGroupLayout,
-          this.program.customGroupLayout,
+          this.customGroupLayout,
           this.dataGroupLayout,
         ],
       }),

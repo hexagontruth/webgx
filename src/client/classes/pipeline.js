@@ -9,6 +9,7 @@ export default class Pipeline {
       computeMain: 'computeMain',
       topology: null,
       dataBuffers: [],
+      textures: [],
       uniforms: {},
       params: {},
       bufferVisibility: GPUShaderStage.FRAGMENT | GPUShaderStage.COMPUTE,
@@ -36,15 +37,29 @@ export default class Pipeline {
       code: this.shaderText,
     });
 
+    this.textures = this.settings.textures.slice();
+    this.textures.push(...this.program.textures);
+
     this.pipelineUniforms = new UniformBuffer(this.device, this.settings.uniforms);
     this.pipelineUniforms.write();
 
+    const customGroupLayout = ['buffer', 'buffer'];
+
+    const customGroupMembers = [
+      { buffer: this.program.programUniforms.buffer },
+      { buffer: this.pipelineUniforms.buffer },
+    ];
+
+    this.textures.forEach((texture) => {
+      customGroupLayout.push('texture');
+      customGroupMembers.push(texture.createView());
+    });
+
+    this.customGroupLayout = this.program.createBindGroupLayout(customGroupLayout);
+
     this.customGroup = this.program.createBindGroup(
-      this.program.customGroupLayout,
-      [
-        { buffer: this.program.programUniforms.buffer },
-        { buffer: this.pipelineUniforms.buffer },
-      ],
+      this.customGroupLayout,
+      customGroupMembers,
     );
 
     this.dataBuffers = this.settings.dataBuffers;

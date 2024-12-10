@@ -308,10 +308,6 @@ export default class Program {
       }
     });
 
-    this.customGroupLayout = this.createBindGroupLayout(
-      ['buffer', 'buffer'],
-    );
-
     this.swapGroupLayout = this.createBindGroupLayout(
       [
         'buffer',
