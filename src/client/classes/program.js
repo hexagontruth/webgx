@@ -32,6 +32,7 @@ export default class Program {
       settings: {
         dim: 1024,          // Either scalar value or array of [width, height]
         exportDim: null,    // Dimension to send image frames to server-side video or image export
+        streamDim: null,    // This whole thing is a mess
         swapDim: null,      // This is basically not even used anymore
         swapPairs: 0,       // Also not used but usable to write parallel fragment chains to different textures
         mediaFit: 'cover',  // cover or contain
@@ -132,6 +133,8 @@ export default class Program {
     }
 
     settings.dim = new Dim(dim);
+    settings.streamDim = new Dim(settings.streamDim ?? settings.dim);
+
     if (settings.exportDim) {
       settings.exportDim = new Dim(settings.exportDim);
       const exportWidth = settings.exportDim.width;
@@ -258,7 +261,7 @@ export default class Program {
       );
     });
 
-    this.streamTexture = this.createTexture(settings.dim, {
+    this.streamTexture = this.createTexture(settings.streamDim, {
       format: 'rgba8unorm',
       usage:
         GPUTextureUsage.COPY_DST |
