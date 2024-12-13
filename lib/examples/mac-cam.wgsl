@@ -46,6 +46,7 @@ fn computeTexture(@builtin(global_invocation_id) globalIdx : vec3u) {
   var res = i32(gu.size.y);
   var idx = vec2i(globalIdx.xy);
   var u = vec2f(globalIdx.xy) / gu.size;
+  u = (u * 2 - 1) * pu.scale * 0.5 + 0.5;
   var s = textureSampleLevel(stream, linearSampler, u, 0);
   // s = hsv2rgb(s);
   writeBuffer(idx.x + (res - 1 - idx.y) * res, s);
@@ -68,18 +69,14 @@ fn computeBuffer(@builtin(global_invocation_id) globalIdx : vec3u) {
 
 @fragment
 fn fragmentMain(data: VertexData) -> @location(0) vec4f {
-  var res = pow(2, pu.resFactor);
-  var scale = pu.scale;
+  var resolution = pow(2, pu.resFactor);
   var blackLevel = pu.blackLevel;
   var whiteLevel = pu.whiteLevel;
 
   var c : vec3f;
 
   var uv = data.uv * gu.cover;
-  var sv = ((uv * 2 - 1) * scale) * 0.5 + 0.5;
-  var u = floor(sv * res / scale) / res * scale;
-
-  var idx = vec2i(uv * res);
+  var idx = vec2i(uv * resolution);
   var s = readBuffer(idx.x + idx.y * i32(gu.size.y)).rgb;
 
   var range = whiteLevel - blackLevel;
