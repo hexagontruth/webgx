@@ -22,6 +22,11 @@ export default class Encoder {
     this.device.queue.submit([this.finish()]);
   }
 
+  copyTextureToBuffer(...args) {
+    console.log(args);
+    return this.commandEncoder.copyTextureToBuffer(...args);
+  }
+
   copyBufferToBuffer(source, dest, sourceOffset=0, destOffset=0, size) {
     size = size ?? min(
       source.byteLength - sourceOffset,

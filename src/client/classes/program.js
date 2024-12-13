@@ -265,6 +265,7 @@ export default class Program {
       format: 'rgba8unorm',
       usage:
         GPUTextureUsage.COPY_DST |
+        GPUTextureUsage.COPY_SRC |
         GPUTextureUsage.RENDER_ATTACHMENT |
         GPUTextureUsage.TEXTURE_BINDING,
     });
