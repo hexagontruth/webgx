@@ -5,8 +5,9 @@ struct ProgramUniforms {
   resFactor: f32,
   blackLevel: f32,
   whiteLevel: f32,
-  valueMultiply: f32,
-  includeSolid: f32,
+  includeSolidRange: f32,
+  color: f32,
+  test: f32,
 };
 
 @group(1) @binding(0) var<uniform> pu : ProgramUniforms;
@@ -15,29 +16,54 @@ struct ProgramUniforms {
 @group(2) @binding(0) var<storage, read> input: array<f32>;
 @group(2) @binding(1) var<storage, read_write> output: array<f32>;
 
+fn readBuffer(idx: i32) -> vec4f {
+  return vec4f(
+    input[idx * 4],
+    input[idx * 4 + 1],
+    input[idx * 4 + 2],
+    input[idx * 4 + 3],
+  );
+}
+
+fn writeBuffer(idx: i32, s: vec4f) {
+  output[idx * 4] = s.x;
+  output[idx * 4 + 1] = s.y;
+  output[idx * 4 + 2] = s.z;
+  output[idx * 4 + 3] = s.w;
+}
+
+fn samplePattern(uv: vec2f, v: f32) -> f32 {
+  var patternRes = gu.size.y / 8;
+  var offset = vec2f(
+    floor((v * 36) % 6) / 6.,
+    floor(v * 6) / 6.,
+  );
+  return texture(macTexture, fract(uv * patternRes) / 6 + offset).r;
+}
+
 @compute @workgroup_size(4, 4)
 fn computeTexture(@builtin(global_invocation_id) globalIdx : vec3u) {
   var res = i32(gu.size.y);
   var idx = vec2i(globalIdx.xy);
   var u = vec2f(globalIdx.xy) / gu.size;
   var s = textureSampleLevel(stream, linearSampler, u, 0);
-  s = hsv2rgb(s);
-  output[idx.x + (res - 1 - idx.y) * res] = s.z;
+  // s = hsv2rgb(s);
+  writeBuffer(idx.x + (res - 1 - idx.y) * res, s);
 }
 
 @compute @workgroup_size(4, 4)
 fn computeBuffer(@builtin(global_invocation_id) globalIdx : vec3u) {
   var res = i32(gu.size.y);
   var idx = vec2i(globalIdx.xy);
-  var s : f32;
+  var s : vec4f;
 
   for (var i = 0; i < 4; i++) {
     var u = idx.x * 2 + i % 2 + (idx.y * 2 + i / 2) * res;
-    s += input[u];
+    s += readBuffer(u);
   }
   s /= 4;
 
-  output[idx.x + idx.y * res] = s;
+  writeBuffer(idx.x + idx.y * res, s);
 }
 
 @fragment
@@ -47,55 +73,34 @@ fn fragmentMain(data: VertexData) -> @location(0) vec4f {
   var blackLevel = pu.blackLevel;
   var whiteLevel = pu.whiteLevel;
 
-  var uv : vec2f;
-  var sv : vec2f;
-  var u : vec2f;
-  var offset : vec2f;
   var c : vec3f;
-  var b : f32;
-  var range: f32;
-  var s : f32;
 
-  uv = data.uv * gu.cover;
-  sv = ((uv * 2 - 1) * scale) * 0.5 + 0.5;
-  u = floor(sv * res / scale) / res * scale;
-
-  for (var i = 0; i < 9; i++) {
-    var v = vec2f(vec2i(i % 3, i / 3)) * 1/3. + 1/6.;
-    v = v / res * scale;
-    c += texture(stream, u + v).rgb;
-  }
-  c /= 9;
-
-  c = rgb2hsv3(c);
-  b = c.z;
+  var uv = data.uv * gu.cover;
+  var sv = ((uv * 2 - 1) * scale) * 0.5 + 0.5;
+  var u = floor(sv * res / scale) / res * scale;
 
   var idx = vec2i(uv * res);
-  b = input[idx.x + idx.y * i32(gu.size.y)];
+  var s = readBuffer(idx.x + idx.y * i32(gu.size.y)).rgb;
 
-  range = whiteLevel - blackLevel;
-  b = (b - blackLevel) / range;
-  b = clamp(b, 0, 1);
-  b = select(b * 35/36., b * 37/36. - 1/36., pu.includeSolid > 0);
-  // b = data.uv.y;
+  var range = whiteLevel - blackLevel;
+  s = (s - blackLevel) / range;
+  s = clamp(s, uf.yyy, uf.xxx);
+  s = select(s * 35/36., s * 37/36. - 1/36., pu.includeSolidRange > 0);
 
-  offset = vec2f(
-    floor((b * 36) % 6) / 6.,
-    floor(b * 6) / 6.,
-  );
-
-  s = texture(macTexture, fract(uv * 64) / 6 + offset).r;
-  // s = texture(macTexture, fract(uv * 1)).r;
-  s = mix(s, s * b, pu.valueMultiply);
-
-  if (pu.includeSolid > 0) {
-    if (b < 0) {
-      s = 0.;
+  if (pu.test > 0) {
+    c = s;
+  }
+  else if (pu.color > 0) {
+    for (var i = 0; i < 3; i++) {
+      c[i] = samplePattern(uv, s[i]);
     }
-    else if (b >= 1) {
-      s = 1;
-    }
+  } else {
+    s = rgb2hsv3(s).zzz;
+    c = uf.xxx * samplePattern(uv, s.x);
   }
 
-  return vec4f(vec3f(s), 1);
+  c = select(c, uf.yyy, s < uf.yyy);
+  c = select(c, uf.xxx, s >= uf.xxx);
+
+  return vec4f(c, 1);
 }
