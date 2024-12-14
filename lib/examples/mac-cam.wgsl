@@ -43,33 +43,33 @@ fn samplePattern(uv: vec2f, v: f32) -> f32 {
 
 @compute @workgroup_size(4, 4)
 fn computeTexture(@builtin(global_invocation_id) globalIdx : vec3u) {
-  var res = i32(gu.size.y);
+  var dim = i32(gu.size.y);
   var idx = vec2i(globalIdx.xy);
   var u = vec2f(globalIdx.xy) / gu.size;
   u = (u * 2 - 1) * pu.scale * 0.5 + 0.5;
   var s = textureSampleLevel(stream, linearSampler, u, 0);
-  // s = hsv2rgb(s);
-  writeBuffer(idx.x + (res - 1 - idx.y) * res, s);
+  writeBuffer(idx.x + (dim - 1 - idx.y) * dim, s);
 }
 
 @compute @workgroup_size(4, 4)
 fn computeBuffer(@builtin(global_invocation_id) globalIdx : vec3u) {
-  var res = i32(gu.size.y);
+  var dim = i32(gu.size.y);
   var idx = vec2i(globalIdx.xy);
   var s : vec4f;
 
   for (var i = 0; i < 4; i++) {
-    var u = idx.x * 2 + i % 2 + (idx.y * 2 + i / 2) * res;
+    var u = idx.x * 2 + i % 2 + (idx.y * 2 + i / 2) * dim;
     s += readBuffer(u);
   }
   s /= 4;
 
-  writeBuffer(idx.x + idx.y * res, s);
+  writeBuffer(idx.x + idx.y * dim, s);
 }
 
 @fragment
 fn fragmentMain(data: VertexData) -> @location(0) vec4f {
   var resolution = pow(2, pu.resFactor);
+  var dim = i32(gu.size.y);
   var blackLevel = pu.blackLevel;
   var whiteLevel = pu.whiteLevel;
 
@@ -77,7 +77,7 @@ fn fragmentMain(data: VertexData) -> @location(0) vec4f {
 
   var uv = data.uv * gu.cover;
   var idx = vec2i(uv * resolution);
-  var s = readBuffer(idx.x + idx.y * i32(gu.size.y)).rgb;
+  var s  = readBuffer(idx.x + idx.y * dim).rgb;
 
   var range = whiteLevel - blackLevel;
   s = (s - blackLevel) / range;
