@@ -38,7 +38,14 @@ fn samplePattern(uv: vec2f, v: f32) -> f32 {
     floor((v * 36) % 6) / 6.,
     floor(v * 6) / 6.,
   );
-  return texture(macTexture, fract(uv * patternRes) / 6 + offset).r;
+  var t = texture(macTexture, fract(uv * patternRes) / 6 + offset).r;
+  if (v <= 0) {
+    return 0;
+  }
+  else if (v >= 1) {
+    return 1;
+  }
+  return t;
 }
 
 @compute @workgroup_size(4, 4)
@@ -91,8 +98,9 @@ fn fragmentMain(data: VertexData) -> @location(0) vec4f {
     for (var i = 0; i < 3; i++) {
       c[i] = samplePattern(uv, s[i]);
     }
-  } else {
-    s = rgb2hsv3(s).zzz;
+  }
+  else {
+    s = vec3f(amax3(s));
     c = uf.xxx * samplePattern(uv, s.x);
   }
 

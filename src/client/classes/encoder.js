@@ -23,7 +23,6 @@ export default class Encoder {
   }
 
   copyTextureToBuffer(...args) {
-    console.log(args);
     return this.commandEncoder.copyTextureToBuffer(...args);
   }
 
