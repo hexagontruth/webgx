@@ -50,6 +50,18 @@ fn mix4(a: vec4f, b: vec4f, r: f32) -> vec4f {
   return mix(a, b, vec4f(r));
 }
 
+fn n2(v: vec2f) -> vec2f {
+  return normalize(v);
+}
+
+fn n3(v: vec3f) -> vec3f {
+  return normalize(v);
+}
+
+fn n4(v: vec4f) -> vec4f {
+  return normalize(v);
+}
+
 fn scaleUv(uv : vec2f, s : f32) -> vec2f {
   return (uv * 2 - 1) * s * 0.5 + 0.5;
 }
