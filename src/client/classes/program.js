@@ -26,6 +26,7 @@ export default class Program {
     'depth-clip-control',
     'shader-f16',
   ];
+  static defaultLimits = {};
 
   static generateDefaults(p) {
     return {
@@ -94,8 +95,13 @@ export default class Program {
     this.adapter = await navigator.gpu.requestAdapter();
     this.requestedFeatures = programObj.features ?? Program.defaultFeatures;
     this.features = this.requestedFeatures.filter((e) => this.adapter.features.has(e));
+    this.limits = Object.assign({}, programObj.limits ?? Program.defaultLimits);
+    Object.entries(this.limits).forEach(([key, value]) => {
+      this.limits[key] = min(value, this.adapter.limits[key]);
+    });
     this.device = await this.adapter.requestDevice({
       requiredFeatures: this.features,
+      requiredLimits: this.limits,
     });
     this.ctx.configure({
       device: this.device,
